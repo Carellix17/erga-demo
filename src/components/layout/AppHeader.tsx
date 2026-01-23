@@ -1,5 +1,6 @@
 import { FileUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { UserMenu } from "./UserMenu";
 
 interface AppHeaderProps {
   onUploadClick: () => void;
@@ -17,17 +18,20 @@ export function AppHeader({ onUploadClick, hasFiles }: AppHeaderProps) {
           <span className="font-semibold text-lg">Erga</span>
         </div>
         
-        <Button
-          variant={hasFiles ? "ghost" : "tonal"}
-          size="icon-sm"
-          onClick={onUploadClick}
-          className="relative"
-        >
-          <FileUp className="w-5 h-5" />
-          {!hasFiles && (
-            <span className="absolute -top-1 -right-1 w-3 h-3 bg-accent rounded-full animate-pulse-soft" />
-          )}
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant={hasFiles ? "ghost" : "tonal"}
+            size="icon-sm"
+            onClick={onUploadClick}
+            className="relative"
+          >
+            <FileUp className="w-5 h-5" />
+            {!hasFiles && (
+              <span className="absolute -top-1 -right-1 w-3 h-3 bg-accent rounded-full animate-pulse-soft" />
+            )}
+          </Button>
+          <UserMenu />
+        </div>
       </div>
     </header>
   );
