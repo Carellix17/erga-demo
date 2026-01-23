@@ -12,7 +12,7 @@ serve(async (req) => {
   }
 
   try {
-    const { userId } = await req.json();
+    const { userId, action, lessonIndex } = await req.json();
 
     if (!userId) {
       return new Response(
@@ -21,7 +21,7 @@ serve(async (req) => {
       );
     }
 
-    console.log(`Generating lessons for user: ${userId}`);
+    console.log(`Generate lessons action: ${action || 'initial'} for user: ${userId}`);
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -44,16 +44,161 @@ serve(async (req) => {
     const combinedContent = contexts
       .map(c => `--- ${c.file_name} ---\n${c.content}`)
       .join("\n\n")
-      .substring(0, 30000); // Limit context size
+      .substring(0, 50000); // Increased context size
 
     console.log(`Combined content length: ${combinedContent.length}`);
 
-    // Call Lovable AI to generate lessons
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
 
+    // ACTION: Generate single lesson with exercises
+    if (action === "generateLesson" && lessonIndex !== undefined) {
+      // Get the lesson to generate
+      const { data: lessons } = await supabase
+        .from("mini_lessons")
+        .select("*")
+        .eq("user_id", userId)
+        .eq("lesson_order", lessonIndex)
+        .single();
+
+      if (!lessons) {
+        return new Response(
+          JSON.stringify({ error: "Lezione non trovata" }),
+          { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      if (lessons.is_generated) {
+        return new Response(
+          JSON.stringify({ success: true, lesson: lessons }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      const lessonTitle = lessons.title;
+
+      const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${LOVABLE_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "google/gemini-3-flash-preview",
+          messages: [
+            {
+              role: "system",
+              content: `Sei un tutor esperto che crea mini-lezioni educative stile Duolingo. Ogni mini-lezione deve:
+- Durare circa 5 minuti
+- Focalizzarsi su UN SOLO concetto
+- Essere interattiva con molti esercizi
+
+IMPORTANTE: Rispondi SOLO con JSON valido, senza markdown, senza codice, senza testo aggiuntivo.
+
+Crea una mini-lezione completa per il titolo dato. La lezione DEVE includere:
+1. "concept": il concetto chiave in massimo 2 frasi
+2. "explanation": spiegazione semplice e chiara (3-5 frasi)
+3. "example": un esempio concreto e pratico
+4. "exercises": array di 5-8 esercizi variati
+
+Tipi di esercizi disponibili (usa TUTTI i tipi, variando):
+- "multiple_choice": { type, question, options: string[], correct_index: number }
+- "true_false": { type, statement, correct: boolean }
+- "fill_blank": { type, sentence_with_blank: string (usa ___ per il blank), correct_answer: string }
+- "short_answer": { type, question, expected_keywords: string[] }
+
+Gli esercizi devono verificare REALMENTE la comprensione, non essere banali.
+
+Formato JSON richiesto:
+{
+  "concept": "...",
+  "explanation": "...",
+  "example": "...",
+  "exercises": [...]
+}`
+            },
+            {
+              role: "user",
+              content: `Contenuto di studio:\n\n${combinedContent}\n\n---\n\nCrea la mini-lezione completa per: "${lessonTitle}"`
+            },
+          ],
+          temperature: 0.7,
+        }),
+      });
+
+      if (!aiResponse.ok) {
+        if (aiResponse.status === 429) {
+          return new Response(
+            JSON.stringify({ error: "Troppe richieste. Riprova tra qualche secondo." }),
+            { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+        if (aiResponse.status === 402) {
+          return new Response(
+            JSON.stringify({ error: "Crediti AI esauriti." }),
+            { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+        const errorText = await aiResponse.text();
+        console.error("AI error:", errorText);
+        throw new Error("Errore nella generazione della lezione");
+      }
+
+      const aiData = await aiResponse.json();
+      const responseContent = aiData.choices?.[0]?.message?.content;
+
+      if (!responseContent) {
+        throw new Error("Risposta AI vuota");
+      }
+
+      console.log("AI lesson response:", responseContent.substring(0, 500));
+
+      let lessonData;
+      try {
+        const jsonMatch = responseContent.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          lessonData = JSON.parse(jsonMatch[0]);
+        } else {
+          lessonData = JSON.parse(responseContent);
+        }
+      } catch (parseError) {
+        console.error("Parse error:", parseError);
+        throw new Error("Errore nel parsing della lezione");
+      }
+
+      // Update the lesson with full content
+      const { error: updateError } = await supabase
+        .from("mini_lessons")
+        .update({
+          concept: lessonData.concept || "",
+          explanation: lessonData.explanation || "",
+          example: lessonData.example || "",
+          exercises: lessonData.exercises || [],
+          is_generated: true,
+        })
+        .eq("id", lessons.id);
+
+      if (updateError) {
+        console.error("Update error:", updateError);
+        throw new Error("Errore nel salvataggio della lezione");
+      }
+
+      // Fetch updated lesson
+      const { data: updatedLesson } = await supabase
+        .from("mini_lessons")
+        .select("*")
+        .eq("id", lessons.id)
+        .single();
+
+      return new Response(
+        JSON.stringify({ success: true, lesson: updatedLesson }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // DEFAULT ACTION: Generate lesson titles/structure
     const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -65,22 +210,24 @@ serve(async (req) => {
         messages: [
           {
             role: "system",
-            content: `Sei un tutor esperto che crea mini-lezioni educative per studenti. Ogni mini-lezione dura circa 5 minuti e deve essere coinvolgente e chiara.
+            content: `Sei un esperto di didattica che analizza contenuti educativi e li scompone in un percorso di apprendimento strutturato stile Duolingo.
 
 IMPORTANTE: Rispondi SOLO con un array JSON valido, senza markdown, senza codice, senza testo aggiuntivo.
 
-Crea esattamente 5 mini-lezioni basate sul contenuto fornito. Ogni lezione deve avere:
-- title: titolo breve della lezione
-- concept: il concetto chiave in una frase
-- explanation: spiegazione semplice e chiara (3-4 frasi)
-- question: una domanda di verifica
+Analizza il contenuto fornito e:
+1. Identifica TUTTI i concetti distinti presenti
+2. Ordina i concetti in modo logico (dal più semplice al più complesso, rispettando le dipendenze)
+3. Crea un titolo breve e chiaro per ogni mini-lezione (max 6 parole)
 
-Formato richiesto (JSON puro):
-[{"title":"...","concept":"...","explanation":"...","question":"..."},...]`,
+Crea MOLTE mini-lezioni (almeno 8-15, dipende dalla complessità del contenuto). Ogni concetto = 1 mini-lezione.
+NON raggruppare più concetti insieme. NON creare riassunti.
+
+Formato richiesto (array di oggetti):
+[{"title": "Introduzione a X"}, {"title": "Come funziona Y"}, ...]`
           },
           {
             role: "user",
-            content: `Crea 5 mini-lezioni basate su questo contenuto di studio:\n\n${combinedContent}`,
+            content: `Analizza questo contenuto e crea l'elenco completo delle mini-lezioni:\n\n${combinedContent}`
           },
         ],
         temperature: 0.7,
@@ -112,26 +259,23 @@ Formato richiesto (JSON puro):
       throw new Error("Risposta AI vuota");
     }
 
-    console.log("AI response:", responseContent.substring(0, 500));
+    console.log("AI titles response:", responseContent.substring(0, 500));
 
-    // Parse the lessons from AI response
-    let lessons;
+    let lessonTitles;
     try {
-      // Try to extract JSON from the response
       const jsonMatch = responseContent.match(/\[[\s\S]*\]/);
       if (jsonMatch) {
-        lessons = JSON.parse(jsonMatch[0]);
+        lessonTitles = JSON.parse(jsonMatch[0]);
       } else {
-        lessons = JSON.parse(responseContent);
+        lessonTitles = JSON.parse(responseContent);
       }
     } catch (parseError) {
       console.error("Parse error:", parseError);
-      console.error("Raw response:", responseContent);
-      throw new Error("Errore nel parsing delle lezioni generate");
+      throw new Error("Errore nel parsing dei titoli");
     }
 
-    if (!Array.isArray(lessons) || lessons.length === 0) {
-      throw new Error("Formato lezioni non valido");
+    if (!Array.isArray(lessonTitles) || lessonTitles.length === 0) {
+      throw new Error("Formato titoli non valido");
     }
 
     // Delete existing lessons for this user
@@ -140,14 +284,16 @@ Formato richiesto (JSON puro):
       .delete()
       .eq("user_id", userId);
 
-    // Insert new lessons
-    const lessonsToInsert = lessons.map((lesson: any, index: number) => ({
+    // Insert lesson placeholders (only titles, not generated yet)
+    const lessonsToInsert = lessonTitles.map((lesson: any, index: number) => ({
       user_id: userId,
       title: lesson.title || `Lezione ${index + 1}`,
-      concept: lesson.concept || "",
-      explanation: lesson.explanation || "",
-      question: lesson.question || "",
+      concept: "",
+      explanation: "",
+      example: null,
+      exercises: [],
       lesson_order: index,
+      is_generated: false,
     }));
 
     const { error: insertError } = await supabase
@@ -168,10 +314,24 @@ Formato richiesto (JSON puro):
         updated_at: new Date().toISOString(),
       }, { onConflict: "user_id" });
 
+    // Now generate the first lesson
+    const firstLessonResponse = await fetch(`${supabaseUrl}/functions/v1/generate-lessons`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${supabaseServiceKey}`,
+      },
+      body: JSON.stringify({ userId, action: "generateLesson", lessonIndex: 0 }),
+    });
+
+    const firstLessonData = await firstLessonResponse.json();
+
     return new Response(
       JSON.stringify({ 
         success: true, 
-        lessonsCount: lessons.length 
+        lessonsCount: lessonTitles.length,
+        firstLesson: firstLessonData.lesson,
+        titles: lessonTitles.map((l: any) => l.title)
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
