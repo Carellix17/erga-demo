@@ -14,7 +14,117 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      lesson_progress: {
+        Row: {
+          current_lesson_index: number
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          current_lesson_index?: number
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          current_lesson_index?: number
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      mini_lessons: {
+        Row: {
+          concept: string
+          created_at: string
+          explanation: string
+          id: string
+          lesson_order: number
+          question: string
+          title: string
+          user_id: string
+        }
+        Insert: {
+          concept: string
+          created_at?: string
+          explanation: string
+          id?: string
+          lesson_order?: number
+          question: string
+          title: string
+          user_id: string
+        }
+        Update: {
+          concept?: string
+          created_at?: string
+          explanation?: string
+          id?: string
+          lesson_order?: number
+          question?: string
+          title?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      study_contexts: {
+        Row: {
+          content: string
+          created_at: string
+          file_name: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          file_name: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          file_name?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      study_events: {
+        Row: {
+          created_at: string
+          event_date: string
+          event_time: string | null
+          event_type: string
+          id: string
+          subject: string
+          title: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          event_date: string
+          event_time?: string | null
+          event_type: string
+          id?: string
+          subject: string
+          title: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          event_date?: string
+          event_time?: string | null
+          event_type?: string
+          id?: string
+          subject?: string
+          title?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

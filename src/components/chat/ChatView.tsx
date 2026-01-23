@@ -3,6 +3,8 @@ import { ChatMessage } from "./ChatMessage";
 import { ChatInput } from "./ChatInput";
 import { QuickActions } from "./QuickActions";
 import { EmptyState } from "@/components/shared/EmptyState";
+import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/hooks/use-toast";
 
 interface ChatViewProps {
   hasFiles: boolean;
@@ -18,13 +20,15 @@ type Message = {
 const welcomeMessage: Message = {
   id: "welcome",
   role: "assistant",
-  content: "Ciao! Sono qui per aiutarti a studiare. Puoi chiedermi di spiegarti concetti dai tuoi appunti, farti esempi, o creare quiz veloci. Come posso aiutarti?",
+  content: "Ciao! Sono il tuo tutor di studio personale. Rispondo alle tue domande basandomi esclusivamente sui materiali che hai caricato. Come posso aiutarti oggi?",
 };
 
 export function ChatView({ hasFiles, onUploadClick }: ChatViewProps) {
   const [messages, setMessages] = useState<Message[]>([welcomeMessage]);
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const { currentUser } = useAuth();
+  const { toast } = useToast();
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -39,6 +43,8 @@ export function ChatView({ hasFiles, onUploadClick }: ChatViewProps) {
   }
 
   const handleSend = async (content: string) => {
+    if (!currentUser) return;
+
     const userMessage: Message = {
       id: String(Date.now()),
       role: "user",
@@ -48,16 +54,142 @@ export function ChatView({ hasFiles, onUploadClick }: ChatViewProps) {
     setMessages((prev) => [...prev, userMessage]);
     setIsLoading(true);
 
-    // Simulate AI response (will be replaced with real LLM call)
-    setTimeout(() => {
-      const assistantMessage: Message = {
-        id: String(Date.now() + 1),
-        role: "assistant",
-        content: getDemoResponse(content),
+    // Prepare messages for API (exclude welcome message id issues)
+    const apiMessages = [...messages.filter(m => m.id !== "welcome"), userMessage].map(m => ({
+      role: m.role,
+      content: m.content,
+    }));
+
+    let assistantContent = "";
+
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          },
+          body: JSON.stringify({
+            userId: currentUser,
+            messages: apiMessages,
+          }),
+        }
+      );
+
+      // Check for error responses
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Errore nella risposta");
+      }
+
+      // Check if it's a non-streaming response (no content)
+      const contentType = response.headers.get("content-type");
+      if (contentType?.includes("application/json")) {
+        const data = await response.json();
+        if (data.response) {
+          setMessages((prev) => [
+            ...prev,
+            { id: String(Date.now()), role: "assistant", content: data.response },
+          ]);
+          setIsLoading(false);
+          return;
+        }
+      }
+
+      // Handle streaming response
+      const reader = response.body?.getReader();
+      if (!reader) throw new Error("No response body");
+
+      const decoder = new TextDecoder();
+      let textBuffer = "";
+
+      const updateAssistantMessage = (text: string) => {
+        assistantContent = text;
+        setMessages((prev) => {
+          const last = prev[prev.length - 1];
+          if (last?.role === "assistant" && last.id !== "welcome") {
+            return prev.map((m, i) =>
+              i === prev.length - 1 ? { ...m, content: assistantContent } : m
+            );
+          }
+          return [...prev, { id: String(Date.now()), role: "assistant", content: assistantContent }];
+        });
       };
-      setMessages((prev) => [...prev, assistantMessage]);
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        textBuffer += decoder.decode(value, { stream: true });
+
+        let newlineIndex: number;
+        while ((newlineIndex = textBuffer.indexOf("\n")) !== -1) {
+          let line = textBuffer.slice(0, newlineIndex);
+          textBuffer = textBuffer.slice(newlineIndex + 1);
+
+          if (line.endsWith("\r")) line = line.slice(0, -1);
+          if (line.startsWith(":") || line.trim() === "") continue;
+          if (!line.startsWith("data: ")) continue;
+
+          const jsonStr = line.slice(6).trim();
+          if (jsonStr === "[DONE]") break;
+
+          try {
+            const parsed = JSON.parse(jsonStr);
+            const deltaContent = parsed.choices?.[0]?.delta?.content;
+            if (deltaContent) {
+              updateAssistantMessage(assistantContent + deltaContent);
+            }
+          } catch {
+            // Incomplete JSON, put back
+            textBuffer = line + "\n" + textBuffer;
+            break;
+          }
+        }
+      }
+
+      // Final flush
+      if (textBuffer.trim()) {
+        for (let raw of textBuffer.split("\n")) {
+          if (!raw) continue;
+          if (raw.endsWith("\r")) raw = raw.slice(0, -1);
+          if (!raw.startsWith("data: ")) continue;
+          const jsonStr = raw.slice(6).trim();
+          if (jsonStr === "[DONE]") continue;
+          try {
+            const parsed = JSON.parse(jsonStr);
+            const deltaContent = parsed.choices?.[0]?.delta?.content;
+            if (deltaContent) {
+              updateAssistantMessage(assistantContent + deltaContent);
+            }
+          } catch {
+            /* ignore */
+          }
+        }
+      }
+
+    } catch (error) {
+      console.error("Chat error:", error);
+      toast({
+        title: "Errore",
+        description: error instanceof Error ? error.message : "Errore nella chat",
+        variant: "destructive",
+      });
+
+      // Add error message
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: String(Date.now()),
+          role: "assistant",
+          content: "Mi dispiace, si è verificato un errore. Riprova tra qualche secondo.",
+        },
+      ]);
+    } finally {
       setIsLoading(false);
-    }, 1000);
+    }
   };
 
   const handleQuickAction = (action: string) => {
@@ -88,27 +220,4 @@ export function ChatView({ hasFiles, onUploadClick }: ChatViewProps) {
       </div>
     </div>
   );
-}
-
-// Demo responses
-function getDemoResponse(input: string): string {
-  const lowered = input.toLowerCase();
-  
-  if (lowered.includes("spiegami") || lowered.includes("spiega")) {
-    return "La fotosintesi clorofilliana è un processo biochimico fondamentale. In pratica, le piante catturano l'energia del sole usando la clorofilla (il pigmento verde delle foglie) e la usano per trasformare CO₂ e acqua in zuccheri, rilasciando ossigeno come 'scarto'. È grazie a questo processo che esiste la vita sulla Terra!";
-  }
-  
-  if (lowered.includes("esempio")) {
-    return "Immagina una fabbrica solare: le foglie sono i pannelli solari che catturano la luce. L'acqua arriva dalle radici (come tubi), la CO₂ entra dagli stomi (piccole aperture). La fabbrica produce zucchero (energia) e rilascia ossigeno dal 'camino'. Di notte la fabbrica 'riposa' e fa solo respirazione!";
-  }
-  
-  if (lowered.includes("riassumi")) {
-    return "📌 **Fotosintesi in 30 secondi:**\n\n• **Input:** Luce + CO₂ + H₂O\n• **Output:** Glucosio + O₂\n• **Dove:** Cloroplasti (foglie)\n• **Quando:** Di giorno (serve luce)\n• **Perché importante:** Produce O₂ e cibo per tutta la catena alimentare";
-  }
-  
-  if (lowered.includes("quiz")) {
-    return "🎯 **Quiz veloce:**\n\nDomanda: Quale gas viene rilasciato come prodotto della fotosintesi?\n\nA) Anidride carbonica\nB) Azoto\nC) Ossigeno\nD) Idrogeno\n\nPensaci e dimmi la tua risposta!";
-  }
-  
-  return "Interessante domanda! Basandomi sui tuoi appunti sulla fotosintesi, posso dirti che questo processo è essenziale per la vita sulla Terra. Vuoi che ti spieghi qualche aspetto specifico o preferisci un quiz per testare le tue conoscenze?";
 }

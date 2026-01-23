@@ -1,19 +1,24 @@
 import { useState, useCallback } from "react";
-import { FileUp, X, FileText, Check } from "lucide-react";
+import { FileUp, X, FileText, Check, Loader2 } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/hooks/use-toast";
 
 interface UploadSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onUpload: (files: File[]) => void;
-  uploadedFiles: File[];
+  onUpload: (files: { name: string; size: number }[]) => void;
+  uploadedFiles: { name: string; size: number }[];
 }
 
 export function UploadSheet({ open, onOpenChange, onUpload, uploadedFiles }: UploadSheetProps) {
   const [dragActive, setDragActive] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
+  const { currentUser } = useAuth();
+  const { toast } = useToast();
 
   const handleDrag = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -51,11 +56,101 @@ export function UploadSheet({ open, onOpenChange, onUpload, uploadedFiles }: Upl
     setSelectedFiles((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const handleUpload = () => {
-    if (selectedFiles.length > 0) {
-      onUpload(selectedFiles);
+  const fileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => {
+        const result = reader.result as string;
+        // Remove the data URL prefix (e.g., "data:application/pdf;base64,")
+        const base64 = result.split(",")[1];
+        resolve(base64);
+      };
+      reader.onerror = reject;
+    });
+  };
+
+  const handleUpload = async () => {
+    if (selectedFiles.length === 0 || !currentUser) return;
+
+    setIsUploading(true);
+    const uploadedFileInfos: { name: string; size: number }[] = [];
+
+    try {
+      for (const file of selectedFiles) {
+        toast({
+          title: `Caricamento: ${file.name}`,
+          description: "Estrazione del testo in corso...",
+        });
+
+        const pdfBase64 = await fileToBase64(file);
+
+        const response = await fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/extract-pdf`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+            },
+            body: JSON.stringify({
+              userId: currentUser,
+              fileName: file.name,
+              pdfBase64,
+            }),
+          }
+        );
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error || "Errore nel caricamento");
+        }
+
+        uploadedFileInfos.push({ name: file.name, size: file.size });
+
+        toast({
+          title: "File caricato",
+          description: `${file.name} - Estratti ${data.extractedLength} caratteri`,
+        });
+      }
+
+      onUpload(uploadedFileInfos);
       setSelectedFiles([]);
       onOpenChange(false);
+
+      // Trigger lesson generation
+      toast({
+        title: "Generazione lezioni",
+        description: "Sto creando le mini-lezioni basate sui tuoi contenuti...",
+      });
+
+      await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-lessons`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          },
+          body: JSON.stringify({ userId: currentUser }),
+        }
+      );
+
+      toast({
+        title: "Contenuti pronti!",
+        description: "Le mini-lezioni sono state generate. Buono studio!",
+      });
+
+    } catch (error) {
+      console.error("Upload error:", error);
+      toast({
+        title: "Errore",
+        description: error instanceof Error ? error.message : "Errore nel caricamento",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUploading(false);
     }
   };
 
@@ -72,7 +167,8 @@ export function UploadSheet({ open, onOpenChange, onUpload, uploadedFiles }: Upl
             "relative border-2 border-dashed rounded-2xl p-8 text-center transition-all duration-200",
             dragActive
               ? "border-primary bg-primary/5"
-              : "border-border hover:border-primary/50"
+              : "border-border hover:border-primary/50",
+            isUploading && "pointer-events-none opacity-50"
           )}
           onDragEnter={handleDrag}
           onDragLeave={handleDrag}
@@ -85,6 +181,7 @@ export function UploadSheet({ open, onOpenChange, onUpload, uploadedFiles }: Upl
             multiple
             onChange={handleFileInput}
             className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+            disabled={isUploading}
           />
           
           <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
@@ -116,6 +213,7 @@ export function UploadSheet({ open, onOpenChange, onUpload, uploadedFiles }: Upl
                   <button
                     onClick={() => removeFile(index)}
                     className="p-1 hover:bg-background rounded-lg transition-colors"
+                    disabled={isUploading}
                   >
                     <X className="w-4 h-4 text-muted-foreground" />
                   </button>
@@ -149,13 +247,20 @@ export function UploadSheet({ open, onOpenChange, onUpload, uploadedFiles }: Upl
         <div className="mt-6">
           <Button
             onClick={handleUpload}
-            disabled={selectedFiles.length === 0}
+            disabled={selectedFiles.length === 0 || isUploading}
             className="w-full"
             size="lg"
           >
-            {selectedFiles.length > 0
-              ? `Carica ${selectedFiles.length} file`
-              : "Seleziona file da caricare"}
+            {isUploading ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Caricamento in corso...
+              </>
+            ) : selectedFiles.length > 0 ? (
+              `Carica ${selectedFiles.length} file`
+            ) : (
+              "Seleziona file da caricare"
+            )}
           </Button>
         </div>
       </SheetContent>
