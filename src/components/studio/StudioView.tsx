@@ -1,10 +1,12 @@
 import { useState, useEffect, useCallback } from "react";
 import { MiniLesson } from "./MiniLesson";
+import { LessonsList } from "./LessonsList";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, RefreshCw } from "lucide-react";
+import { Loader2, RefreshCw, List } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Exercise } from "./exercises/ExerciseRenderer";
 
 interface StudioViewProps {
   hasFiles: boolean;
@@ -16,7 +18,10 @@ interface Lesson {
   title: string;
   concept: string;
   explanation: string;
-  question: string;
+  example?: string;
+  exercises?: Exercise[];
+  is_generated: boolean;
+  lesson_order: number;
 }
 
 export function StudioView({ hasFiles, onUploadClick }: StudioViewProps) {
@@ -24,6 +29,8 @@ export function StudioView({ hasFiles, onUploadClick }: StudioViewProps) {
   const [currentLessonIndex, setCurrentLessonIndex] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isGeneratingLesson, setIsGeneratingLesson] = useState(false);
+  const [showList, setShowList] = useState(false);
   const { currentUser } = useAuth();
   const { toast } = useToast();
 
@@ -85,8 +92,8 @@ export function StudioView({ hasFiles, onUploadClick }: StudioViewProps) {
       }
 
       toast({
-        title: "Lezioni generate!",
-        description: `Create ${data.lessonsCount} nuove mini-lezioni.`,
+        title: "Percorso creato!",
+        description: `Creato un percorso con ${data.lessonsCount} mini-lezioni.`,
       });
 
       await fetchLessons();
@@ -102,9 +109,64 @@ export function StudioView({ hasFiles, onUploadClick }: StudioViewProps) {
     }
   };
 
+  const generateLessonContent = async (lessonIndex: number) => {
+    if (!currentUser) return null;
+
+    setIsGeneratingLesson(true);
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-lessons`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          },
+          body: JSON.stringify({ 
+            userId: currentUser, 
+            action: "generateLesson",
+            lessonIndex 
+          }),
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Errore nella generazione");
+      }
+
+      // Update local state with the new lesson
+      if (data.lesson) {
+        setLessons(prev => prev.map(l => 
+          l.lesson_order === lessonIndex ? data.lesson : l
+        ));
+      }
+
+      return data.lesson;
+    } catch (error) {
+      console.error("Error generating lesson:", error);
+      toast({
+        title: "Errore",
+        description: error instanceof Error ? error.message : "Errore nella generazione",
+        variant: "destructive",
+      });
+      return null;
+    } finally {
+      setIsGeneratingLesson(false);
+    }
+  };
+
   const handleNext = async () => {
     if (currentLessonIndex < lessons.length - 1) {
       const newIndex = currentLessonIndex + 1;
+      
+      // Check if next lesson needs generation
+      const nextLesson = lessons[newIndex];
+      if (!nextLesson.is_generated) {
+        await generateLessonContent(newIndex);
+      }
+      
       setCurrentLessonIndex(newIndex);
 
       // Update progress in database
@@ -127,6 +189,45 @@ export function StudioView({ hasFiles, onUploadClick }: StudioViewProps) {
       } catch (error) {
         console.error("Error updating progress:", error);
       }
+    } else {
+      // Course completed
+      toast({
+        title: "Complimenti! 🎉",
+        description: "Hai completato tutte le lezioni del corso!",
+      });
+    }
+  };
+
+  const handleSelectLesson = async (index: number) => {
+    const selectedLesson = lessons[index];
+    
+    // Generate if not yet generated
+    if (!selectedLesson.is_generated) {
+      await generateLessonContent(index);
+    }
+    
+    setCurrentLessonIndex(index);
+    setShowList(false);
+
+    // Update progress
+    try {
+      await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-lessons`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          },
+          body: JSON.stringify({
+            userId: currentUser,
+            action: "updateProgress",
+            lessonIndex: index,
+          }),
+        }
+      );
+    } catch (error) {
+      console.error("Error updating progress:", error);
     }
   };
 
@@ -151,27 +252,66 @@ export function StudioView({ hasFiles, onUploadClick }: StudioViewProps) {
         </div>
         <h3 className="text-lg font-semibold">Nessuna lezione disponibile</h3>
         <p className="text-muted-foreground max-w-xs">
-          Genera le mini-lezioni basate sui tuoi materiali di studio caricati.
+          L'AI analizzerà i tuoi materiali e creerà un percorso di mini-lezioni personalizzato.
         </p>
         <Button onClick={handleGenerateLessons} disabled={isGenerating}>
           {isGenerating ? (
             <>
               <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              Generazione in corso...
+              Analisi in corso...
             </>
           ) : (
-            "Genera lezioni"
+            "Genera percorso"
           )}
         </Button>
       </div>
     );
   }
 
+  if (showList) {
+    return (
+      <LessonsList
+        lessons={lessons}
+        currentIndex={currentLessonIndex}
+        onSelectLesson={handleSelectLesson}
+        onBack={() => setShowList(false)}
+        isGenerating={isGeneratingLesson}
+      />
+    );
+  }
+
   const currentLesson = lessons[currentLessonIndex];
   const progress = ((currentLessonIndex + 1) / lessons.length) * 100;
 
+  // Show loading if current lesson needs generation
+  if (!currentLesson.is_generated || isGeneratingLesson) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 p-4">
+        <Loader2 className="w-8 h-8 text-primary animate-spin" />
+        <p className="text-muted-foreground text-center">
+          Generazione lezione in corso...
+        </p>
+        <p className="text-sm text-muted-foreground text-center max-w-xs">
+          L'AI sta creando la lezione "{currentLesson.title}" con esercizi interattivi
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="p-4 pb-24">
+      {/* List toggle button */}
+      <div className="flex justify-end mb-4">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setShowList(true)}
+        >
+          <List className="w-4 h-4 mr-2" />
+          Tutte le lezioni ({lessons.length})
+        </Button>
+      </div>
+
       <MiniLesson
         lesson={{
           ...currentLesson,
@@ -181,6 +321,7 @@ export function StudioView({ hasFiles, onUploadClick }: StudioViewProps) {
         totalLessons={lessons.length}
         currentIndex={currentLessonIndex}
         onNext={handleNext}
+        isLastLesson={currentLessonIndex === lessons.length - 1}
       />
       
       {/* Regenerate button */}
@@ -196,7 +337,7 @@ export function StudioView({ hasFiles, onUploadClick }: StudioViewProps) {
           ) : (
             <RefreshCw className="w-4 h-4 mr-2" />
           )}
-          Rigenera lezioni
+          Rigenera percorso
         </Button>
       </div>
     </div>

@@ -39,30 +39,36 @@ export type Database = {
         Row: {
           concept: string
           created_at: string
+          example: string | null
+          exercises: Json
           explanation: string
           id: string
+          is_generated: boolean
           lesson_order: number
-          question: string
           title: string
           user_id: string
         }
         Insert: {
           concept: string
           created_at?: string
+          example?: string | null
+          exercises?: Json
           explanation: string
           id?: string
+          is_generated?: boolean
           lesson_order?: number
-          question: string
           title: string
           user_id: string
         }
         Update: {
           concept?: string
           created_at?: string
+          example?: string | null
+          exercises?: Json
           explanation?: string
           id?: string
+          is_generated?: boolean
           lesson_order?: number
-          question?: string
           title?: string
           user_id?: string
         }

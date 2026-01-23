@@ -55,6 +55,26 @@ serve(async (req) => {
       );
     }
 
+    if (action === "getLesson" && lessonIndex !== undefined) {
+      // Get specific lesson
+      const { data: lesson, error: lessonError } = await supabase
+        .from("mini_lessons")
+        .select("*")
+        .eq("user_id", userId)
+        .eq("lesson_order", lessonIndex)
+        .single();
+
+      if (lessonError) {
+        console.error("Lesson error:", lessonError);
+        throw new Error("Errore nel caricamento della lezione");
+      }
+
+      return new Response(
+        JSON.stringify({ success: true, lesson }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     if (action === "updateProgress" && lessonIndex !== undefined) {
       // Update progress
       const { error } = await supabase
