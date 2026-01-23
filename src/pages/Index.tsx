@@ -5,19 +5,42 @@ import { StudioView } from "@/components/studio/StudioView";
 import { PianoView } from "@/components/piano/PianoView";
 import { ChatView } from "@/components/chat/ChatView";
 import { UploadSheet } from "@/components/upload/UploadSheet";
+import { useUserData } from "@/hooks/useUserData";
 
 type Tab = "studio" | "piano" | "chat";
+
+interface UploadedFile {
+  name: string;
+  size: number;
+  uploadedAt: string;
+}
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState<Tab>("studio");
   const [showUpload, setShowUpload] = useState(false);
-  const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
+  
+  // User-specific uploaded files stored in localStorage
+  const { data: uploadedFiles, updateData: setUploadedFiles } = useUserData<UploadedFile[]>(
+    "uploaded_files",
+    []
+  );
 
   const hasFiles = uploadedFiles.length > 0;
 
   const handleUpload = (files: File[]) => {
-    setUploadedFiles((prev) => [...prev, ...files]);
+    const newFiles: UploadedFile[] = files.map((file) => ({
+      name: file.name,
+      size: file.size,
+      uploadedAt: new Date().toISOString(),
+    }));
+    setUploadedFiles((prev) => [...prev, ...newFiles]);
   };
+
+  // Convert UploadedFile to File-like object for UploadSheet display
+  const displayFiles = uploadedFiles.map((f) => ({
+    name: f.name,
+    size: f.size,
+  }));
 
   return (
     <div className="min-h-screen bg-background">
@@ -53,7 +76,7 @@ const Index = () => {
         open={showUpload}
         onOpenChange={setShowUpload}
         onUpload={handleUpload}
-        uploadedFiles={uploadedFiles}
+        uploadedFiles={displayFiles as File[]}
       />
     </div>
   );
