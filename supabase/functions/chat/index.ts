@@ -91,7 +91,7 @@ ${eventsText}`;
       })),
     ];
 
-    console.log("Calling Groq API with model llama3-8b-8192");
+    console.log("Calling Groq API with model llama-3.3-70b-versatile");
 
     const aiResponse = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
@@ -100,7 +100,7 @@ ${eventsText}`;
         "Authorization": `Bearer ${GROQ_API_KEY}`,
       },
       body: JSON.stringify({
-        model: "llama3-8b-8192",
+        model: "llama-3.3-70b-versatile",
         messages: groqMessages,
         temperature: 0.7,
         max_tokens: 2048,

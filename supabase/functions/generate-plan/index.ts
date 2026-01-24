@@ -95,7 +95,7 @@ ${contextSummary}
 
 Crea un piano di studio personalizzato.`;
 
-    console.log("Calling Groq API for plan generation");
+    console.log("Calling Groq API for plan generation with llama-3.3-70b-versatile");
 
     const aiResponse = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
@@ -104,7 +104,7 @@ Crea un piano di studio personalizzato.`;
         "Authorization": `Bearer ${GROQ_API_KEY}`,
       },
       body: JSON.stringify({
-        model: "llama3-8b-8192",
+        model: "llama-3.3-70b-versatile",
         messages: [{ role: "user", content: prompt }],
         temperature: 0.7,
         max_tokens: 2048,
