@@ -92,9 +92,10 @@ ${eventsText}`;
       })),
     ];
 
-    const aiResponse = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:streamGenerateContent?alt=sse&key=${GEMINI_API_KEY}`,
-      {
+    const geminiUrl = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:streamGenerateContent?alt=sse&key=${GEMINI_API_KEY}`;
+    console.log("Gemini request URL:", geminiUrl.replace(GEMINI_API_KEY, "***"));
+
+    const aiResponse = await fetch(geminiUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -104,11 +105,11 @@ ${eventsText}`;
             maxOutputTokens: 2048,
           },
         }),
-      }
-    );
+      });
 
     if (!aiResponse.ok) {
       const errorText = await aiResponse.text();
+      console.error("Gemini response status:", aiResponse.status);
       console.error("Gemini API error:", errorText);
       if (aiResponse.status === 429) {
         return new Response(
