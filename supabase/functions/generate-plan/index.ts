@@ -59,24 +59,13 @@ serve(async (req) => {
       ? events.map(e => `- ${e.event_type}: ${e.title} (${e.subject}) - ${e.event_date}`).join("\n")
       : "Nessun evento programmato";
 
-    // Call Lovable AI
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) {
-      throw new Error("LOVABLE_API_KEY is not configured");
+    // Call Google Gemini API directly
+    const GEMINI_API_KEY = Deno.env.get("ERGA_GEMINI_KEY");
+    if (!GEMINI_API_KEY) {
+      throw new Error("ERGA_GEMINI_KEY is not configured");
     }
 
-    const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
-        messages: [
-          {
-            role: "system",
-            content: `Sei un tutor esperto che crea piani di studio personalizzati. Analizza il contenuto di studio e gli eventi esistenti per creare un piano ottimale.
+    const prompt = `Sei un tutor esperto che crea piani di studio personalizzati. Analizza il contenuto di studio e gli eventi esistenti per creare un piano ottimale.
 
 IMPORTANTE: Rispondi SOLO con un oggetto JSON valido, senza markdown, senza codice.
 
@@ -94,11 +83,9 @@ Il JSON deve avere questa struttura:
 }
 
 La spiegazione deve iniziare con "Ti propongo questo piano perché" e spiegare la logica delle scelte.
-Crea 3-5 sessioni di studio nei prossimi 7 giorni.`,
-          },
-          {
-            role: "user",
-            content: `Data di oggi: ${today}
+Crea 3-5 sessioni di studio nei prossimi 7 giorni.
+
+Data di oggi: ${today}
 
 Eventi esistenti:
 ${eventsText}
@@ -106,31 +93,37 @@ ${eventsText}
 Contenuti di studio disponibili:
 ${contextSummary}
 
-Crea un piano di studio personalizzato.`,
+Crea un piano di studio personalizzato.`;
+
+    const aiResponse = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [{ role: "user", parts: [{ text: prompt }] }],
+          generationConfig: {
+            temperature: 0.7,
+            maxOutputTokens: 2048,
           },
-        ],
-        temperature: 0.7,
-      }),
-    });
+        }),
+      }
+    );
 
     if (!aiResponse.ok) {
+      const errorText = await aiResponse.text();
+      console.error("Gemini API error:", errorText);
       if (aiResponse.status === 429) {
         return new Response(
           JSON.stringify({ error: "Troppe richieste. Riprova tra qualche secondo." }),
           { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
-      if (aiResponse.status === 402) {
-        return new Response(
-          JSON.stringify({ error: "Crediti AI esauriti." }),
-          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
       throw new Error("Errore nella generazione del piano");
     }
 
     const aiData = await aiResponse.json();
-    const responseContent = aiData.choices?.[0]?.message?.content;
+    const responseContent = aiData.candidates?.[0]?.content?.parts?.[0]?.text;
 
     if (!responseContent) {
       throw new Error("Risposta AI vuota");

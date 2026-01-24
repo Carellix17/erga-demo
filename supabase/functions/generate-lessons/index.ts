@@ -48,9 +48,9 @@ serve(async (req) => {
 
     console.log(`Combined content length: ${combinedContent.length}`);
 
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) {
-      throw new Error("LOVABLE_API_KEY is not configured");
+    const GEMINI_API_KEY = Deno.env.get("ERGA_GEMINI_KEY");
+    if (!GEMINI_API_KEY) {
+      throw new Error("ERGA_GEMINI_KEY is not configured");
     }
 
     // ACTION: Generate single lesson with exercises
@@ -79,18 +79,7 @@ serve(async (req) => {
 
       const lessonTitle = lessons.title;
 
-      const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${LOVABLE_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: "google/gemini-3-flash-preview",
-          messages: [
-            {
-              role: "system",
-              content: `Sei un tutor esperto che crea mini-lezioni educative stile Duolingo. Ogni mini-lezione deve:
+      const prompt = `Sei un tutor esperto che crea mini-lezioni educative stile Duolingo. Ogni mini-lezione deve:
 - Durare circa 5 minuti
 - Focalizzarsi su UN SOLO concetto
 - Essere interattiva con molti esercizi
@@ -117,37 +106,45 @@ Formato JSON richiesto:
   "explanation": "...",
   "example": "...",
   "exercises": [...]
-}`
+}
+
+Contenuto di studio:
+
+${combinedContent}
+
+---
+
+Crea la mini-lezione completa per: "${lessonTitle}"`;
+
+      const aiResponse = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [{ role: "user", parts: [{ text: prompt }] }],
+            generationConfig: {
+              temperature: 0.7,
+              maxOutputTokens: 4096,
             },
-            {
-              role: "user",
-              content: `Contenuto di studio:\n\n${combinedContent}\n\n---\n\nCrea la mini-lezione completa per: "${lessonTitle}"`
-            },
-          ],
-          temperature: 0.7,
-        }),
-      });
+          }),
+        }
+      );
 
       if (!aiResponse.ok) {
+        const errorText = await aiResponse.text();
+        console.error("Gemini API error:", errorText);
         if (aiResponse.status === 429) {
           return new Response(
             JSON.stringify({ error: "Troppe richieste. Riprova tra qualche secondo." }),
             { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
           );
         }
-        if (aiResponse.status === 402) {
-          return new Response(
-            JSON.stringify({ error: "Crediti AI esauriti." }),
-            { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
-        }
-        const errorText = await aiResponse.text();
-        console.error("AI error:", errorText);
         throw new Error("Errore nella generazione della lezione");
       }
 
       const aiData = await aiResponse.json();
-      const responseContent = aiData.choices?.[0]?.message?.content;
+      const responseContent = aiData.candidates?.[0]?.content?.parts?.[0]?.text;
 
       if (!responseContent) {
         throw new Error("Risposta AI vuota");
@@ -199,18 +196,7 @@ Formato JSON richiesto:
     }
 
     // DEFAULT ACTION: Generate lesson titles/structure
-    const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
-        messages: [
-          {
-            role: "system",
-            content: `Sei un esperto di didattica che analizza contenuti educativi e li scompone in un percorso di apprendimento strutturato stile Duolingo.
+    const titlesPrompt = `Sei un esperto di didattica che analizza contenuti educativi e li scompone in un percorso di apprendimento strutturato stile Duolingo.
 
 IMPORTANTE: Rispondi SOLO con un array JSON valido, senza markdown, senza codice, senza testo aggiuntivo.
 
@@ -223,37 +209,41 @@ Crea MOLTE mini-lezioni (almeno 8-15, dipende dalla complessità del contenuto).
 NON raggruppare più concetti insieme. NON creare riassunti.
 
 Formato richiesto (array di oggetti):
-[{"title": "Introduzione a X"}, {"title": "Come funziona Y"}, ...]`
+[{"title": "Introduzione a X"}, {"title": "Come funziona Y"}, ...]
+
+Analizza questo contenuto e crea l'elenco completo delle mini-lezioni:
+
+${combinedContent}`;
+
+    const aiResponse = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [{ role: "user", parts: [{ text: titlesPrompt }] }],
+          generationConfig: {
+            temperature: 0.7,
+            maxOutputTokens: 4096,
           },
-          {
-            role: "user",
-            content: `Analizza questo contenuto e crea l'elenco completo delle mini-lezioni:\n\n${combinedContent}`
-          },
-        ],
-        temperature: 0.7,
-      }),
-    });
+        }),
+      }
+    );
 
     if (!aiResponse.ok) {
+      const errorText = await aiResponse.text();
+      console.error("Gemini API error:", errorText);
       if (aiResponse.status === 429) {
         return new Response(
           JSON.stringify({ error: "Troppe richieste. Riprova tra qualche secondo." }),
           { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
-      if (aiResponse.status === 402) {
-        return new Response(
-          JSON.stringify({ error: "Crediti AI esauriti." }),
-          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-      const errorText = await aiResponse.text();
-      console.error("AI error:", errorText);
       throw new Error("Errore nella generazione delle lezioni");
     }
 
     const aiData = await aiResponse.json();
-    const responseContent = aiData.choices?.[0]?.message?.content;
+    const responseContent = aiData.candidates?.[0]?.content?.parts?.[0]?.text;
 
     if (!responseContent) {
       throw new Error("Risposta AI vuota");
