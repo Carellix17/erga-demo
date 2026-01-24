@@ -49,17 +49,28 @@ serve(async (req) => {
       );
     }
 
-    // Build context
-    const studyContent = contexts
-      .map(c => `--- ${c.file_name} ---\n${c.content}`)
-      .join("\n\n")
-      .substring(0, 25000);
+    // --- Prompt size management (Groq has strict TPM/context limits) ---
+    const MAX_STUDY_CHARS = 8000;
+    const MAX_EVENTS_CHARS = 1500;
+    const MAX_MESSAGE_CHARS = 1500;
+    const MAX_HISTORY_MESSAGES = 12;
 
-    const eventsText = events && events.length > 0
-      ? "Eventi programmati:\n" + events.map(e => 
+    const trimTo = (s: string, max: number) => (s.length > max ? s.slice(0, max) + "\n…" : s);
+
+    // Build context (trim aggressively to avoid 413 / TPM issues)
+    const studyContent = trimTo(
+      contexts
+        .map((c) => `--- ${c.file_name} ---\n${c.content}`)
+        .join("\n\n"),
+      MAX_STUDY_CHARS
+    );
+
+    const eventsTextRaw = events && events.length > 0
+      ? "Eventi programmati:\n" + events.map(e =>
           `- ${e.event_type === 'test' ? 'Verifica' : e.event_type === 'assignment' ? 'Compito' : 'Studio'}: ${e.title} (${e.subject}) - ${e.event_date}`
         ).join("\n")
       : "Nessun evento programmato nel diario.";
+    const eventsText = trimTo(eventsTextRaw, MAX_EVENTS_CHARS);
 
     const systemPrompt = `Sei un tutor di studio personale. Rispondi SOLO basandoti sui contenuti di studio forniti e sul diario dello studente.
 
@@ -83,12 +94,17 @@ ${eventsText}`;
     }
 
     // Build conversation for OpenAI/Groq format
+    // Keep only last N messages and trim each message length.
+    const trimmedHistory = (Array.isArray(messages) ? messages : [])
+      .slice(-MAX_HISTORY_MESSAGES)
+      .map((m: { role: string; content: string }) => ({
+        role: m.role,
+        content: trimTo(String(m.content ?? ""), MAX_MESSAGE_CHARS),
+      }));
+
     const groqMessages = [
       { role: "system", content: systemPrompt },
-      ...messages.map((m: { role: string; content: string }) => ({
-        role: m.role,
-        content: m.content,
-      })),
+      ...trimmedHistory,
     ];
 
     console.log("Calling Groq API with model llama-3.3-70b-versatile");
@@ -103,7 +119,7 @@ ${eventsText}`;
         model: "llama-3.3-70b-versatile",
         messages: groqMessages,
         temperature: 0.7,
-        max_tokens: 2048,
+        max_tokens: 1024,
         stream: true,
       }),
     });
@@ -112,6 +128,14 @@ ${eventsText}`;
       const errorText = await aiResponse.text();
       console.error("Groq response status:", aiResponse.status);
       console.error("Groq API error:", errorText);
+      if (aiResponse.status === 413) {
+        return new Response(
+          JSON.stringify({
+            error: "Richiesta troppo grande per Groq. Prova a fare una domanda più specifica o carica meno materiale alla volta.",
+          }),
+          { status: 413, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
       if (aiResponse.status === 429) {
         return new Response(
           JSON.stringify({ error: "Troppe richieste. Riprova tra qualche secondo." }),
