@@ -116,7 +116,7 @@ ${combinedContent}
 
 Crea la mini-lezione completa per: "${lessonTitle}"`;
 
-      console.log("Calling Groq API for lesson generation");
+      console.log("Calling Groq API for lesson generation with llama-3.3-70b-versatile");
 
       const aiResponse = await fetch("https://api.groq.com/openai/v1/chat/completions", {
         method: "POST",
@@ -125,7 +125,7 @@ Crea la mini-lezione completa per: "${lessonTitle}"`;
           "Authorization": `Bearer ${GROQ_API_KEY}`,
         },
         body: JSON.stringify({
-          model: "llama3-8b-8192",
+          model: "llama-3.3-70b-versatile",
           messages: [{ role: "user", content: prompt }],
           temperature: 0.7,
           max_tokens: 4096,
@@ -216,7 +216,7 @@ Analizza questo contenuto e crea l'elenco completo delle mini-lezioni:
 
 ${combinedContent}`;
 
-    console.log("Calling Groq API for titles generation");
+    console.log("Calling Groq API for titles generation with llama-3.3-70b-versatile");
 
     const aiResponse = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
@@ -225,7 +225,7 @@ ${combinedContent}`;
         "Authorization": `Bearer ${GROQ_API_KEY}`,
       },
       body: JSON.stringify({
-        model: "llama3-8b-8192",
+        model: "llama-3.3-70b-versatile",
         messages: [{ role: "user", content: titlesPrompt }],
         temperature: 0.7,
         max_tokens: 4096,
