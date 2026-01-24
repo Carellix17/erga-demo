@@ -59,10 +59,10 @@ serve(async (req) => {
       ? events.map(e => `- ${e.event_type}: ${e.title} (${e.subject}) - ${e.event_date}`).join("\n")
       : "Nessun evento programmato";
 
-    // Call Google Gemini API directly
-    const GEMINI_API_KEY = Deno.env.get("ERGA_GEMINI_KEY");
-    if (!GEMINI_API_KEY) {
-      throw new Error("ERGA_GEMINI_KEY is not configured");
+    // Call Groq API
+    const GROQ_API_KEY = Deno.env.get("ERGA_DEMO_GROQ_KEY");
+    if (!GROQ_API_KEY) {
+      throw new Error("ERGA_DEMO_GROQ_KEY is not configured");
     }
 
     const prompt = `Sei un tutor esperto che crea piani di studio personalizzati. Analizza il contenuto di studio e gli eventi esistenti per creare un piano ottimale.
@@ -95,24 +95,25 @@ ${contextSummary}
 
 Crea un piano di studio personalizzato.`;
 
-    const aiResponse = await fetch(
-      `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [{ role: "user", parts: [{ text: prompt }] }],
-          generationConfig: {
-            temperature: 0.7,
-            maxOutputTokens: 2048,
-          },
-        }),
-      }
-    );
+    console.log("Calling Groq API for plan generation");
+
+    const aiResponse = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${GROQ_API_KEY}`,
+      },
+      body: JSON.stringify({
+        model: "llama3-8b-8192",
+        messages: [{ role: "user", content: prompt }],
+        temperature: 0.7,
+        max_tokens: 2048,
+      }),
+    });
 
     if (!aiResponse.ok) {
       const errorText = await aiResponse.text();
-      console.error("Gemini API error:", errorText);
+      console.error("Groq API error:", errorText);
       if (aiResponse.status === 429) {
         return new Response(
           JSON.stringify({ error: "Troppe richieste. Riprova tra qualche secondo." }),
@@ -123,7 +124,7 @@ Crea un piano di studio personalizzato.`;
     }
 
     const aiData = await aiResponse.json();
-    const responseContent = aiData.candidates?.[0]?.content?.parts?.[0]?.text;
+    const responseContent = aiData.choices?.[0]?.message?.content;
 
     if (!responseContent) {
       throw new Error("Risposta AI vuota");

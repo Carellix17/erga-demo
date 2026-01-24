@@ -48,9 +48,9 @@ serve(async (req) => {
 
     console.log(`Combined content length: ${combinedContent.length}`);
 
-    const GEMINI_API_KEY = Deno.env.get("ERGA_GEMINI_KEY");
-    if (!GEMINI_API_KEY) {
-      throw new Error("ERGA_GEMINI_KEY is not configured");
+    const GROQ_API_KEY = Deno.env.get("ERGA_DEMO_GROQ_KEY");
+    if (!GROQ_API_KEY) {
+      throw new Error("ERGA_DEMO_GROQ_KEY is not configured");
     }
 
     // ACTION: Generate single lesson with exercises
@@ -116,24 +116,25 @@ ${combinedContent}
 
 Crea la mini-lezione completa per: "${lessonTitle}"`;
 
-      const aiResponse = await fetch(
-        `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            contents: [{ role: "user", parts: [{ text: prompt }] }],
-            generationConfig: {
-              temperature: 0.7,
-              maxOutputTokens: 4096,
-            },
-          }),
-        }
-      );
+      console.log("Calling Groq API for lesson generation");
+
+      const aiResponse = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${GROQ_API_KEY}`,
+        },
+        body: JSON.stringify({
+          model: "llama3-8b-8192",
+          messages: [{ role: "user", content: prompt }],
+          temperature: 0.7,
+          max_tokens: 4096,
+        }),
+      });
 
       if (!aiResponse.ok) {
         const errorText = await aiResponse.text();
-        console.error("Gemini API error:", errorText);
+        console.error("Groq API error:", errorText);
         if (aiResponse.status === 429) {
           return new Response(
             JSON.stringify({ error: "Troppe richieste. Riprova tra qualche secondo." }),
@@ -144,7 +145,7 @@ Crea la mini-lezione completa per: "${lessonTitle}"`;
       }
 
       const aiData = await aiResponse.json();
-      const responseContent = aiData.candidates?.[0]?.content?.parts?.[0]?.text;
+      const responseContent = aiData.choices?.[0]?.message?.content;
 
       if (!responseContent) {
         throw new Error("Risposta AI vuota");
@@ -215,24 +216,25 @@ Analizza questo contenuto e crea l'elenco completo delle mini-lezioni:
 
 ${combinedContent}`;
 
-    const aiResponse = await fetch(
-      `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [{ role: "user", parts: [{ text: titlesPrompt }] }],
-          generationConfig: {
-            temperature: 0.7,
-            maxOutputTokens: 4096,
-          },
-        }),
-      }
-    );
+    console.log("Calling Groq API for titles generation");
+
+    const aiResponse = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${GROQ_API_KEY}`,
+      },
+      body: JSON.stringify({
+        model: "llama3-8b-8192",
+        messages: [{ role: "user", content: titlesPrompt }],
+        temperature: 0.7,
+        max_tokens: 4096,
+      }),
+    });
 
     if (!aiResponse.ok) {
       const errorText = await aiResponse.text();
-      console.error("Gemini API error:", errorText);
+      console.error("Groq API error:", errorText);
       if (aiResponse.status === 429) {
         return new Response(
           JSON.stringify({ error: "Troppe richieste. Riprova tra qualche secondo." }),
@@ -243,7 +245,7 @@ ${combinedContent}`;
     }
 
     const aiData = await aiResponse.json();
-    const responseContent = aiData.candidates?.[0]?.content?.parts?.[0]?.text;
+    const responseContent = aiData.choices?.[0]?.message?.content;
 
     if (!responseContent) {
       throw new Error("Risposta AI vuota");

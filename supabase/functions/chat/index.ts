@@ -76,51 +76,52 @@ ${studyContent}
 DIARIO DELLO STUDENTE:
 ${eventsText}`;
 
-    // Call Google Gemini API directly
-    const GEMINI_API_KEY = Deno.env.get("ERGA_GEMINI_KEY");
-    if (!GEMINI_API_KEY) {
-      throw new Error("ERGA_GEMINI_KEY is not configured");
+    // Call Groq API
+    const GROQ_API_KEY = Deno.env.get("ERGA_DEMO_GROQ_KEY");
+    if (!GROQ_API_KEY) {
+      throw new Error("ERGA_DEMO_GROQ_KEY is not configured");
     }
 
-    // Build conversation for Gemini format
-    const geminiMessages = [
-      { role: "user", parts: [{ text: systemPrompt }] },
-      { role: "model", parts: [{ text: "Capito, seguirò queste istruzioni." }] },
+    // Build conversation for OpenAI/Groq format
+    const groqMessages = [
+      { role: "system", content: systemPrompt },
       ...messages.map((m: { role: string; content: string }) => ({
-        role: m.role === "assistant" ? "model" : "user",
-        parts: [{ text: m.content }],
+        role: m.role,
+        content: m.content,
       })),
     ];
 
-    const geminiUrl = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:streamGenerateContent?alt=sse&key=${GEMINI_API_KEY}`;
-    console.log("Gemini request URL:", geminiUrl.replace(GEMINI_API_KEY, "***"));
+    console.log("Calling Groq API with model llama3-8b-8192");
 
-    const aiResponse = await fetch(geminiUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: geminiMessages,
-          generationConfig: {
-            temperature: 0.7,
-            maxOutputTokens: 2048,
-          },
-        }),
-      });
+    const aiResponse = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${GROQ_API_KEY}`,
+      },
+      body: JSON.stringify({
+        model: "llama3-8b-8192",
+        messages: groqMessages,
+        temperature: 0.7,
+        max_tokens: 2048,
+        stream: true,
+      }),
+    });
 
     if (!aiResponse.ok) {
       const errorText = await aiResponse.text();
-      console.error("Gemini response status:", aiResponse.status);
-      console.error("Gemini API error:", errorText);
+      console.error("Groq response status:", aiResponse.status);
+      console.error("Groq API error:", errorText);
       if (aiResponse.status === 429) {
         return new Response(
           JSON.stringify({ error: "Troppe richieste. Riprova tra qualche secondo." }),
           { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
-      throw new Error("Errore nella risposta Gemini");
+      throw new Error("Errore nella risposta Groq");
     }
 
-    // Transform Gemini SSE to OpenAI-compatible SSE format
+    // Stream Groq response (already OpenAI-compatible SSE format)
     const reader = aiResponse.body?.getReader();
     if (!reader) throw new Error("No response body");
 
@@ -146,11 +147,11 @@ ${eventsText}`;
           for (const line of lines) {
             if (line.startsWith("data: ")) {
               const jsonStr = line.slice(6).trim();
-              if (!jsonStr) continue;
+              if (!jsonStr || jsonStr === "[DONE]") continue;
               
               try {
                 const parsed = JSON.parse(jsonStr);
-                const text = parsed.candidates?.[0]?.content?.parts?.[0]?.text;
+                const text = parsed.choices?.[0]?.delta?.content;
                 if (text) {
                   const chunk = {
                     choices: [{ delta: { content: text } }],
