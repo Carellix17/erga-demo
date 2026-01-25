@@ -61,8 +61,10 @@ serve(async (req) => {
         );
       }
 
-      // Fetch the specific context for this lesson
+      // Fetch the specific context for this lesson - use smaller context for speed
       let studyContent = "";
+      const MAX_CONTEXT_CHARS = 15000; // Reduced for faster API response
+      
       if (lessons.context_id) {
         const { data: context } = await supabase
           .from("study_contexts")
@@ -71,7 +73,7 @@ serve(async (req) => {
           .single();
         
         if (context) {
-          studyContent = `--- ${context.file_name} ---\n${context.content}`.substring(0, 50000);
+          studyContent = `--- ${context.file_name} ---\n${context.content}`.substring(0, MAX_CONTEXT_CHARS);
         }
       } else {
         // Fallback: use all contexts
@@ -84,7 +86,7 @@ serve(async (req) => {
           studyContent = contexts
             .map(c => `--- ${c.file_name} ---\n${c.content}`)
             .join("\n\n")
-            .substring(0, 50000);
+            .substring(0, MAX_CONTEXT_CHARS);
         }
       }
 
@@ -145,8 +147,8 @@ Crea la mini-lezione completa per: "${lessonTitle}"`;
         body: JSON.stringify({
           model: "sonar",
           messages: [{ role: "user", content: prompt }],
-          temperature: 0.7,
-          max_tokens: 4096,
+          temperature: 0.5,
+          max_tokens: 2048,
         }),
       });
 
@@ -231,7 +233,7 @@ Crea la mini-lezione completa per: "${lessonTitle}"`;
         );
       }
 
-      const studyContent = `--- ${context.file_name} ---\n${context.content}`.substring(0, 50000);
+      const studyContent = `--- ${context.file_name} ---\n${context.content}`.substring(0, 20000);
 
       console.log(`Generating lessons for context ${contextId}, content length: ${studyContent.length}`);
 
@@ -265,8 +267,8 @@ ${studyContent}`;
         body: JSON.stringify({
           model: "sonar",
           messages: [{ role: "user", content: titlesPrompt }],
-          temperature: 0.7,
-          max_tokens: 4096,
+          temperature: 0.5,
+          max_tokens: 2048,
         }),
       });
 
@@ -377,7 +379,7 @@ ${studyContent}`;
     const combinedContent = contexts
       .map(c => `--- ${c.file_name} ---\n${c.content}`)
       .join("\n\n")
-      .substring(0, 50000);
+      .substring(0, 20000);
 
     console.log(`Combined content length: ${combinedContent.length}`);
 
@@ -408,12 +410,12 @@ ${combinedContent}`;
         "Content-Type": "application/json",
         "Authorization": `Bearer ${PERPLEXITY_API_KEY}`,
       },
-      body: JSON.stringify({
-        model: "sonar",
-        messages: [{ role: "user", content: titlesPrompt }],
-        temperature: 0.7,
-        max_tokens: 4096,
-      }),
+        body: JSON.stringify({
+          model: "sonar",
+          messages: [{ role: "user", content: titlesPrompt }],
+          temperature: 0.5,
+          max_tokens: 2048,
+        }),
     });
 
     if (!aiResponse.ok) {
