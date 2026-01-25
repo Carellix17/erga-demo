@@ -1,11 +1,12 @@
 import { useState, useCallback } from "react";
-import { FileUp, X, FileText, Check, Loader2 } from "lucide-react";
+import { FileUp, X, FileText, Loader2 } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 import { FileManager } from "./FileManager";
 
 interface UploadSheetProps {
@@ -16,6 +17,8 @@ interface UploadSheetProps {
   onSelectFile?: (contextId: string) => void;
   onFileDeleted?: () => void;
 }
+
+const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20MB
 
 export function UploadSheet({ open, onOpenChange, onUpload, uploadedFiles, onSelectFile, onFileDeleted }: UploadSheetProps) {
   const [dragActive, setDragActive] = useState(false);
@@ -41,7 +44,7 @@ export function UploadSheet({ open, onOpenChange, onUpload, uploadedFiles, onSel
     setDragActive(false);
 
     const files = Array.from(e.dataTransfer.files).filter(
-      (file) => file.type === "application/pdf"
+      (file) => file.type === "application/pdf" && file.size <= MAX_FILE_SIZE
     );
     if (files.length > 0) {
       setSelectedFiles((prev) => [...prev, ...files]);
@@ -50,8 +53,21 @@ export function UploadSheet({ open, onOpenChange, onUpload, uploadedFiles, onSel
 
   const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []).filter(
-      (file) => file.type === "application/pdf"
+      (file) => file.type === "application/pdf" && file.size <= MAX_FILE_SIZE
     );
+    
+    const oversizedFiles = Array.from(e.target.files || []).filter(
+      (file) => file.size > MAX_FILE_SIZE
+    );
+    
+    if (oversizedFiles.length > 0) {
+      toast({
+        title: "File troppo grande",
+        description: `Dimensione massima: 20MB. ${oversizedFiles.map(f => f.name).join(", ")} superano il limite.`,
+        variant: "destructive",
+      });
+    }
+    
     if (files.length > 0) {
       setSelectedFiles((prev) => [...prev, ...files]);
     }
@@ -59,20 +75,6 @@ export function UploadSheet({ open, onOpenChange, onUpload, uploadedFiles, onSel
 
   const removeFile = (index: number) => {
     setSelectedFiles((prev) => prev.filter((_, i) => i !== index));
-  };
-
-  const fileToBase64 = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.readAsDataURL(file);
-      reader.onload = () => {
-        const result = reader.result as string;
-        // Remove the data URL prefix (e.g., "data:application/pdf;base64,")
-        const base64 = result.split(",")[1];
-        resolve(base64);
-      };
-      reader.onerror = reject;
-    });
   };
 
   const handleUpload = async () => {
@@ -85,11 +87,29 @@ export function UploadSheet({ open, onOpenChange, onUpload, uploadedFiles, onSel
       for (const file of selectedFiles) {
         toast({
           title: `Caricamento: ${file.name}`,
-          description: "Estrazione del testo in corso...",
+          description: "Upload in corso...",
         });
 
-        const pdfBase64 = await fileToBase64(file);
+        // Generate unique file path
+        const timestamp = Date.now();
+        const sanitizedName = file.name.replace(/[^a-zA-Z0-9.-]/g, "_");
+        const filePath = `${currentUser}/${timestamp}_${sanitizedName}`;
 
+        // Upload to Supabase Storage
+        const { error: uploadError } = await supabase
+          .storage
+          .from("study-pdfs")
+          .upload(filePath, file, {
+            contentType: "application/pdf",
+            upsert: false,
+          });
+
+        if (uploadError) {
+          console.error("Storage upload error:", uploadError);
+          throw new Error(`Errore upload: ${uploadError.message}`);
+        }
+
+        // Register the upload and start processing
         const response = await fetch(
           `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/extract-pdf`,
           {
@@ -101,7 +121,7 @@ export function UploadSheet({ open, onOpenChange, onUpload, uploadedFiles, onSel
             body: JSON.stringify({
               userId: currentUser,
               fileName: file.name,
-              pdfBase64,
+              filePath: filePath,
             }),
           }
         );
@@ -116,7 +136,7 @@ export function UploadSheet({ open, onOpenChange, onUpload, uploadedFiles, onSel
 
         toast({
           title: "File caricato",
-          description: `${file.name} - Estratti ${data.extractedLength} caratteri`,
+          description: `${file.name} - Elaborazione in corso...`,
         });
       }
 
@@ -124,28 +144,35 @@ export function UploadSheet({ open, onOpenChange, onUpload, uploadedFiles, onSel
       setSelectedFiles([]);
       onOpenChange(false);
 
-      // Trigger lesson generation
+      // Wait a bit for processing to start, then generate lessons
       toast({
-        title: "Generazione lezioni",
-        description: "Sto creando le mini-lezioni basate sui tuoi contenuti...",
+        title: "Elaborazione PDF",
+        description: "Il testo viene estratto in background. Le lezioni saranno generate automaticamente.",
       });
 
-      await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-lessons`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-          },
-          body: JSON.stringify({ userId: currentUser }),
+      // Give processing time to complete before generating lessons
+      setTimeout(async () => {
+        try {
+          await fetch(
+            `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-lessons`,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+              },
+              body: JSON.stringify({ userId: currentUser }),
+            }
+          );
+
+          toast({
+            title: "Contenuti pronti!",
+            description: "Le mini-lezioni sono state generate. Buono studio!",
+          });
+        } catch (err) {
+          console.error("Lesson generation error:", err);
         }
-      );
-
-      toast({
-        title: "Contenuti pronti!",
-        description: "Le mini-lezioni sono state generate. Buono studio!",
-      });
+      }, 5000);
 
     } catch (error) {
       console.error("Upload error:", error);
@@ -166,6 +193,12 @@ export function UploadSheet({ open, onOpenChange, onUpload, uploadedFiles, onSel
 
   const handleFileDeleted = () => {
     onFileDeleted?.();
+  };
+
+  const formatFileSize = (bytes: number) => {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   };
 
   return (
@@ -213,7 +246,7 @@ export function UploadSheet({ open, onOpenChange, onUpload, uploadedFiles, onSel
                 Trascina qui i tuoi PDF
               </p>
               <p className="text-xs text-muted-foreground">
-                oppure tocca per selezionare
+                oppure tocca per selezionare (max 20MB)
               </p>
             </div>
 
@@ -230,7 +263,10 @@ export function UploadSheet({ open, onOpenChange, onUpload, uploadedFiles, onSel
                       className="flex items-center gap-3 p-3 rounded-xl bg-muted"
                     >
                       <FileText className="w-5 h-5 text-primary flex-shrink-0" />
-                      <span className="text-sm flex-1 truncate">{file.name}</span>
+                      <div className="flex-1 min-w-0">
+                        <span className="text-sm truncate block">{file.name}</span>
+                        <span className="text-xs text-muted-foreground">{formatFileSize(file.size)}</span>
+                      </div>
                       <button
                         onClick={() => removeFile(index)}
                         className="p-1 hover:bg-background rounded-lg transition-colors"

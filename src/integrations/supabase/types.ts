@@ -89,22 +89,31 @@ export type Database = {
         Row: {
           content: string
           created_at: string
+          error_message: string | null
           file_name: string
+          file_path: string | null
           id: string
+          processing_status: string | null
           user_id: string
         }
         Insert: {
           content: string
           created_at?: string
+          error_message?: string | null
           file_name: string
+          file_path?: string | null
           id?: string
+          processing_status?: string | null
           user_id: string
         }
         Update: {
           content?: string
           created_at?: string
+          error_message?: string | null
           file_name?: string
+          file_path?: string | null
           id?: string
+          processing_status?: string | null
           user_id?: string
         }
         Relationships: []
