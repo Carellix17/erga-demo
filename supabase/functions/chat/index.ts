@@ -87,13 +87,13 @@ ${studyContent}
 DIARIO DELLO STUDENTE:
 ${eventsText}`;
 
-    // Call Groq API
-    const GROQ_API_KEY = Deno.env.get("ERGA_DEMO_GROQ_KEY");
-    if (!GROQ_API_KEY) {
-      throw new Error("ERGA_DEMO_GROQ_KEY is not configured");
+    // Call Perplexity Sonar API
+    const PERPLEXITY_API_KEY = Deno.env.get("ERGA_DEMO_PERPLEXITY_KEY");
+    if (!PERPLEXITY_API_KEY) {
+      throw new Error("ERGA_DEMO_PERPLEXITY_KEY is not configured");
     }
 
-    // Build conversation for OpenAI/Groq format
+    // Build conversation for Perplexity format
     // Keep only last N messages and trim each message length.
     const trimmedHistory = (Array.isArray(messages) ? messages : [])
       .slice(-MAX_HISTORY_MESSAGES)
@@ -102,22 +102,22 @@ ${eventsText}`;
         content: trimTo(String(m.content ?? ""), MAX_MESSAGE_CHARS),
       }));
 
-    const groqMessages = [
+    const perplexityMessages = [
       { role: "system", content: systemPrompt },
       ...trimmedHistory,
     ];
 
-    console.log("Calling Groq API with model llama-3.3-70b-versatile");
+    console.log("Calling Perplexity API with model sonar");
 
-    const aiResponse = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+    const aiResponse = await fetch("https://api.perplexity.ai/chat/completions", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${GROQ_API_KEY}`,
+        "Authorization": `Bearer ${PERPLEXITY_API_KEY}`,
       },
       body: JSON.stringify({
-        model: "llama-3.3-70b-versatile",
-        messages: groqMessages,
+        model: "sonar",
+        messages: perplexityMessages,
         temperature: 0.7,
         max_tokens: 1024,
         stream: true,
@@ -126,12 +126,12 @@ ${eventsText}`;
 
     if (!aiResponse.ok) {
       const errorText = await aiResponse.text();
-      console.error("Groq response status:", aiResponse.status);
-      console.error("Groq API error:", errorText);
+      console.error("Perplexity response status:", aiResponse.status);
+      console.error("Perplexity API error:", errorText);
       if (aiResponse.status === 413) {
         return new Response(
           JSON.stringify({
-            error: "Richiesta troppo grande per Groq. Prova a fare una domanda più specifica o carica meno materiale alla volta.",
+            error: "Richiesta troppo grande. Prova a fare una domanda più specifica o carica meno materiale alla volta.",
           }),
           { status: 413, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
@@ -142,7 +142,7 @@ ${eventsText}`;
           { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
-      throw new Error("Errore nella risposta Groq");
+      throw new Error("Errore nella risposta Perplexity");
     }
 
     // Stream Groq response (already OpenAI-compatible SSE format)
