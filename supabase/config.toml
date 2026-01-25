@@ -1,1 +1,7 @@
 project_id = "xtcifacgiyekudoispdk"
+
+[functions.upload-pdf]
+verify_jwt = false
+
+[functions.extract-pdf]
+verify_jwt = false
