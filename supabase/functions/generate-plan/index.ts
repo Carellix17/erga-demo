@@ -59,10 +59,10 @@ serve(async (req) => {
       ? events.map(e => `- ${e.event_type}: ${e.title} (${e.subject}) - ${e.event_date}`).join("\n")
       : "Nessun evento programmato";
 
-    // Call Groq API
-    const GROQ_API_KEY = Deno.env.get("ERGA_DEMO_GROQ_KEY");
-    if (!GROQ_API_KEY) {
-      throw new Error("ERGA_DEMO_GROQ_KEY is not configured");
+    // Call Perplexity Sonar API
+    const PERPLEXITY_API_KEY = Deno.env.get("ERGA_DEMO_PERPLEXITY_KEY");
+    if (!PERPLEXITY_API_KEY) {
+      throw new Error("ERGA_DEMO_PERPLEXITY_KEY is not configured");
     }
 
     const prompt = `Sei un tutor esperto che crea piani di studio personalizzati. Analizza il contenuto di studio e gli eventi esistenti per creare un piano ottimale.
@@ -95,16 +95,16 @@ ${contextSummary}
 
 Crea un piano di studio personalizzato.`;
 
-    console.log("Calling Groq API for plan generation with llama-3.3-70b-versatile");
+    console.log("Calling Perplexity API for plan generation with sonar");
 
-    const aiResponse = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+    const aiResponse = await fetch("https://api.perplexity.ai/chat/completions", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${GROQ_API_KEY}`,
+        "Authorization": `Bearer ${PERPLEXITY_API_KEY}`,
       },
       body: JSON.stringify({
-        model: "llama-3.3-70b-versatile",
+        model: "sonar",
         messages: [{ role: "user", content: prompt }],
         temperature: 0.7,
         max_tokens: 2048,
@@ -113,7 +113,7 @@ Crea un piano di studio personalizzato.`;
 
     if (!aiResponse.ok) {
       const errorText = await aiResponse.text();
-      console.error("Groq API error:", errorText);
+      console.error("Perplexity API error:", errorText);
       if (aiResponse.status === 429) {
         return new Response(
           JSON.stringify({ error: "Troppe richieste. Riprova tra qualche secondo." }),

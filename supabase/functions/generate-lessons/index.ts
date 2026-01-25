@@ -27,9 +27,9 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const GROQ_API_KEY = Deno.env.get("ERGA_DEMO_GROQ_KEY");
-    if (!GROQ_API_KEY) {
-      throw new Error("ERGA_DEMO_GROQ_KEY is not configured");
+    const PERPLEXITY_API_KEY = Deno.env.get("ERGA_DEMO_PERPLEXITY_KEY");
+    if (!PERPLEXITY_API_KEY) {
+      throw new Error("ERGA_DEMO_PERPLEXITY_KEY is not configured");
     }
 
     // ACTION: Generate single lesson with exercises
@@ -134,16 +134,16 @@ ${studyContent}
 
 Crea la mini-lezione completa per: "${lessonTitle}"`;
 
-      console.log("Calling Groq API for lesson generation with llama-3.3-70b-versatile");
+      console.log("Calling Perplexity API for lesson generation with sonar");
 
-      const aiResponse = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+      const aiResponse = await fetch("https://api.perplexity.ai/chat/completions", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${GROQ_API_KEY}`,
+          "Authorization": `Bearer ${PERPLEXITY_API_KEY}`,
         },
         body: JSON.stringify({
-          model: "llama-3.3-70b-versatile",
+          model: "sonar",
           messages: [{ role: "user", content: prompt }],
           temperature: 0.7,
           max_tokens: 4096,
@@ -152,7 +152,7 @@ Crea la mini-lezione completa per: "${lessonTitle}"`;
 
       if (!aiResponse.ok) {
         const errorText = await aiResponse.text();
-        console.error("Groq API error:", errorText);
+        console.error("Perplexity API error:", errorText);
         if (aiResponse.status === 429) {
           return new Response(
             JSON.stringify({ error: "Troppe richieste. Riprova tra qualche secondo." }),
@@ -254,16 +254,16 @@ Analizza questo contenuto e crea l'elenco completo delle mini-lezioni:
 
 ${studyContent}`;
 
-      console.log("Calling Groq API for titles generation with llama-3.3-70b-versatile");
+      console.log("Calling Perplexity API for titles generation with sonar");
 
-      const aiResponse = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+      const aiResponse = await fetch("https://api.perplexity.ai/chat/completions", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${GROQ_API_KEY}`,
+          "Authorization": `Bearer ${PERPLEXITY_API_KEY}`,
         },
         body: JSON.stringify({
-          model: "llama-3.3-70b-versatile",
+          model: "sonar",
           messages: [{ role: "user", content: titlesPrompt }],
           temperature: 0.7,
           max_tokens: 4096,
@@ -272,7 +272,7 @@ ${studyContent}`;
 
       if (!aiResponse.ok) {
         const errorText = await aiResponse.text();
-        console.error("Groq API error:", errorText);
+        console.error("Perplexity API error:", errorText);
         if (aiResponse.status === 429) {
           return new Response(
             JSON.stringify({ error: "Troppe richieste. Riprova tra qualche secondo." }),
@@ -400,16 +400,16 @@ Analizza questo contenuto e crea l'elenco completo delle mini-lezioni:
 
 ${combinedContent}`;
 
-    console.log("Calling Groq API for titles generation with llama-3.3-70b-versatile");
+    console.log("Calling Perplexity API for titles generation with sonar");
 
-    const aiResponse = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+    const aiResponse = await fetch("https://api.perplexity.ai/chat/completions", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${GROQ_API_KEY}`,
+        "Authorization": `Bearer ${PERPLEXITY_API_KEY}`,
       },
       body: JSON.stringify({
-        model: "llama-3.3-70b-versatile",
+        model: "sonar",
         messages: [{ role: "user", content: titlesPrompt }],
         temperature: 0.7,
         max_tokens: 4096,
@@ -418,7 +418,7 @@ ${combinedContent}`;
 
     if (!aiResponse.ok) {
       const errorText = await aiResponse.text();
-      console.error("Groq API error:", errorText);
+      console.error("Perplexity API error:", errorText);
       if (aiResponse.status === 429) {
         return new Response(
           JSON.stringify({ error: "Troppe richieste. Riprova tra qualche secondo." }),
