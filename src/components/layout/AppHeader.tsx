@@ -1,4 +1,4 @@
-import { FileUp } from "lucide-react";
+import { FileUp, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { UserMenu } from "./UserMenu";
 
@@ -9,26 +9,28 @@ interface AppHeaderProps {
 
 export function AppHeader({ onUploadClick, hasFiles }: AppHeaderProps) {
   return (
-    <header className="sticky top-0 z-40 bg-background/95 backdrop-blur-lg border-b border-border/50">
-      <div className="flex items-center justify-between h-14 px-4 max-w-lg mx-auto">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-xl bg-primary flex items-center justify-center">
-            <span className="text-primary-foreground font-bold text-sm">E</span>
+    <header className="sticky top-0 z-40 glass">
+      <div className="flex items-center justify-between h-16 px-4 max-w-lg mx-auto">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-2xl gradient-primary flex items-center justify-center shadow-soft-md">
+            <Sparkles className="w-5 h-5 text-white" />
           </div>
-          <span className="font-semibold text-lg">Erga</span>
+          <div>
+            <span className="font-heading font-bold text-xl bg-gradient-to-r from-primary to-tertiary bg-clip-text text-transparent">
+              Erga
+            </span>
+          </div>
         </div>
         
         <div className="flex items-center gap-2">
           <Button
-            variant={hasFiles ? "ghost" : "tonal"}
-            size="icon-sm"
+            variant={hasFiles ? "ghost" : "default"}
+            size="sm"
             onClick={onUploadClick}
-            className="relative"
+            className={!hasFiles ? "gradient-primary text-white border-0 shadow-soft-md animate-pulse-soft" : ""}
           >
-            <FileUp className="w-5 h-5" />
-            {!hasFiles && (
-              <span className="absolute -top-1 -right-1 w-3 h-3 bg-accent rounded-full animate-pulse-soft" />
-            )}
+            <FileUp className="w-4 h-4 mr-2" />
+            {hasFiles ? "File" : "Carica PDF"}
           </Button>
           <UserMenu />
         </div>

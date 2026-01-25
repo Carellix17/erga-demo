@@ -4,7 +4,7 @@ import { LessonsList } from "./LessonsList";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, RefreshCw, List } from "lucide-react";
+import { Loader2, RefreshCw, List, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Exercise } from "./exercises/ExerciseRenderer";
 
@@ -274,31 +274,42 @@ export function StudioView({ hasFiles, onUploadClick, selectedContextId, onClear
 
   if (isLoading) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
-        <Loader2 className="w-8 h-8 text-primary animate-spin" />
-        <p className="text-muted-foreground">Caricamento lezioni...</p>
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 p-4">
+        <div className="w-16 h-16 rounded-2xl gradient-primary flex items-center justify-center animate-pulse-soft">
+          <Loader2 className="w-8 h-8 text-white animate-spin" />
+        </div>
+        <p className="text-muted-foreground font-medium">Caricamento lezioni...</p>
       </div>
     );
   }
 
   if (lessons.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 p-4 text-center">
-        <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center">
-          <RefreshCw className="w-8 h-8 text-primary" />
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-5 p-6 text-center">
+        <div className="w-20 h-20 rounded-3xl bg-tertiary/15 flex items-center justify-center">
+          <RefreshCw className="w-10 h-10 text-tertiary" />
         </div>
-        <h3 className="text-lg font-semibold">Nessuna lezione disponibile</h3>
-        <p className="text-muted-foreground max-w-xs">
-          L'AI analizzerà i tuoi materiali e creerà un percorso di mini-lezioni personalizzato.
-        </p>
-        <Button onClick={handleGenerateLessons} disabled={isGenerating}>
+        <div>
+          <h3 className="font-heading text-xl font-bold mb-2">Nessuna lezione disponibile</h3>
+          <p className="text-muted-foreground max-w-xs">
+            L'AI analizzerà i tuoi materiali e creerà un percorso di mini-lezioni personalizzato.
+          </p>
+        </div>
+        <Button 
+          onClick={handleGenerateLessons} 
+          disabled={isGenerating}
+          className="h-12 px-6 font-semibold gradient-primary text-white border-0 shadow-soft-md"
+        >
           {isGenerating ? (
             <>
               <Loader2 className="w-4 h-4 mr-2 animate-spin" />
               Analisi in corso...
             </>
           ) : (
-            "Genera percorso"
+            <>
+              <Sparkles className="w-4 h-4 mr-2" />
+              Genera percorso
+            </>
           )}
         </Button>
       </div>
@@ -323,14 +334,21 @@ export function StudioView({ hasFiles, onUploadClick, selectedContextId, onClear
   // Show loading if current lesson needs generation
   if (!currentLesson.is_generated || isGeneratingLesson) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 p-4">
-        <Loader2 className="w-8 h-8 text-primary animate-spin" />
-        <p className="text-muted-foreground text-center">
-          Generazione lezione in corso...
-        </p>
-        <p className="text-sm text-muted-foreground text-center max-w-xs">
-          L'AI sta creando la lezione "{currentLesson.title}" con esercizi interattivi
-        </p>
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-5 p-6">
+        <div className="w-20 h-20 rounded-3xl gradient-primary flex items-center justify-center shadow-soft-lg animate-pulse-soft">
+          <Sparkles className="w-10 h-10 text-white" />
+        </div>
+        <div className="text-center">
+          <p className="font-heading font-semibold text-lg mb-2">
+            Generazione lezione in corso...
+          </p>
+          <p className="text-sm text-muted-foreground max-w-xs">
+            L'AI sta creando "<span className="text-primary font-medium">{currentLesson.title}</span>" con esercizi interattivi
+          </p>
+        </div>
+        <div className="w-full max-w-xs h-2 bg-muted rounded-full overflow-hidden">
+          <div className="h-full progress-animated rounded-full w-2/3" />
+        </div>
       </div>
     );
   }
@@ -343,6 +361,7 @@ export function StudioView({ hasFiles, onUploadClick, selectedContextId, onClear
           variant="outline"
           size="sm"
           onClick={() => setShowList(true)}
+          className="rounded-xl border-border/50 bg-card shadow-soft-sm"
         >
           <List className="w-4 h-4 mr-2" />
           Tutte le lezioni ({lessons.length})

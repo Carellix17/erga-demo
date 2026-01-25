@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import { FileUp, X, FileText, Loader2 } from "lucide-react";
+import { FileUp, X, FileText, Loader2, Sparkles, Check } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -19,11 +19,14 @@ interface UploadSheetProps {
 
 const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20MB
 
+type GenerationStep = "idle" | "uploading" | "processing" | "generating" | "complete";
+
 export function UploadSheet({ open, onOpenChange, onUpload, uploadedFiles, onSelectFile, onFileDeleted }: UploadSheetProps) {
   const [dragActive, setDragActive] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [isUploading, setIsUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState<string>("");
+  const [generationStep, setGenerationStep] = useState<GenerationStep>("idle");
+  const [currentFileName, setCurrentFileName] = useState("");
   const [activeTab, setActiveTab] = useState<string>("upload");
   const { currentUser } = useAuth();
   const { toast } = useToast();
@@ -69,34 +72,28 @@ export function UploadSheet({ open, onOpenChange, onUpload, uploadedFiles, onSel
     if (selectedFiles.length === 0 || !currentUser) return;
 
     setIsUploading(true);
+    setGenerationStep("uploading");
     const uploadedFileInfos: { name: string; size: number }[] = [];
 
     try {
-      for (let i = 0; i < selectedFiles.length; i++) {
-        const file = selectedFiles[i];
-        setUploadProgress(`${i + 1}/${selectedFiles.length}: ${file.name}`);
+      for (const file of selectedFiles) {
+        setCurrentFileName(file.name);
 
-        // Check file size
         if (file.size > MAX_FILE_SIZE) {
           toast({
             title: "File troppo grande",
-            description: `${file.name} supera il limite di 20MB (${(file.size / 1024 / 1024).toFixed(1)}MB)`,
+            description: `${file.name} supera il limite di 20MB`,
             variant: "destructive",
           });
           continue;
         }
 
-        toast({
-          title: `Caricamento: ${file.name}`,
-          description: `${(file.size / 1024 / 1024).toFixed(1)}MB - Upload in corso...`,
-        });
-
-        // Create FormData for efficient upload
+        // Upload
+        setGenerationStep("uploading");
         const formData = new FormData();
         formData.append("file", file);
         formData.append("userId", currentUser);
 
-        // Upload via edge function
         const response = await fetch(
           `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/upload-pdf`,
           {
@@ -115,46 +112,44 @@ export function UploadSheet({ open, onOpenChange, onUpload, uploadedFiles, onSel
         }
 
         uploadedFileInfos.push({ name: file.name, size: file.size });
-
-        toast({
-          title: "File caricato",
-          description: `${file.name} - Elaborazione in corso...`,
-        });
+        
+        // Processing
+        setGenerationStep("processing");
       }
 
       if (uploadedFileInfos.length > 0) {
+        // Generating lessons
+        setGenerationStep("generating");
+        
+        // Wait for processing then generate lessons
+        await new Promise(resolve => setTimeout(resolve, 3000));
+
+        await fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-lessons`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+            },
+            body: JSON.stringify({ userId: currentUser }),
+          }
+        );
+
+        setGenerationStep("complete");
+        
+        // Show success for a moment
+        await new Promise(resolve => setTimeout(resolve, 1500));
+        
         onUpload(uploadedFileInfos);
         setSelectedFiles([]);
+        setGenerationStep("idle");
         onOpenChange(false);
 
-        // Wait for processing then generate lessons
         toast({
-          title: "Elaborazione PDF",
-          description: "Il testo viene estratto. Le lezioni saranno generate automaticamente.",
+          title: "Contenuti pronti! 🎉",
+          description: "Le mini-lezioni sono state generate. Buono studio!",
         });
-
-        setTimeout(async () => {
-          try {
-            await fetch(
-              `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-lessons`,
-              {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
-                  Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-                },
-                body: JSON.stringify({ userId: currentUser }),
-              }
-            );
-
-            toast({
-              title: "Contenuti pronti!",
-              description: "Le mini-lezioni sono state generate. Buono studio!",
-            });
-          } catch (err) {
-            console.error("Lesson generation error:", err);
-          }
-        }, 8000);
       }
 
     } catch (error) {
@@ -164,9 +159,9 @@ export function UploadSheet({ open, onOpenChange, onUpload, uploadedFiles, onSel
         description: error instanceof Error ? error.message : "Errore nel caricamento",
         variant: "destructive",
       });
+      setGenerationStep("idle");
     } finally {
       setIsUploading(false);
-      setUploadProgress("");
     }
   };
 
@@ -185,27 +180,139 @@ export function UploadSheet({ open, onOpenChange, onUpload, uploadedFiles, onSel
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   };
 
+  const getStepProgress = () => {
+    switch (generationStep) {
+      case "uploading": return 25;
+      case "processing": return 50;
+      case "generating": return 75;
+      case "complete": return 100;
+      default: return 0;
+    }
+  };
+
+  const getStepLabel = () => {
+    switch (generationStep) {
+      case "uploading": return "Caricamento file...";
+      case "processing": return "Estrazione testo...";
+      case "generating": return "Generazione lezioni...";
+      case "complete": return "Completato!";
+      default: return "";
+    }
+  };
+
+  // Show progress view when generating
+  if (generationStep !== "idle") {
+    return (
+      <Sheet open={open} onOpenChange={() => {}}>
+        <SheetContent side="bottom" className="rounded-t-3xl pb-safe h-auto">
+          <div className="py-8 px-4">
+            <div className="flex flex-col items-center text-center mb-8">
+              <div className={cn(
+                "w-20 h-20 rounded-3xl flex items-center justify-center mb-4 transition-all duration-500",
+                generationStep === "complete" 
+                  ? "bg-success/15" 
+                  : "gradient-primary animate-pulse-soft"
+              )}>
+                {generationStep === "complete" ? (
+                  <Check className="w-10 h-10 text-success animate-bounce-in" />
+                ) : (
+                  <Sparkles className="w-10 h-10 text-white" />
+                )}
+              </div>
+              <h3 className="font-heading text-xl font-bold mb-2">
+                {generationStep === "complete" ? "Tutto pronto!" : "Preparazione contenuti"}
+              </h3>
+              <p className="text-muted-foreground text-sm max-w-xs">
+                {currentFileName}
+              </p>
+            </div>
+
+            {/* Progress bar */}
+            <div className="mb-6">
+              <div className="flex justify-between text-sm mb-2">
+                <span className="font-medium">{getStepLabel()}</span>
+                <span className="text-primary font-bold">{getStepProgress()}%</span>
+              </div>
+              <div className="h-3 bg-muted rounded-full overflow-hidden">
+                <div
+                  className={cn(
+                    "h-full rounded-full transition-all duration-700 ease-out",
+                    generationStep === "complete" ? "bg-success" : "progress-animated"
+                  )}
+                  style={{ width: `${getStepProgress()}%` }}
+                />
+              </div>
+            </div>
+
+            {/* Steps */}
+            <div className="grid grid-cols-4 gap-2">
+              {[
+                { step: "uploading", label: "Upload", icon: FileUp },
+                { step: "processing", label: "Analisi", icon: FileText },
+                { step: "generating", label: "AI", icon: Sparkles },
+                { step: "complete", label: "Fatto", icon: Check },
+              ].map(({ step, label, icon: Icon }, index) => {
+                const stepOrder = ["uploading", "processing", "generating", "complete"];
+                const currentIndex = stepOrder.indexOf(generationStep);
+                const stepIndex = stepOrder.indexOf(step);
+                const isActive = step === generationStep;
+                const isComplete = stepIndex < currentIndex;
+
+                return (
+                  <div key={step} className="flex flex-col items-center">
+                    <div
+                      className={cn(
+                        "w-10 h-10 rounded-xl flex items-center justify-center mb-1 transition-all duration-300",
+                        isActive && "bg-primary text-primary-foreground scale-110",
+                        isComplete && "bg-success/15 text-success",
+                        !isActive && !isComplete && "bg-muted text-muted-foreground"
+                      )}
+                    >
+                      <Icon className={cn("w-5 h-5", isActive && step !== "complete" && "animate-pulse")} />
+                    </div>
+                    <span className={cn(
+                      "text-xs font-medium",
+                      isActive && "text-primary",
+                      isComplete && "text-success",
+                      !isActive && !isComplete && "text-muted-foreground"
+                    )}>
+                      {label}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </SheetContent>
+      </Sheet>
+    );
+  }
+
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="bottom" className="rounded-t-3xl pb-safe h-[85vh]">
         <SheetHeader className="mb-4">
-          <SheetTitle>I tuoi materiali</SheetTitle>
+          <SheetTitle className="font-heading text-xl">I tuoi materiali</SheetTitle>
         </SheetHeader>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1">
-          <TabsList className="grid w-full grid-cols-2 mb-4">
-            <TabsTrigger value="upload">Carica nuovo</TabsTrigger>
-            <TabsTrigger value="manage">Gestisci file</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-2 mb-4 p-1 h-12">
+            <TabsTrigger value="upload" className="rounded-xl data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+              Carica nuovo
+            </TabsTrigger>
+            <TabsTrigger value="manage" className="rounded-xl data-[state=active]:bg-tertiary data-[state=active]:text-tertiary-foreground">
+              Gestisci file
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="upload" className="space-y-4 mt-0">
             {/* Drop Zone */}
             <div
               className={cn(
-                "relative border-2 border-dashed rounded-2xl p-6 text-center transition-all duration-200",
+                "relative border-2 border-dashed rounded-3xl p-8 text-center transition-all duration-300",
                 dragActive
-                  ? "border-primary bg-primary/5"
-                  : "border-border hover:border-primary/50",
+                  ? "border-primary bg-primary/5 scale-[1.02]"
+                  : "border-border hover:border-primary/50 hover:bg-surface-1",
                 isUploading && "pointer-events-none opacity-50"
               )}
               onDragEnter={handleDrag}
@@ -222,21 +329,21 @@ export function UploadSheet({ open, onOpenChange, onUpload, uploadedFiles, onSel
                 disabled={isUploading}
               />
               
-              <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-3">
-                <FileUp className="w-6 h-6 text-primary" />
+              <div className="w-16 h-16 rounded-2xl gradient-primary flex items-center justify-center mx-auto mb-4 shadow-soft-md">
+                <FileUp className="w-8 h-8 text-white" />
               </div>
               
-              <p className="font-medium mb-1 text-sm">
+              <p className="font-heading font-semibold text-lg mb-1">
                 Trascina qui i tuoi PDF
               </p>
-              <p className="text-xs text-muted-foreground">
-                oppure tocca per selezionare (max 20MB per file)
+              <p className="text-sm text-muted-foreground">
+                oppure tocca per selezionare (max 20MB)
               </p>
             </div>
 
             {/* Selected Files */}
             {selectedFiles.length > 0 && (
-              <div className="space-y-2">
+              <div className="space-y-2 animate-fade-up">
                 <h3 className="text-sm font-medium text-muted-foreground">
                   File selezionati ({selectedFiles.length})
                 </h3>
@@ -245,27 +352,34 @@ export function UploadSheet({ open, onOpenChange, onUpload, uploadedFiles, onSel
                     <div
                       key={index}
                       className={cn(
-                        "flex items-center gap-3 p-3 rounded-xl",
-                        file.size > MAX_FILE_SIZE ? "bg-destructive/10" : "bg-muted"
+                        "flex items-center gap-3 p-4 rounded-2xl transition-all duration-200",
+                        file.size > MAX_FILE_SIZE 
+                          ? "bg-destructive/10 border border-destructive/30" 
+                          : "bg-secondary border border-secondary"
                       )}
                     >
-                      <FileText className={cn(
-                        "w-5 h-5 flex-shrink-0",
-                        file.size > MAX_FILE_SIZE ? "text-destructive" : "text-primary"
-                      )} />
+                      <div className={cn(
+                        "w-10 h-10 rounded-xl flex items-center justify-center",
+                        file.size > MAX_FILE_SIZE ? "bg-destructive/20" : "bg-primary/15"
+                      )}>
+                        <FileText className={cn(
+                          "w-5 h-5",
+                          file.size > MAX_FILE_SIZE ? "text-destructive" : "text-primary"
+                        )} />
+                      </div>
                       <div className="flex-1 min-w-0">
-                        <span className="text-sm truncate block">{file.name}</span>
+                        <span className="text-sm font-medium truncate block">{file.name}</span>
                         <span className={cn(
                           "text-xs",
                           file.size > MAX_FILE_SIZE ? "text-destructive" : "text-muted-foreground"
                         )}>
                           {formatFileSize(file.size)}
-                          {file.size > MAX_FILE_SIZE && " - Troppo grande!"}
+                          {file.size > MAX_FILE_SIZE && " — Troppo grande!"}
                         </span>
                       </div>
                       <button
                         onClick={() => removeFile(index)}
-                        className="p-1 hover:bg-background rounded-lg transition-colors"
+                        className="p-2 hover:bg-background rounded-xl transition-colors"
                         disabled={isUploading}
                       >
                         <X className="w-4 h-4 text-muted-foreground" />
@@ -280,23 +394,26 @@ export function UploadSheet({ open, onOpenChange, onUpload, uploadedFiles, onSel
             <Button
               onClick={handleUpload}
               disabled={selectedFiles.length === 0 || isUploading}
-              className="w-full"
+              className="w-full h-14 text-base font-semibold gradient-primary text-white border-0 shadow-soft-md hover:shadow-soft-lg transition-all"
               size="lg"
             >
               {isUploading ? (
                 <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  {uploadProgress || "Caricamento..."}
+                  <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                  Caricamento...
                 </>
               ) : selectedFiles.length > 0 ? (
-                `Carica ${selectedFiles.length} file`
+                <>
+                  <Sparkles className="w-5 h-5 mr-2" />
+                  Carica e genera lezioni
+                </>
               ) : (
                 "Seleziona file da caricare"
               )}
             </Button>
 
             <p className="text-xs text-muted-foreground text-center">
-              Ogni PDF creerà un percorso di studio separato
+              ✨ Ogni PDF creerà un percorso di studio personalizzato
             </p>
           </TabsContent>
 
