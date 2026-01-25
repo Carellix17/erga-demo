@@ -20,6 +20,8 @@ const Index = () => {
   const [activeTab, setActiveTab] = useState<Tab>("studio");
   const [showUpload, setShowUpload] = useState(false);
   const [hasCloudContent, setHasCloudContent] = useState(false);
+  const [selectedContextId, setSelectedContextId] = useState<string | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
   const { currentUser } = useAuth();
   
   // User-specific uploaded files stored in localStorage (for display purposes)
@@ -61,7 +63,7 @@ const Index = () => {
   // Consider files present if either localStorage has records OR Cloud has content
   const hasFiles = uploadedFiles.length > 0 || hasCloudContent;
 
-  const handleUpload = (files: { name: string; size: number }[]) => {
+  const handleUpload = (files: { name: string; size: number }[], contextId?: string) => {
     const newFiles: UploadedFile[] = files.map((file) => ({
       name: file.name,
       size: file.size,
@@ -69,6 +71,18 @@ const Index = () => {
     }));
     setUploadedFiles((prev) => [...prev, ...newFiles]);
     setHasCloudContent(true);
+    setRefreshKey(prev => prev + 1);
+  };
+
+  const handleSelectFile = (contextId: string) => {
+    setSelectedContextId(contextId);
+    setActiveTab("studio");
+    setRefreshKey(prev => prev + 1);
+  };
+
+  const handleFileDeleted = () => {
+    setRefreshKey(prev => prev + 1);
+    checkCloudContent();
   };
 
   // Convert UploadedFile to display format
@@ -87,8 +101,11 @@ const Index = () => {
       <main className="max-w-lg mx-auto">
         {activeTab === "studio" && (
           <StudioView
+            key={`studio-${refreshKey}`}
             hasFiles={hasFiles}
             onUploadClick={() => setShowUpload(true)}
+            selectedContextId={selectedContextId}
+            onClearContext={() => setSelectedContextId(null)}
           />
         )}
         {activeTab === "piano" && (
@@ -112,6 +129,8 @@ const Index = () => {
         onOpenChange={setShowUpload}
         onUpload={handleUpload}
         uploadedFiles={displayFiles}
+        onSelectFile={handleSelectFile}
+        onFileDeleted={handleFileDeleted}
       />
     </div>
   );

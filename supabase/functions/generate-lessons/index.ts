@@ -12,7 +12,7 @@ serve(async (req) => {
   }
 
   try {
-    const { userId, action, lessonIndex } = await req.json();
+    const { userId, action, lessonIndex, contextId } = await req.json();
 
     if (!userId) {
       return new Response(
@@ -21,32 +21,11 @@ serve(async (req) => {
       );
     }
 
-    console.log(`Generate lessons action: ${action || 'initial'} for user: ${userId}`);
+    console.log(`Generate lessons action: ${action || 'initial'} for user: ${userId}, contextId: ${contextId || 'all'}`);
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
-    // Fetch all study contexts for the user
-    const { data: contexts, error: contextError } = await supabase
-      .from("study_contexts")
-      .select("content, file_name")
-      .eq("user_id", userId);
-
-    if (contextError || !contexts || contexts.length === 0) {
-      return new Response(
-        JSON.stringify({ error: "Nessun contenuto di studio trovato. Carica dei PDF." }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    // Combine all content
-    const combinedContent = contexts
-      .map(c => `--- ${c.file_name} ---\n${c.content}`)
-      .join("\n\n")
-      .substring(0, 50000); // Increased context size
-
-    console.log(`Combined content length: ${combinedContent.length}`);
 
     const GROQ_API_KEY = Deno.env.get("ERGA_DEMO_GROQ_KEY");
     if (!GROQ_API_KEY) {
@@ -55,13 +34,18 @@ serve(async (req) => {
 
     // ACTION: Generate single lesson with exercises
     if (action === "generateLesson" && lessonIndex !== undefined) {
-      // Get the lesson to generate
-      const { data: lessons } = await supabase
+      // Get the lesson to generate (optionally filtered by context)
+      let lessonsQuery = supabase
         .from("mini_lessons")
         .select("*")
         .eq("user_id", userId)
-        .eq("lesson_order", lessonIndex)
-        .single();
+        .eq("lesson_order", lessonIndex);
+      
+      if (contextId) {
+        lessonsQuery = lessonsQuery.eq("context_id", contextId);
+      }
+
+      const { data: lessons } = await lessonsQuery.maybeSingle();
 
       if (!lessons) {
         return new Response(
@@ -74,6 +58,40 @@ serve(async (req) => {
         return new Response(
           JSON.stringify({ success: true, lesson: lessons }),
           { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      // Fetch the specific context for this lesson
+      let studyContent = "";
+      if (lessons.context_id) {
+        const { data: context } = await supabase
+          .from("study_contexts")
+          .select("content, file_name")
+          .eq("id", lessons.context_id)
+          .single();
+        
+        if (context) {
+          studyContent = `--- ${context.file_name} ---\n${context.content}`.substring(0, 50000);
+        }
+      } else {
+        // Fallback: use all contexts
+        const { data: contexts } = await supabase
+          .from("study_contexts")
+          .select("content, file_name")
+          .eq("user_id", userId);
+        
+        if (contexts) {
+          studyContent = contexts
+            .map(c => `--- ${c.file_name} ---\n${c.content}`)
+            .join("\n\n")
+            .substring(0, 50000);
+        }
+      }
+
+      if (!studyContent) {
+        return new Response(
+          JSON.stringify({ error: "Contenuto di studio non trovato" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
 
@@ -110,7 +128,7 @@ Formato JSON richiesto:
 
 Contenuto di studio:
 
-${combinedContent}
+${studyContent}
 
 ---
 
@@ -196,7 +214,173 @@ Crea la mini-lezione completa per: "${lessonTitle}"`;
       );
     }
 
-    // DEFAULT ACTION: Generate lesson titles/structure
+    // ACTION: Generate lessons for a specific context (file)
+    if (contextId) {
+      // Fetch the specific context
+      const { data: context, error: contextError } = await supabase
+        .from("study_contexts")
+        .select("id, content, file_name")
+        .eq("id", contextId)
+        .eq("user_id", userId)
+        .single();
+
+      if (contextError || !context) {
+        return new Response(
+          JSON.stringify({ error: "File non trovato" }),
+          { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      const studyContent = `--- ${context.file_name} ---\n${context.content}`.substring(0, 50000);
+
+      console.log(`Generating lessons for context ${contextId}, content length: ${studyContent.length}`);
+
+      const titlesPrompt = `Sei un esperto di didattica che analizza contenuti educativi e li scompone in un percorso di apprendimento strutturato stile Duolingo.
+
+IMPORTANTE: Rispondi SOLO con un array JSON valido, senza markdown, senza codice, senza testo aggiuntivo.
+
+Analizza il contenuto fornito e:
+1. Identifica TUTTI i concetti distinti presenti
+2. Ordina i concetti in modo logico (dal più semplice al più complesso, rispettando le dipendenze)
+3. Crea un titolo breve e chiaro per ogni mini-lezione (max 6 parole)
+
+Crea MOLTE mini-lezioni (almeno 8-15, dipende dalla complessità del contenuto). Ogni concetto = 1 mini-lezione.
+NON raggruppare più concetti insieme. NON creare riassunti.
+
+Formato richiesto (array di oggetti):
+[{"title": "Introduzione a X"}, {"title": "Come funziona Y"}, ...]
+
+Analizza questo contenuto e crea l'elenco completo delle mini-lezioni:
+
+${studyContent}`;
+
+      console.log("Calling Groq API for titles generation with llama-3.3-70b-versatile");
+
+      const aiResponse = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${GROQ_API_KEY}`,
+        },
+        body: JSON.stringify({
+          model: "llama-3.3-70b-versatile",
+          messages: [{ role: "user", content: titlesPrompt }],
+          temperature: 0.7,
+          max_tokens: 4096,
+        }),
+      });
+
+      if (!aiResponse.ok) {
+        const errorText = await aiResponse.text();
+        console.error("Groq API error:", errorText);
+        if (aiResponse.status === 429) {
+          return new Response(
+            JSON.stringify({ error: "Troppe richieste. Riprova tra qualche secondo." }),
+            { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+        throw new Error("Errore nella generazione delle lezioni");
+      }
+
+      const aiData = await aiResponse.json();
+      const responseContent = aiData.choices?.[0]?.message?.content;
+
+      if (!responseContent) {
+        throw new Error("Risposta AI vuota");
+      }
+
+      console.log("AI titles response:", responseContent.substring(0, 500));
+
+      let lessonTitles;
+      try {
+        const jsonMatch = responseContent.match(/\[[\s\S]*\]/);
+        if (jsonMatch) {
+          lessonTitles = JSON.parse(jsonMatch[0]);
+        } else {
+          lessonTitles = JSON.parse(responseContent);
+        }
+      } catch (parseError) {
+        console.error("Parse error:", parseError);
+        throw new Error("Errore nel parsing dei titoli");
+      }
+
+      if (!Array.isArray(lessonTitles) || lessonTitles.length === 0) {
+        throw new Error("Formato titoli non valido");
+      }
+
+      // Delete existing lessons for this context
+      await supabase
+        .from("mini_lessons")
+        .delete()
+        .eq("user_id", userId)
+        .eq("context_id", contextId);
+
+      // Insert lesson placeholders linked to this context
+      const lessonsToInsert = lessonTitles.map((lesson: any, index: number) => ({
+        user_id: userId,
+        context_id: contextId,
+        title: lesson.title || `Lezione ${index + 1}`,
+        concept: "",
+        explanation: "",
+        example: null,
+        exercises: [],
+        lesson_order: index,
+        is_generated: false,
+      }));
+
+      const { error: insertError } = await supabase
+        .from("mini_lessons")
+        .insert(lessonsToInsert);
+
+      if (insertError) {
+        console.error("Insert error:", insertError);
+        throw new Error("Errore nel salvataggio delle lezioni");
+      }
+
+      // Generate the first lesson
+      const firstLessonResponse = await fetch(`${supabaseUrl}/functions/v1/generate-lessons`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${supabaseServiceKey}`,
+        },
+        body: JSON.stringify({ userId, action: "generateLesson", lessonIndex: 0, contextId }),
+      });
+
+      const firstLessonData = await firstLessonResponse.json();
+
+      return new Response(
+        JSON.stringify({ 
+          success: true, 
+          contextId,
+          lessonsCount: lessonTitles.length,
+          firstLesson: firstLessonData.lesson,
+          titles: lessonTitles.map((l: any) => l.title)
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // DEFAULT ACTION: Generate lessons for ALL contexts (legacy behavior)
+    const { data: contexts, error: contextError } = await supabase
+      .from("study_contexts")
+      .select("content, file_name")
+      .eq("user_id", userId);
+
+    if (contextError || !contexts || contexts.length === 0) {
+      return new Response(
+        JSON.stringify({ error: "Nessun contenuto di studio trovato. Carica dei PDF." }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const combinedContent = contexts
+      .map(c => `--- ${c.file_name} ---\n${c.content}`)
+      .join("\n\n")
+      .substring(0, 50000);
+
+    console.log(`Combined content length: ${combinedContent.length}`);
+
     const titlesPrompt = `Sei un esperto di didattica che analizza contenuti educativi e li scompone in un percorso di apprendimento strutturato stile Duolingo.
 
 IMPORTANTE: Rispondi SOLO con un array JSON valido, senza markdown, senza codice, senza testo aggiuntivo.
@@ -270,11 +454,12 @@ ${combinedContent}`;
       throw new Error("Formato titoli non valido");
     }
 
-    // Delete existing lessons for this user
+    // Delete existing lessons for this user (without context_id)
     await supabase
       .from("mini_lessons")
       .delete()
-      .eq("user_id", userId);
+      .eq("user_id", userId)
+      .is("context_id", null);
 
     // Insert lesson placeholders (only titles, not generated yet)
     const lessonsToInsert = lessonTitles.map((lesson: any, index: number) => ({

@@ -11,6 +11,8 @@ import { Exercise } from "./exercises/ExerciseRenderer";
 interface StudioViewProps {
   hasFiles: boolean;
   onUploadClick: () => void;
+  selectedContextId?: string | null;
+  onClearContext?: () => void;
 }
 
 interface Lesson {
@@ -22,15 +24,17 @@ interface Lesson {
   exercises?: Exercise[];
   is_generated: boolean;
   lesson_order: number;
+  context_id?: string;
 }
 
-export function StudioView({ hasFiles, onUploadClick }: StudioViewProps) {
+export function StudioView({ hasFiles, onUploadClick, selectedContextId, onClearContext }: StudioViewProps) {
   const [lessons, setLessons] = useState<Lesson[]>([]);
   const [currentLessonIndex, setCurrentLessonIndex] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isGeneratingLesson, setIsGeneratingLesson] = useState(false);
   const [showList, setShowList] = useState(false);
+  const [contextFileName, setContextFileName] = useState<string | null>(null);
   const { currentUser } = useAuth();
   const { toast } = useToast();
 
@@ -39,6 +43,12 @@ export function StudioView({ hasFiles, onUploadClick }: StudioViewProps) {
 
     setIsLoading(true);
     try {
+      // If a specific context is selected, fetch only its lessons
+      const body: Record<string, unknown> = { userId: currentUser, action: "get" };
+      if (selectedContextId) {
+        body.contextId = selectedContextId;
+      }
+
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-lessons`,
         {
@@ -47,7 +57,7 @@ export function StudioView({ hasFiles, onUploadClick }: StudioViewProps) {
             "Content-Type": "application/json",
             Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
           },
-          body: JSON.stringify({ userId: currentUser, action: "get" }),
+          body: JSON.stringify(body),
         }
       );
 
@@ -57,12 +67,34 @@ export function StudioView({ hasFiles, onUploadClick }: StudioViewProps) {
         setLessons(data.lessons);
         setCurrentLessonIndex(data.currentIndex || 0);
       }
+
+      // If context is selected, get its name
+      if (selectedContextId) {
+        const contextsResponse = await fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-lessons`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+            },
+            body: JSON.stringify({ userId: currentUser, action: "listContexts" }),
+          }
+        );
+        const contextsData = await contextsResponse.json();
+        if (contextsData.contexts) {
+          const ctx = contextsData.contexts.find((c: { id: string }) => c.id === selectedContextId);
+          setContextFileName(ctx?.file_name || null);
+        }
+      } else {
+        setContextFileName(null);
+      }
     } catch (error) {
       console.error("Error fetching lessons:", error);
     } finally {
       setIsLoading(false);
     }
-  }, [currentUser, hasFiles]);
+  }, [currentUser, hasFiles, selectedContextId]);
 
   useEffect(() => {
     fetchLessons();
@@ -114,6 +146,15 @@ export function StudioView({ hasFiles, onUploadClick }: StudioViewProps) {
 
     setIsGeneratingLesson(true);
     try {
+      const body: Record<string, unknown> = { 
+        userId: currentUser, 
+        action: "generateLesson",
+        lessonIndex 
+      };
+      if (selectedContextId) {
+        body.contextId = selectedContextId;
+      }
+
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-lessons`,
         {
@@ -122,11 +163,7 @@ export function StudioView({ hasFiles, onUploadClick }: StudioViewProps) {
             "Content-Type": "application/json",
             Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
           },
-          body: JSON.stringify({ 
-            userId: currentUser, 
-            action: "generateLesson",
-            lessonIndex 
-          }),
+          body: JSON.stringify(body),
         }
       );
 

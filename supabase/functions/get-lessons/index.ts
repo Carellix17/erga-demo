@@ -12,7 +12,7 @@ serve(async (req) => {
   }
 
   try {
-    const { userId, action, lessonIndex } = await req.json();
+    const { userId, action, lessonIndex, contextId } = await req.json();
 
     if (!userId) {
       return new Response(
@@ -26,19 +26,25 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     if (action === "get") {
-      // Get all lessons
-      const { data: lessons, error: lessonsError } = await supabase
+      // Get all lessons, optionally filtered by context
+      let lessonsQuery = supabase
         .from("mini_lessons")
         .select("*")
         .eq("user_id", userId)
         .order("lesson_order", { ascending: true });
+
+      if (contextId) {
+        lessonsQuery = lessonsQuery.eq("context_id", contextId);
+      }
+
+      const { data: lessons, error: lessonsError } = await lessonsQuery;
 
       // Get progress
       const { data: progress } = await supabase
         .from("lesson_progress")
         .select("current_lesson_index")
         .eq("user_id", userId)
-        .single();
+        .maybeSingle();
 
       if (lessonsError) {
         console.error("Lessons error:", lessonsError);
@@ -56,13 +62,18 @@ serve(async (req) => {
     }
 
     if (action === "getLesson" && lessonIndex !== undefined) {
-      // Get specific lesson
-      const { data: lesson, error: lessonError } = await supabase
+      // Get specific lesson, optionally filtered by context
+      let lessonQuery = supabase
         .from("mini_lessons")
         .select("*")
         .eq("user_id", userId)
-        .eq("lesson_order", lessonIndex)
-        .single();
+        .eq("lesson_order", lessonIndex);
+
+      if (contextId) {
+        lessonQuery = lessonQuery.eq("context_id", contextId);
+      }
+
+      const { data: lesson, error: lessonError } = await lessonQuery.maybeSingle();
 
       if (lessonError) {
         console.error("Lesson error:", lessonError);
@@ -109,6 +120,39 @@ serve(async (req) => {
           success: true, 
           hasContent: contexts && contexts.length > 0 
         }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    if (action === "listContexts") {
+      // List all contexts with lesson counts
+      const { data: contexts } = await supabase
+        .from("study_contexts")
+        .select("id, file_name, created_at")
+        .eq("user_id", userId)
+        .order("created_at", { ascending: false });
+
+      const { data: lessons } = await supabase
+        .from("mini_lessons")
+        .select("context_id")
+        .eq("user_id", userId);
+
+      const lessonCounts: Record<string, number> = {};
+      if (lessons) {
+        for (const l of lessons) {
+          if (l.context_id) {
+            lessonCounts[l.context_id] = (lessonCounts[l.context_id] || 0) + 1;
+          }
+        }
+      }
+
+      const contextsWithCounts = (contexts || []).map(c => ({
+        ...c,
+        lesson_count: lessonCounts[c.id] || 0,
+      }));
+
+      return new Response(
+        JSON.stringify({ success: true, contexts: contextsWithCounts }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }

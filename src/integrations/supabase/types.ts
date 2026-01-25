@@ -38,6 +38,7 @@ export type Database = {
       mini_lessons: {
         Row: {
           concept: string
+          context_id: string | null
           created_at: string
           example: string | null
           exercises: Json
@@ -50,6 +51,7 @@ export type Database = {
         }
         Insert: {
           concept: string
+          context_id?: string | null
           created_at?: string
           example?: string | null
           exercises?: Json
@@ -62,6 +64,7 @@ export type Database = {
         }
         Update: {
           concept?: string
+          context_id?: string | null
           created_at?: string
           example?: string | null
           exercises?: Json
@@ -72,7 +75,15 @@ export type Database = {
           title?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "mini_lessons_context_id_fkey"
+            columns: ["context_id"]
+            isOneToOne: false
+            referencedRelation: "study_contexts"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       study_contexts: {
         Row: {
