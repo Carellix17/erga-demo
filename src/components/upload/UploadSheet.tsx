@@ -6,7 +6,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
 import { FileManager } from "./FileManager";
 
 interface UploadSheetProps {
@@ -24,6 +23,7 @@ export function UploadSheet({ open, onOpenChange, onUpload, uploadedFiles, onSel
   const [dragActive, setDragActive] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<string>("");
   const [activeTab, setActiveTab] = useState<string>("upload");
   const { currentUser } = useAuth();
   const { toast } = useToast();
@@ -44,7 +44,7 @@ export function UploadSheet({ open, onOpenChange, onUpload, uploadedFiles, onSel
     setDragActive(false);
 
     const files = Array.from(e.dataTransfer.files).filter(
-      (file) => file.type === "application/pdf" && file.size <= MAX_FILE_SIZE
+      (file) => file.type === "application/pdf"
     );
     if (files.length > 0) {
       setSelectedFiles((prev) => [...prev, ...files]);
@@ -53,20 +53,8 @@ export function UploadSheet({ open, onOpenChange, onUpload, uploadedFiles, onSel
 
   const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []).filter(
-      (file) => file.type === "application/pdf" && file.size <= MAX_FILE_SIZE
+      (file) => file.type === "application/pdf"
     );
-    
-    const oversizedFiles = Array.from(e.target.files || []).filter(
-      (file) => file.size > MAX_FILE_SIZE
-    );
-    
-    if (oversizedFiles.length > 0) {
-      toast({
-        title: "File troppo grande",
-        description: `Dimensione massima: 20MB. ${oversizedFiles.map(f => f.name).join(", ")} superano il limite.`,
-        variant: "destructive",
-      });
-    }
     
     if (files.length > 0) {
       setSelectedFiles((prev) => [...prev, ...files]);
@@ -84,45 +72,39 @@ export function UploadSheet({ open, onOpenChange, onUpload, uploadedFiles, onSel
     const uploadedFileInfos: { name: string; size: number }[] = [];
 
     try {
-      for (const file of selectedFiles) {
-        toast({
-          title: `Caricamento: ${file.name}`,
-          description: "Upload in corso...",
-        });
+      for (let i = 0; i < selectedFiles.length; i++) {
+        const file = selectedFiles[i];
+        setUploadProgress(`${i + 1}/${selectedFiles.length}: ${file.name}`);
 
-        // Generate unique file path
-        const timestamp = Date.now();
-        const sanitizedName = file.name.replace(/[^a-zA-Z0-9.-]/g, "_");
-        const filePath = `${currentUser}/${timestamp}_${sanitizedName}`;
-
-        // Upload to Supabase Storage
-        const { error: uploadError } = await supabase
-          .storage
-          .from("study-pdfs")
-          .upload(filePath, file, {
-            contentType: "application/pdf",
-            upsert: false,
+        // Check file size
+        if (file.size > MAX_FILE_SIZE) {
+          toast({
+            title: "File troppo grande",
+            description: `${file.name} supera il limite di 20MB (${(file.size / 1024 / 1024).toFixed(1)}MB)`,
+            variant: "destructive",
           });
-
-        if (uploadError) {
-          console.error("Storage upload error:", uploadError);
-          throw new Error(`Errore upload: ${uploadError.message}`);
+          continue;
         }
 
-        // Register the upload and start processing
+        toast({
+          title: `Caricamento: ${file.name}`,
+          description: `${(file.size / 1024 / 1024).toFixed(1)}MB - Upload in corso...`,
+        });
+
+        // Create FormData for efficient upload
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("userId", currentUser);
+
+        // Upload via edge function
         const response = await fetch(
-          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/extract-pdf`,
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/upload-pdf`,
           {
             method: "POST",
             headers: {
-              "Content-Type": "application/json",
               Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
             },
-            body: JSON.stringify({
-              userId: currentUser,
-              fileName: file.name,
-              filePath: filePath,
-            }),
+            body: formData,
           }
         );
 
@@ -140,39 +122,40 @@ export function UploadSheet({ open, onOpenChange, onUpload, uploadedFiles, onSel
         });
       }
 
-      onUpload(uploadedFileInfos);
-      setSelectedFiles([]);
-      onOpenChange(false);
+      if (uploadedFileInfos.length > 0) {
+        onUpload(uploadedFileInfos);
+        setSelectedFiles([]);
+        onOpenChange(false);
 
-      // Wait a bit for processing to start, then generate lessons
-      toast({
-        title: "Elaborazione PDF",
-        description: "Il testo viene estratto in background. Le lezioni saranno generate automaticamente.",
-      });
+        // Wait for processing then generate lessons
+        toast({
+          title: "Elaborazione PDF",
+          description: "Il testo viene estratto. Le lezioni saranno generate automaticamente.",
+        });
 
-      // Give processing time to complete before generating lessons
-      setTimeout(async () => {
-        try {
-          await fetch(
-            `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-lessons`,
-            {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-              },
-              body: JSON.stringify({ userId: currentUser }),
-            }
-          );
+        setTimeout(async () => {
+          try {
+            await fetch(
+              `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-lessons`,
+              {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+                },
+                body: JSON.stringify({ userId: currentUser }),
+              }
+            );
 
-          toast({
-            title: "Contenuti pronti!",
-            description: "Le mini-lezioni sono state generate. Buono studio!",
-          });
-        } catch (err) {
-          console.error("Lesson generation error:", err);
-        }
-      }, 5000);
+            toast({
+              title: "Contenuti pronti!",
+              description: "Le mini-lezioni sono state generate. Buono studio!",
+            });
+          } catch (err) {
+            console.error("Lesson generation error:", err);
+          }
+        }, 8000);
+      }
 
     } catch (error) {
       console.error("Upload error:", error);
@@ -183,6 +166,7 @@ export function UploadSheet({ open, onOpenChange, onUpload, uploadedFiles, onSel
       });
     } finally {
       setIsUploading(false);
+      setUploadProgress("");
     }
   };
 
@@ -246,7 +230,7 @@ export function UploadSheet({ open, onOpenChange, onUpload, uploadedFiles, onSel
                 Trascina qui i tuoi PDF
               </p>
               <p className="text-xs text-muted-foreground">
-                oppure tocca per selezionare (max 20MB)
+                oppure tocca per selezionare (max 20MB per file)
               </p>
             </div>
 
@@ -260,12 +244,24 @@ export function UploadSheet({ open, onOpenChange, onUpload, uploadedFiles, onSel
                   {selectedFiles.map((file, index) => (
                     <div
                       key={index}
-                      className="flex items-center gap-3 p-3 rounded-xl bg-muted"
+                      className={cn(
+                        "flex items-center gap-3 p-3 rounded-xl",
+                        file.size > MAX_FILE_SIZE ? "bg-destructive/10" : "bg-muted"
+                      )}
                     >
-                      <FileText className="w-5 h-5 text-primary flex-shrink-0" />
+                      <FileText className={cn(
+                        "w-5 h-5 flex-shrink-0",
+                        file.size > MAX_FILE_SIZE ? "text-destructive" : "text-primary"
+                      )} />
                       <div className="flex-1 min-w-0">
                         <span className="text-sm truncate block">{file.name}</span>
-                        <span className="text-xs text-muted-foreground">{formatFileSize(file.size)}</span>
+                        <span className={cn(
+                          "text-xs",
+                          file.size > MAX_FILE_SIZE ? "text-destructive" : "text-muted-foreground"
+                        )}>
+                          {formatFileSize(file.size)}
+                          {file.size > MAX_FILE_SIZE && " - Troppo grande!"}
+                        </span>
                       </div>
                       <button
                         onClick={() => removeFile(index)}
@@ -290,7 +286,7 @@ export function UploadSheet({ open, onOpenChange, onUpload, uploadedFiles, onSel
               {isUploading ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Caricamento in corso...
+                  {uploadProgress || "Caricamento..."}
                 </>
               ) : selectedFiles.length > 0 ? (
                 `Carica ${selectedFiles.length} file`
