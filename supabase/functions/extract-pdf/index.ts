@@ -6,8 +6,8 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// Maximum PDF size: 5MB base64 (roughly 3.75MB file)
-const MAX_PDF_SIZE = 5 * 1024 * 1024;
+// Maximum PDF size: ~27MB base64 (roughly 20MB file)
+const MAX_PDF_SIZE = 27 * 1024 * 1024;
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -29,7 +29,7 @@ serve(async (req) => {
       console.error(`PDF too large: ${pdfBase64.length} bytes (max: ${MAX_PDF_SIZE})`);
       return new Response(
         JSON.stringify({ 
-          error: "Il PDF è troppo grande. Dimensione massima: 4MB. Prova a comprimere il file o dividerlo in parti più piccole." 
+          error: "Il PDF è troppo grande. Dimensione massima: 20MB. Prova a comprimere il file o dividerlo in parti più piccole." 
         }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
