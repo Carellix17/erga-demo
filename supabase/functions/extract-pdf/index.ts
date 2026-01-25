@@ -6,6 +6,9 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Maximum PDF size: 5MB base64 (roughly 3.75MB file)
+const MAX_PDF_SIZE = 5 * 1024 * 1024;
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -21,85 +24,45 @@ serve(async (req) => {
       );
     }
 
-    console.log(`Extracting text from PDF: ${fileName} for user: ${userId}`);
-
-    // Use Lovable AI (Gemini) to extract text from PDF
-    const lovableApiKey = Deno.env.get("LOVABLE_API_KEY");
-    
-    if (!lovableApiKey) {
-      console.error("LOVABLE_API_KEY not configured");
+    // Check file size
+    if (pdfBase64.length > MAX_PDF_SIZE) {
+      console.error(`PDF too large: ${pdfBase64.length} bytes (max: ${MAX_PDF_SIZE})`);
       return new Response(
-        JSON.stringify({ error: "Servizio AI non configurato" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ 
+          error: "Il PDF è troppo grande. Dimensione massima: 4MB. Prova a comprimere il file o dividerlo in parti più piccole." 
+        }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Call Lovable AI with PDF content for extraction
-    const aiResponse = await fetch("https://api.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${lovableApiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
-        messages: [
-          {
-            role: "user",
-            content: [
-              {
-                type: "text",
-                text: `Estrai TUTTO il testo contenuto in questo documento PDF. 
-Restituisci SOLO il testo estratto, senza commenti, senza formattazione markdown, senza prefissi.
-Mantieni la struttura originale del documento (paragrafi, elenchi, titoli).
-Se ci sono tabelle, rappresentale in modo leggibile.
-Estrai ogni singola parola presente nel documento.`,
-              },
-              {
-                type: "image_url",
-                image_url: {
-                  url: `data:application/pdf;base64,${pdfBase64}`,
-                },
-              },
-            ],
-          },
-        ],
-        max_tokens: 16000,
-        temperature: 0,
-      }),
-    });
+    console.log(`Extracting text from PDF: ${fileName} for user: ${userId}, size: ${pdfBase64.length} chars`);
 
-    if (!aiResponse.ok) {
-      const errorText = await aiResponse.text();
-      console.error("Lovable AI error:", aiResponse.status, errorText);
-      
-      // Fallback to basic extraction if AI fails
-      console.log("Falling back to basic text extraction...");
-      return await fallbackExtraction(userId, fileName, pdfBase64);
-    }
-
-    const aiData = await aiResponse.json();
-    const extractedText = aiData.choices?.[0]?.message?.content?.trim() || "";
+    // Extract text using lightweight method
+    const extractedText = await extractTextFromPdf(pdfBase64);
 
     if (!extractedText || extractedText.length < 50) {
-      console.log("AI extraction yielded little text, trying fallback...");
-      return await fallbackExtraction(userId, fileName, pdfBase64);
+      return new Response(
+        JSON.stringify({ 
+          error: "Impossibile estrarre testo dal PDF. Assicurati che il PDF contenga testo selezionabile e non sia solo immagini." 
+        }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
-    console.log(`AI extracted ${extractedText.length} characters`);
+    console.log(`Extracted ${extractedText.length} characters from PDF`);
 
-    // Initialize Supabase client with service role for bypassing RLS
+    // Initialize Supabase client
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Store the extracted content
+    // Store the extracted content (limit to 100k chars)
     const { data, error } = await supabase
       .from("study_contexts")
       .insert({
         user_id: userId,
         file_name: fileName,
-        content: extractedText.substring(0, 100000), // Limit to 100k chars
+        content: extractedText.substring(0, 100000),
       })
       .select()
       .single();
@@ -124,95 +87,115 @@ Estrai ogni singola parola presente nel documento.`,
   } catch (error) {
     console.error("Error:", error);
     return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }),
+      JSON.stringify({ error: error instanceof Error ? error.message : "Errore sconosciuto" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
 });
 
-// Fallback basic extraction for when AI fails
-async function fallbackExtraction(userId: string, fileName: string, pdfBase64: string) {
-  const pdfBytes = Uint8Array.from(atob(pdfBase64), c => c.charCodeAt(0));
-  
-  let extractedText = "";
-  const decoder = new TextDecoder("latin1");
-  const pdfString = decoder.decode(pdfBytes);
-  
-  // Find text between BT and ET markers
-  const textMatches = pdfString.matchAll(/BT\s*([\s\S]*?)\s*ET/g);
-  for (const match of textMatches) {
-    const textBlock = match[1];
-    const tjMatches = textBlock.matchAll(/\(([^)]*)\)\s*Tj/g);
-    for (const tj of tjMatches) {
-      extractedText += tj[1] + " ";
-    }
-    const tjArrayMatches = textBlock.matchAll(/\[(.*?)\]\s*TJ/g);
-    for (const tja of tjArrayMatches) {
-      const parts = tja[1].matchAll(/\(([^)]*)\)/g);
-      for (const part of parts) {
-        extractedText += part[1];
+/**
+ * Extract text from PDF using multiple strategies
+ * Optimized for memory efficiency
+ */
+async function extractTextFromPdf(pdfBase64: string): Promise<string> {
+  try {
+    // Decode base64 in chunks to avoid memory spikes
+    const pdfBytes = Uint8Array.from(atob(pdfBase64), c => c.charCodeAt(0));
+    
+    // Use Latin1 decoder for PDF binary content
+    const decoder = new TextDecoder("latin1");
+    const pdfString = decoder.decode(pdfBytes);
+    
+    // Clear the bytes array to free memory
+    pdfBytes.fill(0);
+
+    const extractedParts: string[] = [];
+
+    // Strategy 1: Extract text from stream objects (most common in PDFs)
+    const streamRegex = /stream\s*([\s\S]*?)\s*endstream/g;
+    let match;
+    
+    while ((match = streamRegex.exec(pdfString)) !== null) {
+      const streamContent = match[1];
+      
+      // Look for text operators in the stream
+      const textMatches = streamContent.matchAll(/BT\s*([\s\S]*?)\s*ET/g);
+      for (const textMatch of textMatches) {
+        const textBlock = textMatch[1];
+        
+        // Extract Tj strings (single text)
+        const tjMatches = textBlock.matchAll(/\(([^)]*)\)\s*Tj/g);
+        for (const tj of tjMatches) {
+          const text = cleanPdfText(tj[1]);
+          if (text.length > 0) extractedParts.push(text);
+        }
+        
+        // Extract TJ arrays (text with kerning)
+        const tjArrayMatches = textBlock.matchAll(/\[(.*?)\]\s*TJ/gi);
+        for (const tja of tjArrayMatches) {
+          const parts = tja[1].matchAll(/\(([^)]*)\)/g);
+          let lineText = "";
+          for (const part of parts) {
+            lineText += cleanPdfText(part[1]);
+          }
+          if (lineText.length > 0) extractedParts.push(lineText);
+        }
       }
-      extractedText += " ";
     }
+
+    // Strategy 2: Extract plain text strings if Strategy 1 didn't work well
+    if (extractedParts.join("").length < 200) {
+      console.log("Strategy 1 yielded little text, trying Strategy 2...");
+      
+      // Look for readable ASCII sequences (avoiding PDF structure keywords)
+      const readableMatches = pdfString.match(/[\x20-\x7E]{15,}/g) || [];
+      const filteredText = readableMatches
+        .filter(t => 
+          !t.includes("obj") && 
+          !t.includes("endobj") && 
+          !t.includes("stream") && 
+          !t.includes("xref") &&
+          !t.includes("trailer") &&
+          !t.includes("/Type") &&
+          !t.includes("/Font") &&
+          !t.includes("/Page") &&
+          !t.match(/^[0-9\s]+$/) // Exclude pure numbers
+        )
+        .join(" ");
+      
+      if (filteredText.length > extractedParts.join(" ").length) {
+        return cleanFinalText(filteredText);
+      }
+    }
+
+    return cleanFinalText(extractedParts.join(" "));
+    
+  } catch (error) {
+    console.error("Text extraction error:", error);
+    throw new Error("Errore durante l'estrazione del testo dal PDF");
   }
-  
-  extractedText = extractedText
+}
+
+/**
+ * Clean PDF escape sequences and normalize text
+ */
+function cleanPdfText(text: string): string {
+  return text
     .replace(/\\n/g, "\n")
     .replace(/\\r/g, "")
+    .replace(/\\t/g, " ")
     .replace(/\\\(/g, "(")
     .replace(/\\\)/g, ")")
+    .replace(/\\\\/g, "\\")
+    .replace(/\\(\d{3})/g, (_, octal) => String.fromCharCode(parseInt(octal, 8)));
+}
+
+/**
+ * Final text cleanup
+ */
+function cleanFinalText(text: string): string {
+  return text
     .replace(/\s+/g, " ")
+    .replace(/\n{3,}/g, "\n\n")
     .trim();
-
-  if (extractedText.length < 100) {
-    const readableText = pdfString.match(/[\x20-\x7E]{10,}/g);
-    if (readableText) {
-      extractedText = readableText
-        .filter(t => !t.includes("obj") && !t.includes("endobj") && !t.includes("stream"))
-        .join(" ")
-        .substring(0, 50000);
-    }
-  }
-
-  if (!extractedText || extractedText.length < 50) {
-    return new Response(
-      JSON.stringify({ 
-        error: "Impossibile estrarre testo dal PDF. Assicurati che il PDF contenga testo selezionabile." 
-      }),
-      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
-  }
-
-  console.log(`Fallback extracted ${extractedText.length} characters`);
-
-  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-  const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-  const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
-  const { data, error } = await supabase
-    .from("study_contexts")
-    .insert({
-      user_id: userId,
-      file_name: fileName,
-      content: extractedText.substring(0, 100000),
-    })
-    .select()
-    .single();
-
-  if (error) {
-    console.error("Database error:", error);
-    return new Response(
-      JSON.stringify({ error: "Errore nel salvataggio del contenuto" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
-  }
-
-  return new Response(
-    JSON.stringify({ 
-      success: true, 
-      contextId: data.id,
-      extractedLength: extractedText.length 
-    }),
-    { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-  );
 }
