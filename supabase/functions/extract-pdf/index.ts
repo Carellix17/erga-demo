@@ -54,26 +54,39 @@ serve(async (req) => {
           throw new Error("Impossibile scaricare il file: " + downloadError?.message);
         }
 
-        // Convert to array buffer and extract text
+        // Convert to array buffer
         const arrayBuffer = await fileData.arrayBuffer();
         const pdfBytes = new Uint8Array(arrayBuffer);
         
         console.log(`Downloaded PDF: ${pdfBytes.length} bytes`);
 
-        // Extract text from PDF
-        const extractedText = extractTextFromPdf(pdfBytes);
-
-        if (!extractedText || extractedText.length < 50) {
-          throw new Error("Impossibile estrarre testo sufficiente dal PDF");
+        // Extract text using pdfjs-serverless (proper PDF parsing)
+        let extractedText = "";
+        
+        try {
+          extractedText = await extractTextWithPdfJs(pdfBytes);
+          console.log(`Extracted with pdfjs: ${extractedText.length} characters`);
+        } catch (pdfJsError) {
+          console.error("pdfjs extraction failed, trying fallback:", pdfJsError);
+          // Fallback to basic extraction if pdfjs fails
+          extractedText = extractTextFallback(pdfBytes);
+          console.log(`Extracted with fallback: ${extractedText.length} characters`);
         }
 
-        console.log(`Extracted ${extractedText.length} characters`);
+        // Validate extracted content
+        if (!extractedText || extractedText.length < 50) {
+          throw new Error("Impossibile estrarre testo sufficiente dal PDF. Il file potrebbe essere un'immagine o protetto.");
+        }
+
+        // Clean the extracted text
+        const cleanedText = cleanExtractedText(extractedText);
+        console.log(`Cleaned text: ${cleanedText.length} characters`);
 
         // Update context with extracted content
         const { error: updateError } = await supabase
           .from("study_contexts")
           .update({
-            content: extractedText.substring(0, 100000),
+            content: cleanedText.substring(0, 100000),
             processing_status: "completed",
             error_message: null
           })
@@ -87,7 +100,7 @@ serve(async (req) => {
           JSON.stringify({ 
             success: true, 
             contextId,
-            extractedLength: extractedText.length 
+            extractedLength: cleanedText.length 
           }),
           { headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
@@ -174,30 +187,86 @@ serve(async (req) => {
 });
 
 /**
- * Extract text from PDF bytes
- * Memory-efficient implementation
+ * Extract text from PDF using pdfjs-serverless
+ * This properly parses PDF structure and extracts actual text content
  */
-function extractTextFromPdf(pdfBytes: Uint8Array): string {
-  const decoder = new TextDecoder("latin1");
-  const pdfString = decoder.decode(pdfBytes);
+async function extractTextWithPdfJs(pdfBytes: Uint8Array): Promise<string> {
+  // Dynamically import and resolve pdfjs
+  const pdfjsModule = await import("https://esm.sh/pdfjs-serverless@0.5.1?bundle");
+  const pdfjs = await pdfjsModule.resolvePDFJS();
+  
+  const doc = await pdfjs.getDocument({
+    data: pdfBytes,
+    useSystemFonts: true,
+  }).promise;
+
+  const pages: string[] = [];
+  const numPages = doc.numPages;
+  
+  console.log(`PDF has ${numPages} pages`);
+
+  for (let i = 1; i <= numPages; i++) {
+    try {
+      const page = await doc.getPage(i);
+      const textContent = await page.getTextContent();
+      
+      // Extract text items and join them properly
+      // deno-lint-ignore no-explicit-any
+      const pageText = textContent.items
+        .map((item: any) => {
+          // Handle text items (TextItem has str property)
+          if (item && typeof item.str === "string") {
+            return item.str;
+          }
+          return "";
+        })
+        .join(" ");
+      
+      if (pageText.trim()) {
+        pages.push(pageText);
+      }
+    } catch (pageError) {
+      console.error(`Error extracting page ${i}:`, pageError);
+      // Continue with other pages
+    }
+  }
+
+  return pages.join("\n\n");
+}
+
+/**
+ * Fallback extraction for PDFs that pdfjs can't handle
+ * This is more aggressive but may include some noise
+ */
+function extractTextFallback(pdfBytes: Uint8Array): string {
+  const decoder = new TextDecoder("utf-8", { fatal: false });
+  let pdfString = decoder.decode(pdfBytes);
+  
+  // Try latin1 if utf-8 produces garbage
+  if (pdfString.includes("�")) {
+    const latin1Decoder = new TextDecoder("latin1");
+    pdfString = latin1Decoder.decode(pdfBytes);
+  }
 
   const extractedParts: string[] = [];
 
-  // Strategy 1: Extract text from BT...ET blocks
+  // Strategy 1: Extract text from BT...ET blocks (PDF text objects)
   const btEtRegex = /BT\s*([\s\S]*?)\s*ET/g;
   let match;
 
   while ((match = btEtRegex.exec(pdfString)) !== null) {
     const textBlock = match[1];
 
-    // Extract Tj strings
+    // Extract Tj strings (show text operator)
     const tjMatches = textBlock.matchAll(/\(([^)]*)\)\s*Tj/g);
     for (const tj of tjMatches) {
       const text = cleanPdfText(tj[1]);
-      if (text.length > 0) extractedParts.push(text);
+      if (text.length > 1 && !isPdfGarbage(text)) {
+        extractedParts.push(text);
+      }
     }
 
-    // Extract TJ arrays
+    // Extract TJ arrays (show text with positioning)
     const tjArrayMatches = textBlock.matchAll(/\[(.*?)\]\s*TJ/gi);
     for (const tja of tjArrayMatches) {
       const parts = tja[1].matchAll(/\(([^)]*)\)/g);
@@ -205,36 +274,69 @@ function extractTextFromPdf(pdfBytes: Uint8Array): string {
       for (const part of parts) {
         lineText += cleanPdfText(part[1]);
       }
-      if (lineText.length > 0) extractedParts.push(lineText);
+      if (lineText.length > 1 && !isPdfGarbage(lineText)) {
+        extractedParts.push(lineText);
+      }
     }
   }
 
-  // Strategy 2: Fallback to readable ASCII if little text found
-  if (extractedParts.join("").length < 200) {
-    console.log("Using fallback extraction strategy");
-    const readableMatches = pdfString.match(/[\x20-\x7E]{15,}/g) || [];
-    const filteredText = readableMatches
-      .filter(t =>
-        !t.includes("obj") &&
-        !t.includes("endobj") &&
-        !t.includes("stream") &&
-        !t.includes("xref") &&
-        !t.includes("trailer") &&
-        !t.includes("/Type") &&
-        !t.includes("/Font") &&
-        !t.includes("/Page") &&
-        !t.match(/^[0-9\s]+$/)
-      )
-      .join(" ");
-
-    if (filteredText.length > extractedParts.join(" ").length) {
-      return cleanFinalText(filteredText);
+  // Strategy 2: Look for stream content that might contain readable text
+  const streamRegex = /stream\s*([\s\S]*?)\s*endstream/g;
+  while ((match = streamRegex.exec(pdfString)) !== null) {
+    const streamContent = match[1];
+    // Look for readable ASCII sequences
+    const readableMatches = streamContent.match(/[\x20-\x7E]{10,}/g) || [];
+    for (const readable of readableMatches) {
+      if (!isPdfGarbage(readable) && readable.length > 10) {
+        extractedParts.push(readable);
+      }
     }
   }
 
-  return cleanFinalText(extractedParts.join(" "));
+  return cleanExtractedText(extractedParts.join(" "));
 }
 
+/**
+ * Check if text looks like PDF garbage (metadata, operators, etc.)
+ */
+function isPdfGarbage(text: string): boolean {
+  const garbagePatterns = [
+    /^[0-9\s.]+$/, // Just numbers
+    /obj\s*$/, // PDF objects
+    /endobj/, // PDF end objects
+    /^stream$/, // Stream markers
+    /^xref$/, // Cross-reference
+    /^trailer$/, // Trailer
+    /\/Type/, // PDF type declarations
+    /\/Font/, // Font declarations
+    /\/Page/, // Page declarations
+    /\/Filter/, // Filter declarations
+    /\/Length/, // Length declarations
+    /^R$/, // Reference marker
+    /^[A-Z]{1,3}\d{0,3}$/, // Short codes like "BT", "ET", "Tf"
+    /\\x[0-9a-fA-F]{2}/, // Hex escapes
+    /^\s*[<>]+\s*$/, // Angle brackets
+    /^[0-9a-fA-F]{20,}$/, // Long hex strings
+  ];
+
+  for (const pattern of garbagePatterns) {
+    if (pattern.test(text.trim())) {
+      return true;
+    }
+  }
+
+  // Check ratio of letters to other characters
+  const letters = text.match(/[a-zA-ZàèéìòùÀÈÉÌÒÙ]/g) || [];
+  if (text.length > 5 && letters.length / text.length < 0.3) {
+    return true;
+  }
+
+  return false;
+}
+
+/**
+ * Clean PDF escape sequences
+ */
 function cleanPdfText(text: string): string {
   return text
     .replace(/\\n/g, "\n")
@@ -246,9 +348,19 @@ function cleanPdfText(text: string): string {
     .replace(/\\(\d{3})/g, (_, octal) => String.fromCharCode(parseInt(octal, 8)));
 }
 
-function cleanFinalText(text: string): string {
+/**
+ * Clean and normalize extracted text
+ */
+function cleanExtractedText(text: string): string {
   return text
+    // Remove excessive whitespace
     .replace(/\s+/g, " ")
+    // Remove multiple newlines
     .replace(/\n{3,}/g, "\n\n")
+    // Remove isolated single characters (likely garbage)
+    .replace(/\s[a-zA-Z]\s/g, " ")
+    // Clean up common OCR/extraction artifacts
+    .replace(/[^\x20-\x7E\xA0-\xFF\n]/g, " ")
+    // Final trim
     .trim();
 }
