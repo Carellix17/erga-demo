@@ -8,13 +8,15 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+// Importiamo il client di Supabase per parlare con il cloud
+import { supabase } from "@/integrations/supabase/client";
 
 export default function ChangePassword() {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { changePassword, currentUser } = useAuth();
+  const { currentUser } = useAuth(); 
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -23,7 +25,7 @@ export default function ChangePassword() {
   const passwordsMatch = newPassword === confirmPassword && confirmPassword.length > 0;
   const canSubmit = isLengthValid && passwordsMatch;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!canSubmit) {
@@ -36,29 +38,35 @@ export default function ChangePassword() {
     }
 
     setIsSubmitting(true);
-    const result = changePassword(newPassword);
 
-    if (result.success) {
+    try {
+      // Aggiorniamo la password direttamente su Supabase (Cloud)
+      const { error } = await supabase.auth.updateUser({
+        password: newPassword
+      });
+
+      if (error) throw error;
+
       toast({
         title: "Password aggiornata",
-        description: "La tua nuova password è stata salvata",
+        description: "La tua nuova password è stata salvata nel cloud!",
       });
       navigate("/");
-    } else {
+      
+    } catch (error: any) {
       toast({
         title: "Errore",
-        description: result.error,
+        description: error.message || "Impossibile aggiornare la password",
         variant: "destructive",
       });
+    } finally {
+      setIsSubmitting(false);
     }
-
-    setIsSubmitting(false);
   };
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <div className="w-full max-w-sm animate-fade-up">
-        {/* Header */}
         <div className="flex flex-col items-center mb-8">
           <div className="w-16 h-16 rounded-2xl bg-accent flex items-center justify-center mb-4">
             <Shield className="w-8 h-8 text-accent-foreground" />
@@ -67,7 +75,7 @@ export default function ChangePassword() {
           <p className="text-muted-foreground text-sm mt-1 text-center">
             Ciao <span className="font-medium text-foreground">{currentUser}</span>!
             <br />
-            Crea una nuova password sicura
+            Crea una nuova password sicura nel cloud.
           </p>
         </div>
 
@@ -108,7 +116,6 @@ export default function ChangePassword() {
                   </button>
                 </div>
                 
-                {/* Password strength indicator */}
                 <div className="flex items-center gap-2 text-xs">
                   <div
                     className={cn(
@@ -160,7 +167,7 @@ export default function ChangePassword() {
                 size="lg"
                 disabled={!canSubmit || isSubmitting}
               >
-                Salva nuova password
+                {isSubmitting ? "Salvataggio..." : "Salva nuova password"}
               </Button>
             </form>
           </CardContent>
