@@ -1,12 +1,10 @@
 import { z } from "zod";
 
-// Password validation schema (8-16 characters)
 export const passwordSchema = z
   .string()
   .min(8, "La password deve avere almeno 8 caratteri")
   .max(16, "La password deve avere massimo 16 caratteri");
 
-// Predefined users
 export const PREDEFINED_USERS = [
   "alessandra.avantaggiato",
   "alessandro.vito.bellomo",
@@ -47,37 +45,39 @@ export interface AuthState {
   requiresPasswordChange: boolean;
 }
 
-// Initialize users in localStorage if not exists
 function initializeUsers(): Record<Username, UserData> {
   const stored = localStorage.getItem(USERS_STORAGE_KEY);
-  if (stored) {
-    return JSON.parse(stored);
-  }
+  let users: Record<string, UserData> = stored ? JSON.parse(stored) : {};
 
-  const users: Record<string, UserData> = {};
+  let needsUpdate = false;
+
+  // Sincronizzazione: Aggiungiamo utenti mancanti dalla lista PREDEFINED_USERS
   PREDEFINED_USERS.forEach((username) => {
-    users[username] = {
-      username,
-      password: INITIAL_PASSWORD,
-      hasChangedPassword: false,
-    };
+    if (!users[username]) {
+      users[username] = {
+        username: username as Username,
+        password: INITIAL_PASSWORD,
+        hasChangedPassword: false,
+      };
+      needsUpdate = true;
+    }
   });
 
-  localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(users));
+  if (needsUpdate || !stored) {
+    localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(users));
+  }
+
   return users as Record<Username, UserData>;
 }
 
-// Get all users
 export function getUsers(): Record<Username, UserData> {
   return initializeUsers();
 }
 
-// Save users
 function saveUsers(users: Record<Username, UserData>): void {
   localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(users));
 }
 
-// Get auth state
 export function getAuthState(): AuthState {
   const stored = localStorage.getItem(AUTH_STORAGE_KEY);
   if (stored) {
@@ -90,26 +90,31 @@ export function getAuthState(): AuthState {
   };
 }
 
-// Save auth state
 function saveAuthState(state: AuthState): void {
   localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(state));
 }
 
-// Login
 export function login(
   username: string,
   password: string
 ): { success: boolean; error?: string; requiresPasswordChange?: boolean } {
+  // Pulizia input: rimuove spazi e trasforma in minuscolo
   const trimmedUsername = username.trim().toLowerCase();
   const users = getUsers();
 
+  // Verifica se l'utente esiste nella lista ufficiale
   if (!PREDEFINED_USERS.includes(trimmedUsername as Username)) {
-    return { success: false, error: "Nome utente non valido" };
+    return { success: false, error: "Nome utente non trovato" };
   }
 
   const user = users[trimmedUsername as Username];
+  
+  if (!user) {
+    return { success: false, error: "Errore di sincronizzazione utente" };
+  }
+
   if (user.password !== password) {
-    return { success: false, error: "Password non corretta" };
+    return { success: false, error: "Password errata per " + trimmedUsername };
   }
 
   const authState: AuthState = {
@@ -125,71 +130,37 @@ export function login(
   };
 }
 
-// Change password
-export function changePassword(
-  newPassword: string
-): { success: boolean; error?: string } {
+// ... il resto del file (changePassword, logout, etc.) rimane uguale
+export function changePassword(newPassword: string): { success: boolean; error?: string } {
   const authState = getAuthState();
-  if (!authState.currentUser) {
-    return { success: false, error: "Utente non autenticato" };
-  }
-
-  // Validate password
+  if (!authState.currentUser) return { success: false, error: "Utente non autenticato" };
   const result = passwordSchema.safeParse(newPassword);
-  if (!result.success) {
-    return { success: false, error: result.error.errors[0].message };
-  }
-
+  if (!result.success) return { success: false, error: result.error.errors[0].message };
   const users = getUsers();
-  users[authState.currentUser] = {
-    ...users[authState.currentUser],
-    password: newPassword,
-    hasChangedPassword: true,
-  };
+  users[authState.currentUser] = { ...users[authState.currentUser], password: newPassword, hasChangedPassword: true };
   saveUsers(users);
-
-  // Update auth state
-  saveAuthState({
-    ...authState,
-    requiresPasswordChange: false,
-  });
-
+  saveAuthState({ ...authState, requiresPasswordChange: false });
   return { success: true };
 }
 
-// Logout
 export function logout(): void {
-  saveAuthState({
-    isAuthenticated: false,
-    currentUser: null,
-    requiresPasswordChange: false,
-  });
+  saveAuthState({ isAuthenticated: false, currentUser: null, requiresPasswordChange: false });
 }
 
-// Get user-specific storage key
 export function getUserStorageKey(key: string): string {
   const authState = getAuthState();
-  if (!authState.currentUser) {
-    throw new Error("User not authenticated");
-  }
+  if (!authState.currentUser) throw new Error("User not authenticated");
   return `erga_${authState.currentUser}_${key}`;
 }
 
-// Get user data from localStorage
 export function getUserData<T>(key: string, defaultValue: T): T {
   try {
     const storageKey = getUserStorageKey(key);
     const stored = localStorage.getItem(storageKey);
-    if (stored) {
-      return JSON.parse(stored);
-    }
-    return defaultValue;
-  } catch {
-    return defaultValue;
-  }
+    return stored ? JSON.parse(stored) : defaultValue;
+  } catch { return defaultValue; }
 }
 
-// Save user data to localStorage
 export function saveUserData<T>(key: string, data: T): void {
   const storageKey = getUserStorageKey(key);
   localStorage.setItem(storageKey, JSON.stringify(data));
