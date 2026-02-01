@@ -65,22 +65,22 @@ export function MiniLesson({
   return (
     <div className="space-y-5 animate-fade-up">
       {/* Progress Header */}
-      <div className="bg-card rounded-2xl p-4 shadow-soft-sm border border-border/50">
+      <div className="glass-subtle rounded-2xl p-4 shadow-glass">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-xl bg-primary/15 flex items-center justify-center">
+            <div className="w-9 h-9 rounded-xl bg-primary/15 flex items-center justify-center">
               <Target className="w-4 h-4 text-primary" />
             </div>
             <span className="font-heading font-semibold">
               Lezione {currentIndex + 1} di {totalLessons}
             </span>
           </div>
-          <div className="flex items-center gap-1.5 text-sm text-muted-foreground bg-muted px-3 py-1.5 rounded-full">
+          <div className="flex items-center gap-1.5 text-sm text-muted-foreground glass-subtle px-3 py-1.5 rounded-full">
             <Clock className="w-3.5 h-3.5" />
             <span>~{lesson.duration} min</span>
           </div>
         </div>
-        <div className="h-2.5 bg-muted rounded-full overflow-hidden">
+        <div className="h-2.5 bg-muted/50 rounded-full overflow-hidden">
           <div 
             className="h-full progress-animated rounded-full transition-all duration-500"
             style={{ width: `${progress}%` }}
@@ -88,11 +88,11 @@ export function MiniLesson({
         </div>
       </div>
 
-      {/* Concept Card */}
-      <Card className="border-0 bg-gradient-to-br from-primary/15 to-tertiary/10 shadow-soft-md overflow-hidden">
+      {/* Concept Card - Glass effect */}
+      <Card className="border-0 glass-primary shadow-glass-md overflow-hidden">
         <CardHeader className="pb-2">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-xl bg-primary flex items-center justify-center">
+            <div className="w-9 h-9 rounded-xl bg-primary flex items-center justify-center shadow-sm">
               <Lightbulb className="w-4 h-4 text-primary-foreground" />
             </div>
             <span className="text-sm font-semibold text-primary uppercase tracking-wide">
@@ -107,11 +107,11 @@ export function MiniLesson({
         </CardContent>
       </Card>
 
-      {/* Lesson Content */}
-      <Card className="shadow-soft-md border-border/50">
+      {/* Lesson Content - Glass card */}
+      <Card className="glass-subtle shadow-glass-md border-0">
         <CardHeader>
           <CardTitle className="flex items-center gap-3 font-heading">
-            <div className="w-10 h-10 rounded-xl bg-tertiary/15 flex items-center justify-center">
+            <div className="w-11 h-11 rounded-xl bg-tertiary/15 flex items-center justify-center">
               <BookOpen className="w-5 h-5 text-tertiary" />
             </div>
             <span className="text-xl">{lesson.title}</span>
@@ -122,9 +122,9 @@ export function MiniLesson({
             {lesson.explanation}
           </p>
 
-          {/* Example */}
+          {/* Example - subtle glass accent */}
           {lesson.example && (
-            <div className="p-5 rounded-2xl bg-secondary/70 border-l-4 border-accent">
+            <div className="p-5 rounded-2xl glass-accent border-l-4 border-accent">
               <p className="text-sm font-semibold text-accent mb-2 flex items-center gap-2">
                 <span className="text-lg">💡</span> Esempio pratico
               </p>
@@ -136,19 +136,19 @@ export function MiniLesson({
 
       {/* Exercises Section */}
       {hasExercises && (
-        <Card className="shadow-soft-md border-border/50 overflow-hidden">
+        <Card className="glass-subtle shadow-glass-md border-0 overflow-hidden">
           <CardHeader 
             className={cn(
-              "cursor-pointer transition-colors",
-              showExercises ? "bg-accent/10" : "hover:bg-muted/50"
+              "cursor-pointer transition-all duration-300",
+              showExercises ? "bg-accent/10" : "hover:bg-muted/30"
             )}
             onClick={() => !showExercises && handleStartExercises()}
           >
             <CardTitle className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className={cn(
-                  "w-10 h-10 rounded-xl flex items-center justify-center transition-colors",
-                  showExercises ? "bg-accent text-accent-foreground" : "bg-accent/15"
+                  "w-11 h-11 rounded-xl flex items-center justify-center transition-all duration-300",
+                  showExercises ? "bg-accent text-accent-foreground shadow-sm" : "bg-accent/15"
                 )}>
                   <Dumbbell className={cn("w-5 h-5", !showExercises && "text-accent")} />
                 </div>
@@ -239,7 +239,7 @@ export function MiniLesson({
       {!hasExercises || allExercisesCompleted ? (
         <Button 
           onClick={onNext} 
-          className="w-full h-14 text-base font-semibold gradient-primary text-white border-0 shadow-soft-md hover:shadow-soft-lg transition-all" 
+          className="w-full h-14 text-base font-semibold gradient-primary text-white border-0 rounded-2xl shadow-glass-md hover:shadow-glass-lg transition-all duration-300 hover:scale-[1.02] active:scale-100" 
           size="lg"
         >
           {isLastLesson ? "Completa corso 🎓" : "Prossima lezione"}
@@ -248,7 +248,7 @@ export function MiniLesson({
       ) : !showExercises ? (
         <Button 
           onClick={handleStartExercises} 
-          className="w-full h-14 text-base font-semibold bg-accent hover:bg-accent/90 text-accent-foreground shadow-soft-md hover:shadow-soft-lg transition-all" 
+          className="w-full h-14 text-base font-semibold bg-accent hover:bg-accent/90 text-accent-foreground rounded-2xl shadow-glass-md hover:shadow-glass-lg transition-all duration-300 hover:scale-[1.02] active:scale-100" 
           size="lg"
         >
           Inizia esercizi

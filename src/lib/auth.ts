@@ -47,18 +47,39 @@ export interface AuthState {
 
 function initializeUsers(): Record<Username, UserData> {
   const stored = localStorage.getItem(USERS_STORAGE_KEY);
-  let users: Record<string, UserData> = stored ? JSON.parse(stored) : {};
+  let users: Record<string, UserData> = {};
+  
+  // Carica utenti esistenti se presenti
+  if (stored) {
+    try {
+      users = JSON.parse(stored);
+    } catch {
+      users = {};
+    }
+  }
 
   let needsUpdate = false;
 
   // Sincronizzazione: Aggiungiamo utenti mancanti dalla lista PREDEFINED_USERS
+  // e resettiamo quelli corrotti
   PREDEFINED_USERS.forEach((username) => {
-    if (!users[username]) {
+    const existingUser = users[username];
+    
+    // Se l'utente non esiste o è corrotto, lo (ri)creiamo
+    if (!existingUser || typeof existingUser.password !== 'string') {
       users[username] = {
         username: username as Username,
         password: INITIAL_PASSWORD,
         hasChangedPassword: false,
       };
+      needsUpdate = true;
+    }
+  });
+
+  // Rimuovi utenti che non sono più nella lista predefinita
+  Object.keys(users).forEach((key) => {
+    if (!PREDEFINED_USERS.includes(key as Username)) {
+      delete users[key];
       needsUpdate = true;
     }
   });

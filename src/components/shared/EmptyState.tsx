@@ -7,25 +7,32 @@ interface EmptyStateProps {
 
 export function EmptyState({ onUploadClick }: EmptyStateProps) {
   return (
-    <div className="flex flex-col items-center justify-center min-h-[70vh] px-6 text-center animate-fade-up">
-      {/* Decorative background */}
+    <div className="flex flex-col items-center justify-center min-h-[70vh] px-6 text-center animate-fade-up relative">
+      {/* Decorative glass orbs */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-20 -right-20 w-64 h-64 bg-primary/5 rounded-full blur-3xl" />
-        <div className="absolute -bottom-20 -left-20 w-64 h-64 bg-tertiary/5 rounded-full blur-3xl" />
+        <div className="absolute -top-20 -right-20 w-72 h-72 bg-gradient-to-br from-primary/15 to-tertiary/10 rounded-full blur-3xl animate-float" />
+        <div className="absolute -bottom-20 -left-20 w-72 h-72 bg-gradient-to-tr from-accent/10 to-primary/5 rounded-full blur-3xl animate-float" style={{ animationDelay: '-3s' }} />
       </div>
 
       <div className="relative z-10">
-        {/* Animated icon */}
+        {/* Animated icon with floating badges */}
         <div className="relative mb-8">
-          <div className="w-24 h-24 rounded-3xl gradient-primary flex items-center justify-center shadow-soft-xl animate-bounce-in">
-            <Sparkles className="w-12 h-12 text-white" />
+          <div className="w-28 h-28 rounded-[2rem] gradient-primary flex items-center justify-center shadow-glass-xl animate-bounce-in">
+            <Sparkles className="w-14 h-14 text-white" />
           </div>
-          {/* Floating badges */}
-          <div className="absolute -right-2 -top-2 w-10 h-10 rounded-xl bg-accent flex items-center justify-center shadow-soft-md animate-bounce-in" style={{ animationDelay: "0.1s" }}>
-            <BookOpen className="w-5 h-5 text-white" />
+          {/* Floating badge - top right */}
+          <div 
+            className="absolute -right-3 -top-3 w-12 h-12 rounded-xl bg-accent/90 flex items-center justify-center shadow-glass-md animate-bounce-in backdrop-blur-sm" 
+            style={{ animationDelay: "0.15s" }}
+          >
+            <BookOpen className="w-6 h-6 text-white" />
           </div>
-          <div className="absolute -left-2 -bottom-2 w-10 h-10 rounded-xl bg-tertiary flex items-center justify-center shadow-soft-md animate-bounce-in" style={{ animationDelay: "0.2s" }}>
-            <Brain className="w-5 h-5 text-white" />
+          {/* Floating badge - bottom left */}
+          <div 
+            className="absolute -left-3 -bottom-3 w-12 h-12 rounded-xl bg-tertiary/90 flex items-center justify-center shadow-glass-md animate-bounce-in backdrop-blur-sm" 
+            style={{ animationDelay: "0.3s" }}
+          >
+            <Brain className="w-6 h-6 text-white" />
           </div>
         </div>
         
@@ -40,7 +47,7 @@ export function EmptyState({ onUploadClick }: EmptyStateProps) {
         <Button
           onClick={onUploadClick}
           size="lg"
-          className="h-14 px-8 text-base font-semibold gradient-primary text-white border-0 shadow-soft-lg hover:shadow-soft-xl transition-all duration-300 hover:scale-105"
+          className="h-14 px-8 text-base font-semibold gradient-primary text-white border-0 rounded-2xl shadow-glass-lg hover:shadow-glass-xl transition-all duration-300 hover:scale-105 active:scale-100"
         >
           <FileUp className="w-5 h-5 mr-2" />
           Carica PDF
@@ -48,14 +55,11 @@ export function EmptyState({ onUploadClick }: EmptyStateProps) {
         
         <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
           {[
-            { label: "Appunti", color: "chip-primary" },
-            { label: "Dispense", color: "chip-tertiary" },
-            { label: "Libri", color: "chip-accent" },
+            { label: "Appunti", className: "chip-primary" },
+            { label: "Dispense", className: "chip-tertiary" },
+            { label: "Libri", className: "chip-accent" },
           ].map((item) => (
-            <span
-              key={item.label}
-              className={item.color}
-            >
+            <span key={item.label} className={item.className}>
               {item.label}
             </span>
           ))}

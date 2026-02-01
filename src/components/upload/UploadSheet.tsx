@@ -204,13 +204,13 @@ export function UploadSheet({ open, onOpenChange, onUpload, uploadedFiles, onSel
   if (generationStep !== "idle") {
     return (
       <Sheet open={open} onOpenChange={() => {}}>
-        <SheetContent side="bottom" className="rounded-t-3xl pb-safe h-auto">
+        <SheetContent side="bottom" className="rounded-t-[2rem] pb-safe h-auto glass-strong border-t-0">
           <div className="py-8 px-4">
             <div className="flex flex-col items-center text-center mb-8">
               <div className={cn(
-                "w-20 h-20 rounded-3xl flex items-center justify-center mb-4 transition-all duration-500",
+                "w-20 h-20 rounded-3xl flex items-center justify-center mb-4 transition-all duration-500 shadow-glass-lg",
                 generationStep === "complete" 
-                  ? "bg-success/15" 
+                  ? "bg-success/20" 
                   : "gradient-primary animate-pulse-soft"
               )}>
                 {generationStep === "complete" ? (
@@ -233,7 +233,7 @@ export function UploadSheet({ open, onOpenChange, onUpload, uploadedFiles, onSel
                 <span className="font-medium">{getStepLabel()}</span>
                 <span className="text-primary font-bold">{getStepProgress()}%</span>
               </div>
-              <div className="h-3 bg-muted rounded-full overflow-hidden">
+              <div className="h-3 bg-muted/50 rounded-full overflow-hidden glass-subtle">
                 <div
                   className={cn(
                     "h-full rounded-full transition-all duration-700 ease-out",
@@ -251,7 +251,7 @@ export function UploadSheet({ open, onOpenChange, onUpload, uploadedFiles, onSel
                 { step: "processing", label: "Analisi", icon: FileText },
                 { step: "generating", label: "AI", icon: Sparkles },
                 { step: "complete", label: "Fatto", icon: Check },
-              ].map(({ step, label, icon: Icon }, index) => {
+              ].map(({ step, label, icon: Icon }) => {
                 const stepOrder = ["uploading", "processing", "generating", "complete"];
                 const currentIndex = stepOrder.indexOf(generationStep);
                 const stepIndex = stepOrder.indexOf(step);
@@ -262,10 +262,10 @@ export function UploadSheet({ open, onOpenChange, onUpload, uploadedFiles, onSel
                   <div key={step} className="flex flex-col items-center">
                     <div
                       className={cn(
-                        "w-10 h-10 rounded-xl flex items-center justify-center mb-1 transition-all duration-300",
-                        isActive && "bg-primary text-primary-foreground scale-110",
+                        "w-11 h-11 rounded-xl flex items-center justify-center mb-1.5 transition-all duration-300",
+                        isActive && "bg-primary text-primary-foreground scale-110 shadow-glass-md",
                         isComplete && "bg-success/15 text-success",
-                        !isActive && !isComplete && "bg-muted text-muted-foreground"
+                        !isActive && !isComplete && "bg-muted/50 text-muted-foreground"
                       )}
                     >
                       <Icon className={cn("w-5 h-5", isActive && step !== "complete" && "animate-pulse")} />
@@ -290,17 +290,23 @@ export function UploadSheet({ open, onOpenChange, onUpload, uploadedFiles, onSel
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="bottom" className="rounded-t-3xl pb-safe h-[85vh]">
+      <SheetContent side="bottom" className="rounded-t-[2rem] pb-safe h-[85vh] glass-strong border-t-0">
         <SheetHeader className="mb-4">
           <SheetTitle className="font-heading text-xl">I tuoi materiali</SheetTitle>
         </SheetHeader>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1">
-          <TabsList className="grid w-full grid-cols-2 mb-4 p-1 h-12">
-            <TabsTrigger value="upload" className="rounded-xl data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+          <TabsList className="grid w-full grid-cols-2 mb-4 p-1.5 h-13 glass-subtle rounded-2xl">
+            <TabsTrigger 
+              value="upload" 
+              className="rounded-xl data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm transition-all duration-300"
+            >
               Carica nuovo
             </TabsTrigger>
-            <TabsTrigger value="manage" className="rounded-xl data-[state=active]:bg-tertiary data-[state=active]:text-tertiary-foreground">
+            <TabsTrigger 
+              value="manage" 
+              className="rounded-xl data-[state=active]:bg-tertiary data-[state=active]:text-tertiary-foreground data-[state=active]:shadow-sm transition-all duration-300"
+            >
               Gestisci file
             </TabsTrigger>
           </TabsList>
@@ -311,8 +317,8 @@ export function UploadSheet({ open, onOpenChange, onUpload, uploadedFiles, onSel
               className={cn(
                 "relative border-2 border-dashed rounded-3xl p-8 text-center transition-all duration-300",
                 dragActive
-                  ? "border-primary bg-primary/5 scale-[1.02]"
-                  : "border-border hover:border-primary/50 hover:bg-surface-1",
+                  ? "border-primary bg-primary/5 scale-[1.02] shadow-glow"
+                  : "border-border/50 hover:border-primary/40 hover:bg-surface-1",
                 isUploading && "pointer-events-none opacity-50"
               )}
               onDragEnter={handleDrag}
@@ -329,7 +335,7 @@ export function UploadSheet({ open, onOpenChange, onUpload, uploadedFiles, onSel
                 disabled={isUploading}
               />
               
-              <div className="w-16 h-16 rounded-2xl gradient-primary flex items-center justify-center mx-auto mb-4 shadow-soft-md">
+              <div className="w-16 h-16 rounded-2xl gradient-primary flex items-center justify-center mx-auto mb-4 shadow-glass-md">
                 <FileUp className="w-8 h-8 text-white" />
               </div>
               
@@ -394,7 +400,7 @@ export function UploadSheet({ open, onOpenChange, onUpload, uploadedFiles, onSel
             <Button
               onClick={handleUpload}
               disabled={selectedFiles.length === 0 || isUploading}
-              className="w-full h-14 text-base font-semibold gradient-primary text-white border-0 shadow-soft-md hover:shadow-soft-lg transition-all"
+              className="w-full h-14 text-base font-semibold gradient-primary text-white border-0 rounded-2xl shadow-glass-md hover:shadow-glass-lg transition-all duration-300 hover:scale-[1.02] active:scale-100"
               size="lg"
             >
               {isUploading ? (
