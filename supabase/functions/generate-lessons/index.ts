@@ -191,6 +191,7 @@ serve(async (req) => {
 
   } catch (error) {
     console.error("Error:", error);
-    return new Response(JSON.stringify({ error: error.message }), { status: 500, headers: corsHeaders });
+    const errorMessage = error instanceof Error ? error.message : "Errore sconosciuto";
+    return new Response(JSON.stringify({ error: errorMessage }), { status: 500, headers: corsHeaders });
   }
 });
