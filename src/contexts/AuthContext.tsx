@@ -12,11 +12,10 @@ import {
 
 interface AuthContextType {
   isAuthenticated: boolean;
-  // Ora accettiamo string generiche (email di Google) o gli Username legacy
-  currentUser: string | null; 
+  currentUser: string | null;
   requiresPasswordChange: boolean;
   isLoading: boolean;
-  isGoogleUser: boolean; // Utile per nascondere opzioni "cambia password" ai Google user
+  isGoogleUser: boolean;
   login: (username: string, password: string) => { success: boolean; error?: string; requiresPasswordChange?: boolean };
   logout: () => Promise<void>;
   changePassword: (newPassword: string) => { success: boolean; error?: string };
@@ -26,41 +25,41 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  // 1. Stato per l'autenticazione Locale (Beta Testers)
   const [localAuthState, setLocalAuthState] = useState<AuthState>({
     isAuthenticated: false,
     currentUser: null,
     requiresPasswordChange: false,
   });
-
-  // 2. Stato per l'autenticazione Supabase (Google / Nuovi Utenti)
   const [supabaseSession, setSupabaseSession] = useState<Session | null>(null);
-  
   const [isLoading, setIsLoading] = useState(true);
 
-  // Funzione per aggiornare lo stato locale
   const refreshAuthState = useCallback(() => {
     const state = getAuthState();
     setLocalAuthState(state);
   }, []);
 
-  // INIT: Controlla sia Supabase che Locale al caricamento
   useEffect(() => {
     let mounted = true;
 
     async function initAuth() {
       try {
-        // A. Controlla sessione Supabase esistente
+        // 1. Controlla subito la sessione esistente (importante al ritorno da Google)
         const { data: { session } } = await supabase.auth.getSession();
+        
         if (mounted) {
-          setSupabaseSession(session);
+          if (session) {
+            console.log("Sessione Google trovata:", session.user.email);
+            setSupabaseSession(session);
+            authLogout(); // Pulisce sessioni legacy se entra con Google
+          }
+          refreshAuthState();
         }
 
-        // B. Ascolta i cambiamenti di Supabase (es. login con Google completato)
-        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+        // 2. Resta in ascolto di cambi di stato
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+          console.log("Evento Auth rilevato:", event);
           if (mounted) {
             setSupabaseSession(session);
-            // Se entra con Google, puliamo eventuali sessioni locali per evitare conflitti
             if (session) {
               authLogout();
               refreshAuthState();
@@ -68,75 +67,46 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }
         });
 
-        // C. Carica stato locale
-        refreshAuthState();
-
-        return () => {
-          subscription.unsubscribe();
-        };
+        return () => subscription.unsubscribe();
       } catch (error) {
         console.error("Errore inizializzazione Auth:", error);
       } finally {
-        if (mounted) setIsLoading(false);
+        if (mounted) {
+          // Aspettiamo un piccolo tick per essere sicuri che lo stato sia propagato
+          setTimeout(() => setIsLoading(false), 100);
+        }
       }
     }
 
     initAuth();
-
-    return () => {
-      mounted = false;
-    };
+    return () => { mounted = false; };
   }, [refreshAuthState]);
 
-  // --- LOGICA IBRIDA ---
-  
-  // L'utente è autenticato se lo è su Supabase OPPURE in locale
+  // Logica Ibrida
   const isAuthenticated = !!supabaseSession || localAuthState.isAuthenticated;
-  
-  // L'utente corrente è l'email di Google OPPURE lo username locale
   const currentUser = supabaseSession?.user?.email || localAuthState.currentUser;
-  
-  // Google users non devono cambiare password qui (lo fanno su Google)
-  const requiresPasswordChange = !supabaseSession && localAuthState.requiresPasswordChange;
   const isGoogleUser = !!supabaseSession;
+  const requiresPasswordChange = !isGoogleUser && localAuthState.requiresPasswordChange;
 
-  // Login Manuale (Legacy)
   const login = useCallback((username: string, password: string) => {
     const result = authLogin(username, password);
-    if (result.success) {
-      refreshAuthState();
-    }
+    if (result.success) refreshAuthState();
     return result;
   }, [refreshAuthState]);
 
-  // Logout Unificato (Pulisce sia Google che Locale)
   const logout = useCallback(async () => {
-    try {
-      // 1. Logout da Supabase
-      if (supabaseSession) {
-        await supabase.auth.signOut();
-      }
-      // 2. Logout Locale
-      authLogout();
-      refreshAuthState();
-      setSupabaseSession(null);
-    } catch (error) {
-      console.error("Errore durante il logout:", error);
-    }
+    if (supabaseSession) await supabase.auth.signOut();
+    authLogout();
+    setSupabaseSession(null);
+    refreshAuthState();
   }, [supabaseSession, refreshAuthState]);
 
   const changePassword = useCallback((newPassword: string) => {
-    // Non permettere cambio password locale se sei loggato con Google
-    if (supabaseSession) {
-      return { success: false, error: "Non puoi cambiare la password di Google da qui." };
-    }
-    
+    if (isGoogleUser) return { success: false, error: "Usa le impostazioni di Google per cambiare password." };
     const result = authChangePassword(newPassword);
-    if (result.success) {
-      refreshAuthState();
-    }
+    if (result.success) refreshAuthState();
     return result;
-  }, [refreshAuthState, supabaseSession]);
+  }, [isGoogleUser, refreshAuthState]);
 
   return (
     <AuthContext.Provider
@@ -159,8 +129,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
 export function useAuth() {
   const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error("useAuth must be used within an AuthProvider");
-  }
+  if (!context) throw new Error("useAuth must be used within an AuthProvider");
   return context;
 }
