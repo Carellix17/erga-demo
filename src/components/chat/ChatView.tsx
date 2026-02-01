@@ -15,6 +15,7 @@ type Message = {
   id: string;
   role: "user" | "assistant";
   content: string;
+  imageUrl?: string;
 };
 
 const welcomeMessage: Message = {
@@ -42,22 +43,26 @@ export function ChatView({ hasFiles, onUploadClick }: ChatViewProps) {
     return <EmptyState onUploadClick={onUploadClick} />;
   }
 
-  const handleSend = async (content: string) => {
+  const handleSend = async (content: string, imageUrl?: string) => {
     if (!currentUser) return;
 
     const userMessage: Message = {
       id: String(Date.now()),
       role: "user",
       content,
+      imageUrl,
     };
 
     setMessages((prev) => [...prev, userMessage]);
     setIsLoading(true);
 
     // Prepare messages for API (exclude welcome message id issues)
+    // Include image info in the message content if present
     const apiMessages = [...messages.filter(m => m.id !== "welcome"), userMessage].map(m => ({
       role: m.role,
-      content: m.content,
+      content: m.imageUrl 
+        ? `[L'utente ha allegato un'immagine] ${m.content}` 
+        : m.content,
     }));
 
     let assistantContent = "";
@@ -205,8 +210,15 @@ export function ChatView({ hasFiles, onUploadClick }: ChatViewProps) {
         ))}
         {isLoading && (
           <div className="flex gap-3">
-            <div className="w-8 h-8 rounded-xl bg-primary/15 flex items-center justify-center">
+            <div className="w-9 h-9 rounded-xl bg-primary/15 flex items-center justify-center">
               <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+            </div>
+            <div className="glass-subtle rounded-2xl rounded-bl-md px-4 py-3 shadow-glass">
+              <div className="flex gap-1">
+                <div className="w-2 h-2 bg-primary/50 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
+                <div className="w-2 h-2 bg-primary/50 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
+                <div className="w-2 h-2 bg-primary/50 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+              </div>
             </div>
           </div>
         )}
@@ -214,7 +226,7 @@ export function ChatView({ hasFiles, onUploadClick }: ChatViewProps) {
       </div>
 
       {/* Input Area */}
-      <div className="p-4 pb-20 bg-background border-t border-border/50 space-y-3">
+      <div className="p-4 pb-20 glass-strong border-t-0 space-y-3">
         <QuickActions onAction={handleQuickAction} />
         <ChatInput onSend={handleSend} disabled={isLoading} />
       </div>
