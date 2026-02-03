@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { corsHeaders, errorResponse, successResponse } from "../_shared/auth.ts";
+import { validateAuth, corsHeaders, errorResponse, successResponse } from "../_shared/auth.ts";
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -9,16 +9,52 @@ serve(async (req) => {
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
   const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-  const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
   try {
-    const { userId, fileName, filePath, contextId, action } = await req.json();
+    const body = await req.json();
+    const { fileName, filePath, contextId, action } = body;
+
+    // Check if this is an internal service call (from upload-pdf background processing)
+    const authHeader = req.headers.get("Authorization");
+    const isInternalServiceCall = authHeader === `Bearer ${supabaseServiceKey}`;
+
+    let userId: string;
+    let supabase;
+
+    if (isInternalServiceCall) {
+      // Internal call from upload-pdf - trust the service role
+      console.log("Internal service call for PDF processing");
+      supabase = createClient(supabaseUrl, supabaseServiceKey);
+      
+      // For internal calls processing a context, we get userId from the context record
+      if (action === "process" && contextId) {
+        const { data: context, error: fetchError } = await supabase
+          .from("study_contexts")
+          .select("user_id")
+          .eq("id", contextId)
+          .single();
+        
+        if (fetchError || !context) {
+          console.error("Context not found:", fetchError);
+          return errorResponse("Contesto non trovato", 404);
+        }
+        userId = context.user_id;
+      } else {
+        return errorResponse("Invalid internal service call", 400);
+      }
+    } else {
+      // External call - validate user authentication
+      const auth = await validateAuth(req, body);
+      userId = auth.userId;
+      supabase = auth.supabase;
+      console.log(`Extract PDF for user: ${userId} (authenticated: ${auth.isAuthenticated})`);
+    }
 
     // Action: process - Process an existing context record
     if (action === "process" && contextId) {
       console.log(`Processing PDF for context: ${contextId}`);
       
-      // Get the context record
+      // Get the context record and verify ownership
       const { data: context, error: fetchError } = await supabase
         .from("study_contexts")
         .select("*")
@@ -30,11 +66,18 @@ serve(async (req) => {
         return errorResponse("Contesto non trovato", 404);
       }
 
+      // SECURITY: Verify the user owns this context
+      if (context.user_id !== userId) {
+        console.error(`Unauthorized access: user ${userId} tried to access context owned by ${context.user_id}`);
+        return errorResponse("Non autorizzato", 403);
+      }
+
       // Update status to processing
       await supabase
         .from("study_contexts")
         .update({ processing_status: "processing" })
-        .eq("id", contextId);
+        .eq("id", contextId)
+        .eq("user_id", userId); // Additional safety check
 
       try {
         // Download the PDF from storage
@@ -97,14 +140,15 @@ serve(async (req) => {
       } catch (processError) {
         console.error("Processing error:", processError);
         
-        // Mark as failed
+        // Mark as failed - include user_id check for safety
         await supabase
           .from("study_contexts")
           .update({
             processing_status: "failed",
             error_message: processError instanceof Error ? processError.message : "Errore sconosciuto"
           })
-          .eq("id", contextId);
+          .eq("id", contextId)
+          .eq("user_id", userId); // Safety check
 
         return errorResponse(processError instanceof Error ? processError.message : "Errore durante l'elaborazione");
       }
