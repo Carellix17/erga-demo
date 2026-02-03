@@ -8,15 +8,13 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
-// Importiamo il client di Supabase per parlare con il cloud
-import { supabase } from "@/integrations/supabase/client";
 
 export default function ChangePassword() {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { currentUser } = useAuth(); 
+  const { currentUser, changePassword, isGoogleUser } = useAuth(); 
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -40,18 +38,29 @@ export default function ChangePassword() {
     setIsSubmitting(true);
 
     try {
-      // Aggiorniamo la password direttamente su Supabase (Cloud)
-      const { error } = await supabase.auth.updateUser({
-        password: newPassword
-      });
+      // Per gli utenti Google, non dovrebbero essere qui
+      if (isGoogleUser) {
+        toast({
+          title: "Errore",
+          description: "Usa le impostazioni di Google per cambiare password",
+          variant: "destructive",
+        });
+        navigate("/");
+        return;
+      }
 
-      if (error) throw error;
+      // Per gli utenti predefiniti (localStorage)
+      const result = changePassword(newPassword);
 
-      toast({
-        title: "Password aggiornata",
-        description: "La tua nuova password è stata salvata nel cloud!",
-      });
-      navigate("/");
+      if (result.success) {
+        toast({
+          title: "Password aggiornata",
+          description: "La tua nuova password è stata salvata!",
+        });
+        navigate("/");
+      } else {
+        throw new Error(result.error || "Impossibile aggiornare la password");
+      }
       
     } catch (error: any) {
       toast({
