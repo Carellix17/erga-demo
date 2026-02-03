@@ -38,6 +38,8 @@ export function StudioView({ hasFiles, onUploadClick, selectedContextId, onClear
   const { currentUser } = useAuth();
   const { toast } = useToast();
 
+  const [contextStatus, setContextStatus] = useState<string | null>(null);
+
   const fetchLessons = useCallback(async () => {
     if (!currentUser || !hasFiles) return;
 
@@ -68,26 +70,32 @@ export function StudioView({ hasFiles, onUploadClick, selectedContextId, onClear
         setCurrentLessonIndex(data.currentIndex || 0);
       }
 
-      // If context is selected, get its name
-      if (selectedContextId) {
-        const contextsResponse = await fetch(
-          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-lessons`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-            },
-            body: JSON.stringify({ userId: currentUser, action: "listContexts" }),
-          }
-        );
-        const contextsData = await contextsResponse.json();
-        if (contextsData.contexts) {
-          const ctx = contextsData.contexts.find((c: { id: string }) => c.id === selectedContextId);
-          setContextFileName(ctx?.file_name || null);
+      // Always check context status and name
+      const contextsResponse = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-lessons`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          },
+          body: JSON.stringify({ userId: currentUser, action: "listContexts" }),
+        }
+      );
+      const contextsData = await contextsResponse.json();
+      if (contextsData.contexts && contextsData.contexts.length > 0) {
+        // Find context - either selected or the first one
+        const ctx = selectedContextId 
+          ? contextsData.contexts.find((c: { id: string }) => c.id === selectedContextId)
+          : contextsData.contexts[0];
+        
+        if (ctx) {
+          setContextFileName(ctx.file_name || null);
+          setContextStatus(ctx.processing_status || null);
         }
       } else {
         setContextFileName(null);
+        setContextStatus(null);
       }
     } catch (error) {
       console.error("Error fetching lessons:", error);
@@ -284,34 +292,66 @@ export function StudioView({ hasFiles, onUploadClick, selectedContextId, onClear
   }
 
   if (lessons.length === 0) {
+    // Check if PDF is still processing
+    const isPdfProcessing = contextStatus === "pending" || contextStatus === "processing";
+    const isPdfFailed = contextStatus === "failed";
+
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-5 p-6 text-center">
-        <div className="w-20 h-20 rounded-3xl bg-tertiary/15 flex items-center justify-center">
-          <RefreshCw className="w-10 h-10 text-tertiary" />
+        <div className={`w-20 h-20 rounded-3xl flex items-center justify-center ${
+          isPdfProcessing ? "gradient-primary animate-pulse-soft" : 
+          isPdfFailed ? "bg-destructive/15" : "bg-tertiary/15"
+        }`}>
+          {isPdfProcessing ? (
+            <Loader2 className="w-10 h-10 text-white animate-spin" />
+          ) : (
+            <RefreshCw className={`w-10 h-10 ${isPdfFailed ? "text-destructive" : "text-tertiary"}`} />
+          )}
         </div>
         <div>
-          <h3 className="font-heading text-xl font-bold mb-2">Nessuna lezione disponibile</h3>
+          <h3 className="font-heading text-xl font-bold mb-2">
+            {isPdfProcessing ? "Elaborazione PDF in corso..." : 
+             isPdfFailed ? "Errore nell'elaborazione" :
+             "Nessuna lezione disponibile"}
+          </h3>
           <p className="text-muted-foreground max-w-xs">
-            L'AI analizzerà i tuoi materiali e creerà un percorso di mini-lezioni personalizzato.
+            {isPdfProcessing ? "Attendi qualche secondo mentre analizziamo il tuo documento." :
+             isPdfFailed ? "Si è verificato un errore. Prova a ricaricare il file." :
+             "L'AI analizzerà i tuoi materiali e creerà un percorso di mini-lezioni personalizzato."}
           </p>
-        </div>
-        <Button 
-          onClick={handleGenerateLessons} 
-          disabled={isGenerating}
-          className="h-12 px-6 font-semibold gradient-primary text-white border-0 shadow-soft-md"
-        >
-          {isGenerating ? (
-            <>
-              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              Analisi in corso...
-            </>
-          ) : (
-            <>
-              <Sparkles className="w-4 h-4 mr-2" />
-              Genera percorso
-            </>
+          {contextFileName && (
+            <p className="text-sm text-primary font-medium mt-2">{contextFileName}</p>
           )}
-        </Button>
+        </div>
+        
+        {isPdfProcessing ? (
+          <Button 
+            onClick={fetchLessons}
+            variant="outline"
+            className="h-12 px-6 font-semibold rounded-2xl"
+          >
+            <RefreshCw className="w-4 h-4 mr-2" />
+            Aggiorna stato
+          </Button>
+        ) : (
+          <Button 
+            onClick={handleGenerateLessons} 
+            disabled={isGenerating}
+            className="h-12 px-6 font-semibold gradient-primary text-white border-0 shadow-soft-md rounded-2xl"
+          >
+            {isGenerating ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Analisi in corso...
+              </>
+            ) : (
+              <>
+                <Sparkles className="w-4 h-4 mr-2" />
+                Genera percorso
+              </>
+            )}
+          </Button>
+        )}
       </div>
     );
   }
