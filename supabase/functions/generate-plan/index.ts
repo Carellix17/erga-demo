@@ -1,10 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+import { validateAuth, corsHeaders, errorResponse, successResponse } from "../_shared/auth.ts";
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -12,20 +7,13 @@ serve(async (req) => {
   }
 
   try {
-    const { userId } = await req.json();
+    const body = await req.json();
 
-    if (!userId) {
-      return new Response(
-        JSON.stringify({ error: "Missing userId" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
+    // Validate authentication and get userId
+    const auth = await validateAuth(req, body);
+    const { userId, supabase } = auth;
 
-    console.log(`Generating study plan for user: ${userId}`);
-
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    console.log(`Generating study plan for user: ${userId} (authenticated: ${auth.isAuthenticated})`);
 
     // Fetch study contexts
     const { data: contexts } = await supabase
@@ -41,22 +29,21 @@ serve(async (req) => {
       .order("event_date", { ascending: true });
 
     if (!contexts || contexts.length === 0) {
-      return new Response(
-        JSON.stringify({ error: "Nessun contenuto di studio trovato. Carica dei PDF." }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return errorResponse("Nessun contenuto di studio trovato. Carica dei PDF.", 400);
     }
 
     // Prepare context summary
     const contextSummary = contexts
-      .map(c => `File: ${c.file_name}\nContenuto: ${c.content.substring(0, 2000)}...`)
+      .map((c: { file_name: string; content: string }) => `File: ${c.file_name}\nContenuto: ${c.content.substring(0, 2000)}...`)
       .join("\n\n")
       .substring(0, 10000);
 
     // Prepare events summary
     const today = new Date().toISOString().split("T")[0];
     const eventsText = events && events.length > 0
-      ? events.map(e => `- ${e.event_type}: ${e.title} (${e.subject}) - ${e.event_date}`).join("\n")
+      ? events.map((e: { event_type: string; title: string; subject: string; event_date: string }) => 
+          `- ${e.event_type}: ${e.title} (${e.subject}) - ${e.event_date}`
+        ).join("\n")
       : "Nessun evento programmato";
 
     // Call Perplexity Sonar API
@@ -115,10 +102,7 @@ Crea un piano di studio personalizzato.`;
       const errorText = await aiResponse.text();
       console.error("Perplexity API error:", errorText);
       if (aiResponse.status === 429) {
-        return new Response(
-          JSON.stringify({ error: "Troppe richieste. Riprova tra qualche secondo." }),
-          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+        return errorResponse("Troppe richieste. Riprova tra qualche secondo.", 429);
       }
       throw new Error("Errore nella generazione del piano");
     }
@@ -146,22 +130,16 @@ Crea un piano di studio personalizzato.`;
       throw new Error("Errore nel parsing del piano generato");
     }
 
-    return new Response(
-      JSON.stringify({ 
-        success: true, 
-        plan: {
-          explanation: plan.explanation || "Ti propongo questo piano basato sui tuoi materiali di studio.",
-          studySessions: plan.studySessions || []
-        }
-      }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return successResponse({ 
+      success: true, 
+      plan: {
+        explanation: plan.explanation || "Ti propongo questo piano basato sui tuoi materiali di studio.",
+        studySessions: plan.studySessions || []
+      }
+    });
 
   } catch (error) {
     console.error("Error:", error);
-    return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return errorResponse(error instanceof Error ? error.message : "Unknown error");
   }
 });

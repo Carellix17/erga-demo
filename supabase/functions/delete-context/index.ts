@@ -1,10 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+import { validateAuth, corsHeaders, errorResponse, successResponse } from "../_shared/auth.ts";
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -12,18 +7,14 @@ serve(async (req) => {
   }
 
   try {
-    const { userId, contextId, action } = await req.json();
+    const body = await req.json();
+    const { contextId, action } = body;
 
-    if (!userId) {
-      return new Response(
-        JSON.stringify({ error: "Missing userId" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
+    // Validate authentication and get userId
+    const auth = await validateAuth(req, body);
+    const { userId, supabase } = auth;
 
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    console.log(`Delete context for user: ${userId} (authenticated: ${auth.isAuthenticated})`);
 
     // List all contexts for user
     if (action === "list") {
@@ -35,10 +26,7 @@ serve(async (req) => {
 
       if (error) {
         console.error("Error fetching contexts:", error);
-        return new Response(
-          JSON.stringify({ error: "Errore nel recupero dei file" }),
-          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+        return errorResponse("Errore nel recupero dei file");
       }
 
       // Get lesson counts per context
@@ -56,22 +44,19 @@ serve(async (req) => {
         }
       }
 
-      const contextsWithCounts = (contexts || []).map(c => ({
+      const contextsWithCounts = (contexts || []).map((c: { id: string; file_name: string; created_at: string }) => ({
         ...c,
         lesson_count: lessonCounts[c.id] || 0,
       }));
 
-      return new Response(
-        JSON.stringify({ success: true, contexts: contextsWithCounts }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return successResponse({ success: true, contexts: contextsWithCounts });
     }
 
     // Delete a specific context
     if (action === "delete" && contextId) {
       console.log(`Deleting context ${contextId} for user ${userId}`);
 
-      // First delete related lessons (cascade should handle this, but be explicit)
+      // First delete related lessons
       const { error: lessonsError } = await supabase
         .from("mini_lessons")
         .delete()
@@ -82,7 +67,7 @@ serve(async (req) => {
         console.error("Error deleting lessons:", lessonsError);
       }
 
-      // Delete the context
+      // Delete the context - ensure user owns it
       const { error } = await supabase
         .from("study_contexts")
         .delete()
@@ -91,30 +76,18 @@ serve(async (req) => {
 
       if (error) {
         console.error("Error deleting context:", error);
-        return new Response(
-          JSON.stringify({ error: "Errore nell'eliminazione del file" }),
-          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+        return errorResponse("Errore nell'eliminazione del file");
       }
 
       console.log(`Successfully deleted context ${contextId}`);
 
-      return new Response(
-        JSON.stringify({ success: true }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return successResponse({ success: true });
     }
 
-    return new Response(
-      JSON.stringify({ error: "Invalid action" }),
-      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return errorResponse("Invalid action", 400);
 
   } catch (error) {
     console.error("Error:", error);
-    return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return errorResponse(error instanceof Error ? error.message : "Unknown error");
   }
 });

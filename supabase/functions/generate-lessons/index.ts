@@ -1,14 +1,8 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+import { validateAuth, corsHeaders, errorResponse, successResponse } from "../_shared/auth.ts";
 
 // Configurazione Limiti
-const MAX_CONTEXT_CHARS = 80000; // Aumentato drasticamente per leggere fino a ~30-40 pagine
-const TARGET_LESSONS_PER_PAGE = 0.5; // Target indicativo: 1 lezione ogni 2 pagine
+const MAX_CONTEXT_CHARS = 80000;
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -16,18 +10,20 @@ serve(async (req) => {
   }
 
   try {
-    const { userId, action, lessonIndex, contextId } = await req.json();
+    const body = await req.json();
+    const { action, lessonIndex, contextId } = body;
 
-    if (!userId) {
-      return new Response(JSON.stringify({ error: "Missing userId" }), { status: 400, headers: corsHeaders });
-    }
+    // Validate authentication and get userId
+    const auth = await validateAuth(req, body);
+    const { userId, supabase } = auth;
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
     const PERPLEXITY_API_KEY = Deno.env.get("ERGA_DEMO_PERPLEXITY_KEY");
 
     if (!PERPLEXITY_API_KEY) throw new Error("API Key mancante");
+
+    console.log(`Generate lessons for user: ${userId} (authenticated: ${auth.isAuthenticated})`);
 
     // -----------------------------------------------------------------------
     // AZIONE 1: GENERA IL CONTENUTO DI UNA SINGOLA LEZIONE
@@ -39,7 +35,7 @@ serve(async (req) => {
       
       const { data: lessons } = await lessonsQuery.maybeSingle();
       if (!lessons) throw new Error("Lezione non trovata");
-      if (lessons.is_generated) return new Response(JSON.stringify({ success: true, lesson: lessons }), { headers: corsHeaders });
+      if (lessons.is_generated) return successResponse({ success: true, lesson: lessons });
 
       // Recupera il contenuto del file
       let studyContent = "";
@@ -47,9 +43,8 @@ serve(async (req) => {
         const { data: context } = await supabase.from("study_contexts").select("content, file_name").eq("id", lessons.context_id).single();
         if (context) studyContent = `FILE: ${context.file_name}\n${context.content}`.substring(0, MAX_CONTEXT_CHARS);
       } else {
-        // Fallback su tutti i contesti se non c'è un ID specifico
         const { data: contexts } = await supabase.from("study_contexts").select("content, file_name").eq("user_id", userId);
-        if (contexts) studyContent = contexts.map(c => `FILE: ${c.file_name}\n${c.content}`).join("\n\n").substring(0, MAX_CONTEXT_CHARS);
+        if (contexts) studyContent = contexts.map((c: { file_name: string; content: string }) => `FILE: ${c.file_name}\n${c.content}`).join("\n\n").substring(0, MAX_CONTEXT_CHARS);
       }
 
       if (!studyContent) throw new Error("Contenuto vuoto. Caricamento fallito?");
@@ -108,7 +103,7 @@ serve(async (req) => {
       }).eq("id", lessons.id);
 
       const { data: updated } = await supabase.from("mini_lessons").select("*").eq("id", lessons.id).single();
-      return new Response(JSON.stringify({ success: true, lesson: updated }), { headers: corsHeaders });
+      return successResponse({ success: true, lesson: updated });
     }
 
     // -----------------------------------------------------------------------
@@ -122,13 +117,11 @@ serve(async (req) => {
        if (ctx) combinedContent = `FILE: ${ctx.file_name}\n${ctx.content}`;
     } else {
        const { data: ctxs } = await supabase.from("study_contexts").select("content, file_name").eq("user_id", userId);
-       if (ctxs) combinedContent = ctxs.map(c => `FILE: ${c.file_name}\n${c.content}`).join("\n\n");
+       if (ctxs) combinedContent = ctxs.map((c: { file_name: string; content: string }) => `FILE: ${c.file_name}\n${c.content}`).join("\n\n");
     }
 
-    // Qui applichiamo il taglio più largo
     combinedContent = combinedContent.substring(0, MAX_CONTEXT_CHARS);
 
-    // PROMPT AGGIORNATO PER EVITARE FRAMMENTAZIONE
     const titlesPrompt = `Analizza il testo fornito e crea un piano di studi strutturato.
     
     IMPORTANTE:
@@ -149,7 +142,7 @@ serve(async (req) => {
       body: JSON.stringify({
         model: "sonar",
         messages: [{ role: "user", content: titlesPrompt }],
-        temperature: 0.1, // Bassa temperatura per seguire fedelmente la struttura
+        temperature: 0.1,
         max_tokens: 3000,
       }),
     });
@@ -161,11 +154,11 @@ serve(async (req) => {
 
     if (!Array.isArray(titles)) throw new Error("Formato titoli non valido");
 
-    // Pulizia vecchie lezioni non iniziate
+    // Pulizia vecchie lezioni
     await supabase.from("mini_lessons").delete().eq("user_id", userId).eq("context_id", contextId);
 
     // Inserimento nuovi titoli
-    const lessonsToInsert = titles.map((t: any, i: number) => ({
+    const lessonsToInsert = titles.map((t: { title: string }, i: number) => ({
       user_id: userId,
       context_id: contextId,
       title: t.title,
@@ -175,7 +168,7 @@ serve(async (req) => {
 
     await supabase.from("mini_lessons").insert(lessonsToInsert);
 
-    // Genera subito la prima lezione per feedback immediato
+    // Genera subito la prima lezione
     const firstLessonResponse = await fetch(`${supabaseUrl}/functions/v1/generate-lessons`, {
         method: "POST",
         headers: { "Content-Type": "application/json", "Authorization": `Bearer ${supabaseServiceKey}` },
@@ -184,14 +177,15 @@ serve(async (req) => {
     
     const firstLessonData = await firstLessonResponse.json();
 
-    return new Response(
-      JSON.stringify({ success: true, lessonsCount: titles.length, firstLesson: firstLessonData.lesson, titles: titles.map((t:any)=>t.title) }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return successResponse({ 
+      success: true, 
+      lessonsCount: titles.length, 
+      firstLesson: firstLessonData.lesson, 
+      titles: titles.map((t: { title: string }) => t.title) 
+    });
 
   } catch (error) {
     console.error("Error:", error);
-    const errorMessage = error instanceof Error ? error.message : "Errore sconosciuto";
-    return new Response(JSON.stringify({ error: errorMessage }), { status: 500, headers: corsHeaders });
+    return errorResponse(error instanceof Error ? error.message : "Errore sconosciuto");
   }
 });

@@ -1,10 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+import { validateAuth, corsHeaders, errorResponse } from "../_shared/auth.ts";
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -12,20 +7,18 @@ serve(async (req) => {
   }
 
   try {
-    const { userId, messages } = await req.json();
+    const body = await req.json();
+    const { messages } = body;
 
-    if (!userId || !messages) {
-      return new Response(
-        JSON.stringify({ error: "Missing userId or messages" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+    // Validate authentication and get userId
+    const auth = await validateAuth(req, body);
+    const { userId, supabase } = auth;
+
+    if (!messages) {
+      return errorResponse("Missing messages", 400);
     }
 
-    console.log(`Chat request for user: ${userId}`);
-
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    console.log(`Chat request for user: ${userId} (authenticated: ${auth.isAuthenticated})`);
 
     // Fetch study contexts
     const { data: contexts } = await supabase
@@ -60,13 +53,13 @@ serve(async (req) => {
     // Build context (trim aggressively to avoid 413 / TPM issues)
     const studyContent = trimTo(
       contexts
-        .map((c) => `--- ${c.file_name} ---\n${c.content}`)
+        .map((c: { file_name: string; content: string }) => `--- ${c.file_name} ---\n${c.content}`)
         .join("\n\n"),
       MAX_STUDY_CHARS
     );
 
     const eventsTextRaw = events && events.length > 0
-      ? "Eventi programmati:\n" + events.map(e =>
+      ? "Eventi programmati:\n" + events.map((e: { event_type: string; title: string; subject: string; event_date: string }) =>
           `- ${e.event_type === 'test' ? 'Verifica' : e.event_type === 'assignment' ? 'Compito' : 'Studio'}: ${e.title} (${e.subject}) - ${e.event_date}`
         ).join("\n")
       : "Nessun evento programmato nel diario.";
@@ -129,18 +122,10 @@ ${eventsText}`;
       console.error("Perplexity response status:", aiResponse.status);
       console.error("Perplexity API error:", errorText);
       if (aiResponse.status === 413) {
-        return new Response(
-          JSON.stringify({
-            error: "Richiesta troppo grande. Prova a fare una domanda più specifica o carica meno materiale alla volta.",
-          }),
-          { status: 413, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+        return errorResponse("Richiesta troppo grande. Prova a fare una domanda più specifica o carica meno materiale alla volta.", 413);
       }
       if (aiResponse.status === 429) {
-        return new Response(
-          JSON.stringify({ error: "Troppe richieste. Riprova tra qualche secondo." }),
-          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+        return errorResponse("Troppe richieste. Riprova tra qualche secondo.", 429);
       }
       throw new Error("Errore nella risposta Perplexity");
     }
@@ -197,9 +182,6 @@ ${eventsText}`;
 
   } catch (error) {
     console.error("Error:", error);
-    return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return errorResponse(error instanceof Error ? error.message : "Unknown error");
   }
 });
