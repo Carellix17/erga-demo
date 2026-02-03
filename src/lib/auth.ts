@@ -35,7 +35,7 @@ const INITIAL_PASSWORD = "qwerty1234";
 const AUTH_STORAGE_KEY = "erga_auth";
 const USERS_STORAGE_KEY = "erga_users";
 const VERSION_KEY = "erga_version_id";
-const CURRENT_VERSION = "2.1"; // Incrementa questo se vuoi forzare un reset totale
+const CURRENT_VERSION = "2.2"; // Incrementato per forzare reset utenti corrotti
 
 export interface UserData {
   username: Username;
@@ -54,24 +54,49 @@ function initializeUsers(): Record<Username, UserData> {
   // Controllo versione per pulizia cache obsoleta
   const savedVersion = localStorage.getItem(VERSION_KEY);
   if (savedVersion !== CURRENT_VERSION) {
-    // Se la versione è diversa, resettiamo solo i dati di sistema critici per aggiornare la lista
+    // Se la versione è diversa, resettiamo tutti i dati utente per forzare il reset
     localStorage.removeItem(USERS_STORAGE_KEY);
     localStorage.setItem(VERSION_KEY, CURRENT_VERSION);
   }
 
   const stored = localStorage.getItem(USERS_STORAGE_KEY);
-  let users: Record<string, UserData> = stored ? JSON.parse(stored) : {};
+  let users: Record<string, UserData> = {};
+  
+  // Prova a parsare i dati esistenti
+  if (stored) {
+    try {
+      const parsed = JSON.parse(stored);
+      // Verifica che sia un oggetto valido
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+        users = parsed;
+      }
+    } catch {
+      // Se il parsing fallisce, resetta
+      users = {};
+    }
+  }
 
   let needsSave = false;
 
-  // Sincronizza: aggiunge nuovi utenti che non esistono ancora nel localStorage
+  // Sincronizza: aggiunge nuovi utenti e verifica la struttura di quelli esistenti
   PREDEFINED_USERS.forEach((username) => {
-    if (!users[username]) {
+    const existing = users[username];
+    
+    // Se l'utente non esiste o ha una struttura corrotta, lo ricrea
+    if (!existing || typeof existing !== 'object' || !existing.username || !existing.password) {
       users[username] = {
         username: username as Username,
         password: INITIAL_PASSWORD,
         hasChangedPassword: false,
       };
+      needsSave = true;
+    }
+  });
+
+  // Rimuovi utenti che non sono più nella lista predefinita
+  Object.keys(users).forEach((key) => {
+    if (!PREDEFINED_USERS.includes(key as Username)) {
+      delete users[key];
       needsSave = true;
     }
   });
