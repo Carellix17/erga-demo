@@ -1,10 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+import { validateAuth, corsHeaders, errorResponse, successResponse } from "../_shared/auth.ts";
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -12,18 +7,14 @@ serve(async (req) => {
   }
 
   try {
-    const { userId, action, lessonIndex, contextId } = await req.json();
+    const body = await req.json();
+    const { action, lessonIndex, contextId } = body;
 
-    if (!userId) {
-      return new Response(
-        JSON.stringify({ error: "Missing userId" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
+    // Validate authentication and get userId
+    const auth = await validateAuth(req, body);
+    const { userId, supabase } = auth;
 
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    console.log(`Get lessons for user: ${userId} (authenticated: ${auth.isAuthenticated})`);
 
     if (action === "get") {
       // Get all lessons, optionally filtered by context
@@ -51,14 +42,11 @@ serve(async (req) => {
         throw new Error("Errore nel caricamento delle lezioni");
       }
 
-      return new Response(
-        JSON.stringify({ 
-          success: true, 
-          lessons: lessons || [],
-          currentIndex: progress?.current_lesson_index || 0
-        }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return successResponse({ 
+        success: true, 
+        lessons: lessons || [],
+        currentIndex: progress?.current_lesson_index || 0
+      });
     }
 
     if (action === "getLesson" && lessonIndex !== undefined) {
@@ -80,10 +68,7 @@ serve(async (req) => {
         throw new Error("Errore nel caricamento della lezione");
       }
 
-      return new Response(
-        JSON.stringify({ success: true, lesson }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return successResponse({ success: true, lesson });
     }
 
     if (action === "updateProgress" && lessonIndex !== undefined) {
@@ -101,10 +86,7 @@ serve(async (req) => {
         throw new Error("Errore nell'aggiornamento del progresso");
       }
 
-      return new Response(
-        JSON.stringify({ success: true }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return successResponse({ success: true });
     }
 
     if (action === "hasContent") {
@@ -115,13 +97,10 @@ serve(async (req) => {
         .eq("user_id", userId)
         .limit(1);
 
-      return new Response(
-        JSON.stringify({ 
-          success: true, 
-          hasContent: contexts && contexts.length > 0 
-        }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return successResponse({ 
+        success: true, 
+        hasContent: contexts && contexts.length > 0 
+      });
     }
 
     if (action === "listContexts") {
@@ -146,27 +125,18 @@ serve(async (req) => {
         }
       }
 
-      const contextsWithCounts = (contexts || []).map(c => ({
+      const contextsWithCounts = (contexts || []).map((c: { id: string; file_name: string; created_at: string }) => ({
         ...c,
         lesson_count: lessonCounts[c.id] || 0,
       }));
 
-      return new Response(
-        JSON.stringify({ success: true, contexts: contextsWithCounts }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return successResponse({ success: true, contexts: contextsWithCounts });
     }
 
-    return new Response(
-      JSON.stringify({ error: "Invalid action" }),
-      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return errorResponse("Invalid action", 400);
 
   } catch (error) {
     console.error("Error:", error);
-    return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return errorResponse(error instanceof Error ? error.message : "Unknown error");
   }
 });

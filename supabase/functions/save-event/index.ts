@@ -1,10 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+import { validateAuth, corsHeaders, errorResponse, successResponse } from "../_shared/auth.ts";
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -12,22 +7,18 @@ serve(async (req) => {
   }
 
   try {
-    const { userId, events, action } = await req.json();
+    const body = await req.json();
+    const { events, action } = body;
 
-    if (!userId) {
-      return new Response(
-        JSON.stringify({ error: "Missing userId" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
+    // Validate authentication and get userId
+    const auth = await validateAuth(req, body);
+    const { userId, supabase } = auth;
 
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    console.log(`Save event for user: ${userId} (authenticated: ${auth.isAuthenticated})`);
 
     if (action === "add" && events) {
       // Add new events
-      const eventsToInsert = events.map((event: any) => ({
+      const eventsToInsert = events.map((event: { subject: string; title: string; date: string; time?: string; type: string }) => ({
         user_id: userId,
         subject: event.subject,
         title: event.title,
@@ -45,17 +36,15 @@ serve(async (req) => {
         throw new Error("Errore nel salvataggio degli eventi");
       }
 
-      return new Response(
-        JSON.stringify({ success: true }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return successResponse({ success: true });
     }
 
     if (action === "delete" && events) {
-      // Delete events by id
+      // Delete events by id - ensure user owns the events
       const { error } = await supabase
         .from("study_events")
         .delete()
+        .eq("user_id", userId)
         .in("id", events);
 
       if (error) {
@@ -63,10 +52,7 @@ serve(async (req) => {
         throw new Error("Errore nella cancellazione degli eventi");
       }
 
-      return new Response(
-        JSON.stringify({ success: true }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return successResponse({ success: true });
     }
 
     if (action === "list") {
@@ -82,22 +68,13 @@ serve(async (req) => {
         throw new Error("Errore nel caricamento degli eventi");
       }
 
-      return new Response(
-        JSON.stringify({ success: true, events: data }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return successResponse({ success: true, events: data });
     }
 
-    return new Response(
-      JSON.stringify({ error: "Invalid action" }),
-      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return errorResponse("Invalid action", 400);
 
   } catch (error) {
     console.error("Error:", error);
-    return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return errorResponse(error instanceof Error ? error.message : "Unknown error");
   }
 });
