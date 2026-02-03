@@ -35,11 +35,34 @@ const INITIAL_PASSWORD = "qwerty1234";
 const AUTH_STORAGE_KEY = "erga_auth";
 const USERS_STORAGE_KEY = "erga_users";
 const VERSION_KEY = "erga_version_id";
-const CURRENT_VERSION = "2.2"; // Incrementato per forzare reset utenti corrotti
+const CURRENT_VERSION = "3.0"; // Incrementato per migrazione a password hashate
+
+// Simple hash function for client-side password storage
+// NOTE: This is NOT cryptographically secure, but better than plaintext
+// Real security comes from OAuth (Google/Apple) authentication
+async function hashPassword(password: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(password + "erga_salt_2024");
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+// Synchronous hash for initial setup (less secure but works without async)
+function simpleHash(password: string): string {
+  let hash = 0;
+  const str = password + "erga_salt_2024";
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash;
+  }
+  return Math.abs(hash).toString(36);
+}
 
 export interface UserData {
   username: Username;
-  password: string;
+  passwordHash: string; // Now stores hash, not plaintext
   hasChangedPassword: boolean;
 }
 
@@ -82,11 +105,11 @@ function initializeUsers(): Record<Username, UserData> {
   PREDEFINED_USERS.forEach((username) => {
     const existing = users[username];
     
-    // Se l'utente non esiste o ha una struttura corrotta, lo ricrea
-    if (!existing || typeof existing !== 'object' || !existing.username || !existing.password) {
+    // Se l'utente non esiste o ha una struttura corrotta, lo ricrea con password hashata
+    if (!existing || typeof existing !== 'object' || !existing.username || !existing.passwordHash) {
       users[username] = {
         username: username as Username,
-        password: INITIAL_PASSWORD,
+        passwordHash: simpleHash(INITIAL_PASSWORD), // Store hash, not plaintext
         hasChangedPassword: false,
       };
       needsSave = true;
@@ -156,8 +179,9 @@ export function login(
     return { success: false, error: "Errore di sincronizzazione account" };
   }
 
-  // Verifica password
-  if (user.password !== password) {
+  // Verifica password usando hash
+  const inputHash = simpleHash(password);
+  if (user.passwordHash !== inputHash) {
     return { success: false, error: "Password non corretta" };
   }
 
@@ -191,7 +215,7 @@ export function changePassword(
   const users = getUsers();
   users[authState.currentUser] = {
     ...users[authState.currentUser],
-    password: newPassword,
+    passwordHash: simpleHash(newPassword), // Store hash, not plaintext
     hasChangedPassword: true,
   };
   saveUsers(users);
