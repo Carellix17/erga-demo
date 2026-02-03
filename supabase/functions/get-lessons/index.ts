@@ -104,10 +104,10 @@ serve(async (req) => {
     }
 
     if (action === "listContexts") {
-      // List all contexts with lesson counts
+      // List all contexts with lesson counts and processing status
       const { data: contexts } = await supabase
         .from("study_contexts")
-        .select("id, file_name, created_at")
+        .select("id, file_name, created_at, processing_status, error_message")
         .eq("user_id", userId)
         .order("created_at", { ascending: false });
 
@@ -125,7 +125,13 @@ serve(async (req) => {
         }
       }
 
-      const contextsWithCounts = (contexts || []).map((c: { id: string; file_name: string; created_at: string }) => ({
+      const contextsWithCounts = (contexts || []).map((c: { 
+        id: string; 
+        file_name: string; 
+        created_at: string;
+        processing_status: string | null;
+        error_message: string | null;
+      }) => ({
         ...c,
         lesson_count: lessonCounts[c.id] || 0,
       }));
