@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { FileManager } from "./FileManager";
+import { supabase } from "@/integrations/supabase/client";
 
 interface UploadSheetProps {
   open: boolean;
@@ -94,12 +95,16 @@ export function UploadSheet({ open, onOpenChange, onUpload, uploadedFiles, onSel
         formData.append("file", file);
         formData.append("userId", currentUser);
 
+        // Get OAuth session token if available
+        const { data: { session } } = await supabase.auth.getSession();
+        const authToken = session?.access_token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+
         const response = await fetch(
           `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/upload-pdf`,
           {
             method: "POST",
             headers: {
-              Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+              Authorization: `Bearer ${authToken}`,
             },
             body: formData,
           }
@@ -124,13 +129,17 @@ export function UploadSheet({ open, onOpenChange, onUpload, uploadedFiles, onSel
         // Wait for processing then generate lessons
         await new Promise(resolve => setTimeout(resolve, 3000));
 
+        // Get OAuth session token if available
+        const { data: { session: sessionForLessons } } = await supabase.auth.getSession();
+        const authTokenForLessons = sessionForLessons?.access_token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+
         await fetch(
           `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-lessons`,
           {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
-              Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+              Authorization: `Bearer ${authTokenForLessons}`,
             },
             body: JSON.stringify({ userId: currentUser }),
           }
@@ -290,12 +299,12 @@ export function UploadSheet({ open, onOpenChange, onUpload, uploadedFiles, onSel
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="bottom" className="rounded-t-[2rem] pb-safe h-[85vh] glass-strong border-t-0">
+      <SheetContent side="bottom" className="rounded-t-[2rem] pb-safe max-h-[85vh] glass-strong border-t-0 flex flex-col overflow-hidden">
         <SheetHeader className="mb-4">
           <SheetTitle className="font-heading text-xl">I tuoi materiali</SheetTitle>
         </SheetHeader>
 
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0 overflow-hidden">
           <TabsList className="grid w-full grid-cols-2 mb-4 p-1.5 h-13 glass-subtle rounded-2xl">
             <TabsTrigger 
               value="upload" 
@@ -311,7 +320,7 @@ export function UploadSheet({ open, onOpenChange, onUpload, uploadedFiles, onSel
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="upload" className="space-y-4 mt-0">
+          <TabsContent value="upload" className="flex-1 overflow-y-auto space-y-4 mt-0 pb-4">
             {/* Drop Zone */}
             <div
               className={cn(
@@ -396,31 +405,33 @@ export function UploadSheet({ open, onOpenChange, onUpload, uploadedFiles, onSel
               </div>
             )}
 
-            {/* Upload Button */}
-            <Button
-              onClick={handleUpload}
-              disabled={selectedFiles.length === 0 || isUploading}
-              className="w-full h-14 text-base font-semibold gradient-primary text-white border-0 rounded-2xl shadow-glass-md hover:shadow-glass-lg transition-all duration-300 hover:scale-[1.02] active:scale-100"
-              size="lg"
-            >
-              {isUploading ? (
-                <>
-                  <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                  Caricamento...
-                </>
-              ) : selectedFiles.length > 0 ? (
-                <>
-                  <Sparkles className="w-5 h-5 mr-2" />
-                  Carica e genera lezioni
-                </>
-              ) : (
-                "Seleziona file da caricare"
-              )}
-            </Button>
+            {/* Upload Button - Fixed at bottom */}
+            <div className="sticky bottom-0 bg-background/95 backdrop-blur-sm pt-3 pb-2 -mx-1 px-1 mt-auto">
+              <Button
+                onClick={handleUpload}
+                disabled={selectedFiles.length === 0 || isUploading}
+                className="w-full h-14 text-base font-semibold gradient-primary text-white border-0 rounded-2xl shadow-glass-md hover:shadow-glass-lg transition-all duration-300 hover:scale-[1.02] active:scale-100"
+                size="lg"
+              >
+                {isUploading ? (
+                  <>
+                    <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                    Caricamento...
+                  </>
+                ) : selectedFiles.length > 0 ? (
+                  <>
+                    <Sparkles className="w-5 h-5 mr-2" />
+                    Carica e genera lezioni
+                  </>
+                ) : (
+                  "Seleziona file da caricare"
+                )}
+              </Button>
 
-            <p className="text-xs text-muted-foreground text-center">
-              ✨ Ogni PDF creerà un percorso di studio personalizzato
-            </p>
+              <p className="text-xs text-muted-foreground text-center mt-2">
+                ✨ Ogni PDF creerà un percorso di studio personalizzato
+              </p>
+            </div>
           </TabsContent>
 
           <TabsContent value="manage" className="mt-0">
