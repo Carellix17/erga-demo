@@ -7,6 +7,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Loader2, RefreshCw, List, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Exercise } from "./exercises/ExerciseRenderer";
+import { supabase } from "@/integrations/supabase/client";
 
 interface StudioViewProps {
   hasFiles: boolean;
@@ -45,6 +46,10 @@ export function StudioView({ hasFiles, onUploadClick, selectedContextId, onClear
 
     setIsLoading(true);
     try {
+      // Get OAuth session token if available
+      const { data: { session } } = await supabase.auth.getSession();
+      const authToken = session?.access_token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+
       // If a specific context is selected, fetch only its lessons
       const body: Record<string, unknown> = { userId: currentUser, action: "get" };
       if (selectedContextId) {
@@ -57,7 +62,7 @@ export function StudioView({ hasFiles, onUploadClick, selectedContextId, onClear
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+            Authorization: `Bearer ${authToken}`,
           },
           body: JSON.stringify(body),
         }
@@ -77,7 +82,7 @@ export function StudioView({ hasFiles, onUploadClick, selectedContextId, onClear
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+            Authorization: `Bearer ${authToken}`,
           },
           body: JSON.stringify({ userId: currentUser, action: "listContexts" }),
         }
@@ -113,13 +118,17 @@ export function StudioView({ hasFiles, onUploadClick, selectedContextId, onClear
 
     setIsGenerating(true);
     try {
+      // Get OAuth session token if available
+      const { data: { session } } = await supabase.auth.getSession();
+      const authToken = session?.access_token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-lessons`,
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+            Authorization: `Bearer ${authToken}`,
           },
           body: JSON.stringify({ userId: currentUser }),
         }
@@ -154,6 +163,10 @@ export function StudioView({ hasFiles, onUploadClick, selectedContextId, onClear
 
     setIsGeneratingLesson(true);
     try {
+      // Get OAuth session token if available
+      const { data: { session } } = await supabase.auth.getSession();
+      const authToken = session?.access_token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+
       const body: Record<string, unknown> = { 
         userId: currentUser, 
         action: "generateLesson",
@@ -169,7 +182,7 @@ export function StudioView({ hasFiles, onUploadClick, selectedContextId, onClear
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+            Authorization: `Bearer ${authToken}`,
           },
           body: JSON.stringify(body),
         }
@@ -216,13 +229,16 @@ export function StudioView({ hasFiles, onUploadClick, selectedContextId, onClear
 
       // Update progress in database
       try {
+        const { data: { session } } = await supabase.auth.getSession();
+        const authToken = session?.access_token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+
         await fetch(
           `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-lessons`,
           {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
-              Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+              Authorization: `Bearer ${authToken}`,
             },
             body: JSON.stringify({
               userId: currentUser,
@@ -256,13 +272,16 @@ export function StudioView({ hasFiles, onUploadClick, selectedContextId, onClear
 
     // Update progress
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const authToken = session?.access_token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+
       await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-lessons`,
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+            Authorization: `Bearer ${authToken}`,
           },
           body: JSON.stringify({
             userId: currentUser,

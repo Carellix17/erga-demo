@@ -149,10 +149,21 @@ serve(async (req) => {
 
     const aiData = await aiResponse.json();
     const content = aiData.choices?.[0]?.message?.content || "[]";
+    
+    // Try to extract JSON array from the response
     const jsonMatch = content.match(/\[[\s\S]*\]/);
-    const titles = JSON.parse(jsonMatch ? jsonMatch[0] : content);
-
-    if (!Array.isArray(titles)) throw new Error("Formato titoli non valido");
+    if (!jsonMatch) {
+      console.error("AI response is not valid JSON array:", content.substring(0, 200));
+      throw new Error("L'AI non ha restituito un formato valido. Riprova.");
+    }
+    
+    let titles;
+    try {
+      titles = JSON.parse(jsonMatch[0]);
+    } catch (parseError) {
+      console.error("JSON parse error:", parseError, "Content:", jsonMatch[0].substring(0, 200));
+      throw new Error("Errore nel parsing della risposta AI. Riprova.");
+    }
 
     // Pulizia vecchie lezioni
     await supabase.from("mini_lessons").delete().eq("user_id", userId).eq("context_id", contextId);
