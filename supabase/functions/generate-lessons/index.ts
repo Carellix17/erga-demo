@@ -149,50 +149,74 @@ serve(async (req) => {
 
     const aiData = await aiResponse.json();
     const content = aiData.choices?.[0]?.message?.content || "[]";
-    
+
     // Try to extract JSON array from the response
     const jsonMatch = content.match(/\[[\s\S]*\]/);
     if (!jsonMatch) {
-      console.error("AI response is not valid JSON array:", content.substring(0, 200));
+      console.error("AI response is not valid JSON array:", content.substring(0, 500));
       throw new Error("L'AI non ha restituito un formato valido. Riprova.");
     }
-    
-    let titles;
+
+    let parsedTitles: unknown;
     try {
-      titles = JSON.parse(jsonMatch[0]);
+      parsedTitles = JSON.parse(jsonMatch[0]);
     } catch (parseError) {
-      console.error("JSON parse error:", parseError, "Content:", jsonMatch[0].substring(0, 200));
+      console.error("JSON parse error:", parseError, "Content:", jsonMatch[0].substring(0, 500));
       throw new Error("Errore nel parsing della risposta AI. Riprova.");
     }
 
-    // Pulizia vecchie lezioni
-    await supabase.from("mini_lessons").delete().eq("user_id", userId).eq("context_id", contextId);
+    if (!Array.isArray(parsedTitles)) throw new Error("Formato titoli non valido");
+
+    // Normalize: allow either [{title: string}] OR ["..."]
+    const titles = parsedTitles
+      .map((t) => {
+        if (typeof t === "string") return { title: t };
+        if (t && typeof t === "object" && "title" in t && typeof (t as { title?: unknown }).title === "string") {
+          return { title: (t as { title: string }).title };
+        }
+        return null;
+      })
+      .filter((t): t is { title: string } => !!t && !!t.title);
+
+    if (titles.length === 0) {
+      console.error("No valid titles produced by AI. Raw:", jsonMatch[0].substring(0, 500));
+      throw new Error("Non sono riuscito a creare un indice valido. Riprova.");
+    }
+
+    // Pulizia vecchie lezioni (stesso contesto)
+    let deleteQuery = supabase.from("mini_lessons").delete().eq("user_id", userId);
+    if (contextId) {
+      deleteQuery = deleteQuery.eq("context_id", contextId);
+    } else {
+      // When generating from all materials, lessons are stored with NULL context_id
+      deleteQuery = deleteQuery.is("context_id", null);
+    }
+    const { error: deleteError } = await deleteQuery;
+    if (deleteError) {
+      console.error("Delete old lessons error:", deleteError);
+      throw new Error("Errore durante la pulizia delle vecchie lezioni");
+    }
 
     // Inserimento nuovi titoli
     const lessonsToInsert = titles.map((t: { title: string }, i: number) => ({
       user_id: userId,
-      context_id: contextId,
+      context_id: contextId ?? null,
       title: t.title,
       lesson_order: i,
       is_generated: false
     }));
 
-    await supabase.from("mini_lessons").insert(lessonsToInsert);
+    const { error: insertError } = await supabase.from("mini_lessons").insert(lessonsToInsert);
+    if (insertError) {
+      console.error("Insert lessons error:", insertError);
+      throw new Error("Errore durante il salvataggio delle lezioni");
+    }
 
-    // Genera subito la prima lezione
-    const firstLessonResponse = await fetch(`${supabaseUrl}/functions/v1/generate-lessons`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${supabaseServiceKey}` },
-        body: JSON.stringify({ userId, action: "generateLesson", lessonIndex: 0, contextId }),
-    });
-    
-    const firstLessonData = await firstLessonResponse.json();
-
+    // Nota: la generazione del contenuto delle lezioni avviene on-demand lato UI
     return successResponse({ 
       success: true, 
-      lessonsCount: titles.length, 
-      firstLesson: firstLessonData.lesson, 
-      titles: titles.map((t: { title: string }) => t.title) 
+      lessonsCount: titles.length,
+      titles: titles.map((t: { title: string }) => t.title),
     });
 
   } catch (error) {
