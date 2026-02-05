@@ -113,6 +113,16 @@ export function StudioView({ hasFiles, onUploadClick, selectedContextId, onClear
     fetchLessons();
   }, [fetchLessons]);
 
+  // Keep index always within bounds (prevents undefined currentLesson during refresh/regenerate)
+  useEffect(() => {
+    if (lessons.length === 0) return;
+    setCurrentLessonIndex((idx) => {
+      if (idx < 0) return 0;
+      if (idx > lessons.length - 1) return lessons.length - 1;
+      return idx;
+    });
+  }, [lessons.length]);
+
   const handleGenerateLessons = async () => {
     if (!currentUser) return;
 
@@ -218,13 +228,14 @@ export function StudioView({ hasFiles, onUploadClick, selectedContextId, onClear
   const handleNext = async () => {
     if (currentLessonIndex < lessons.length - 1) {
       const newIndex = currentLessonIndex + 1;
-      
+
       // Check if next lesson needs generation
       const nextLesson = lessons[newIndex];
+      if (!nextLesson) return;
       if (!nextLesson.is_generated) {
         await generateLessonContent(newIndex);
       }
-      
+
       setCurrentLessonIndex(newIndex);
 
       // Update progress in database
@@ -261,7 +272,8 @@ export function StudioView({ hasFiles, onUploadClick, selectedContextId, onClear
 
   const handleSelectLesson = async (index: number) => {
     const selectedLesson = lessons[index];
-    
+    if (!selectedLesson) return;
+
     // Generate if not yet generated
     if (!selectedLesson.is_generated) {
       await generateLessonContent(index);
@@ -390,11 +402,9 @@ export function StudioView({ hasFiles, onUploadClick, selectedContextId, onClear
   const currentLesson = lessons[currentLessonIndex];
   const progress = ((currentLessonIndex + 1) / lessons.length) * 100;
 
-  // Guard against undefined lesson (index out of bounds)
-  if (!currentLesson) {
-    setCurrentLessonIndex(0);
-    return null;
-  }
+  // If lessons changed during a refresh, we may briefly have an out-of-bounds index.
+  // The clamping useEffect above will fix it on the next tick.
+  if (!currentLesson) return null;
 
   // Show loading if current lesson needs generation
   if (!currentLesson.is_generated || isGeneratingLesson) {
