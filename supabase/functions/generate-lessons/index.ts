@@ -203,7 +203,9 @@ serve(async (req) => {
       context_id: contextId ?? null,
       title: t.title,
       lesson_order: i,
-      is_generated: false
+      is_generated: false,
+      concept: "", // Will be filled when lesson is generated on-demand
+      explanation: "" // Will be filled when lesson is generated on-demand
     }));
 
     const { error: insertError } = await supabase.from("mini_lessons").insert(lessonsToInsert);
