@@ -390,6 +390,12 @@ export function StudioView({ hasFiles, onUploadClick, selectedContextId, onClear
   const currentLesson = lessons[currentLessonIndex];
   const progress = ((currentLessonIndex + 1) / lessons.length) * 100;
 
+  // Guard against undefined lesson (index out of bounds)
+  if (!currentLesson) {
+    setCurrentLessonIndex(0);
+    return null;
+  }
+
   // Show loading if current lesson needs generation
   if (!currentLesson.is_generated || isGeneratingLesson) {
     return (
