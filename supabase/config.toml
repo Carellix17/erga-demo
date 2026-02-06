@@ -5,3 +5,21 @@ verify_jwt = false
 
 [functions.extract-pdf]
 verify_jwt = false
+
+[functions.generate-lessons]
+verify_jwt = false
+
+[functions.get-lessons]
+verify_jwt = false
+
+[functions.chat]
+verify_jwt = false
+
+[functions.save-event]
+verify_jwt = false
+
+[functions.generate-plan]
+verify_jwt = false
+
+[functions.delete-context]
+verify_jwt = false

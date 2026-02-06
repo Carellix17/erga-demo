@@ -123,6 +123,19 @@ export function StudioView({ hasFiles, onUploadClick, selectedContextId, onClear
     });
   }, [lessons.length]);
 
+  // Auto-generate current lesson content if it exists but hasn't been generated yet
+  useEffect(() => {
+    if (lessons.length === 0) return;
+    const lesson = lessons[currentLessonIndex];
+    if (!lesson) return;
+    if (lesson.is_generated) return;
+    if (isGeneratingLesson) return; // Already generating
+    if (isGenerating) return; // Generating the whole plan
+
+    generateLessonContent(currentLessonIndex);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentLessonIndex, lessons, isGeneratingLesson, isGenerating]);
+
   const handleGenerateLessons = async () => {
     if (!currentUser) return;
 
@@ -140,7 +153,10 @@ export function StudioView({ hasFiles, onUploadClick, selectedContextId, onClear
             "Content-Type": "application/json",
             Authorization: `Bearer ${authToken}`,
           },
-          body: JSON.stringify({ userId: currentUser }),
+          body: JSON.stringify({ 
+            userId: currentUser,
+            ...(selectedContextId ? { contextId: selectedContextId } : {}),
+          }),
         }
       );
 
