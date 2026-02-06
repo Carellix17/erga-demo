@@ -55,10 +55,10 @@ export function GenerationProgress({
   const currentStepIndex = steps.findIndex((s) => s.id === currentStep);
 
   return (
-    <div className="bg-card rounded-2xl p-6 shadow-soft-md border border-border/50 animate-fade-up">
+    <div className="glass-card rounded-2xl p-6 animate-fade-up">
       {/* Header */}
       <div className="flex items-center gap-3 mb-6">
-        <div className="w-12 h-12 rounded-2xl gradient-primary flex items-center justify-center">
+        <div className="w-12 h-12 rounded-2xl gradient-primary flex items-center justify-center shadow-glass-md animate-glow-pulse">
           <Sparkles className="w-6 h-6 text-white" />
         </div>
         <div>
@@ -79,7 +79,7 @@ export function GenerationProgress({
           <span className="text-muted-foreground">Progresso</span>
           <span className="font-medium text-primary">{Math.round(animatedProgress)}%</span>
         </div>
-        <div className="h-3 bg-muted rounded-full overflow-hidden">
+        <div className="h-3 bg-muted/30 rounded-full overflow-hidden backdrop-blur-sm">
           <div
             className={cn(
               "h-full rounded-full transition-all duration-300",
@@ -91,7 +91,7 @@ export function GenerationProgress({
       </div>
 
       {/* Steps */}
-      <div className="space-y-3">
+      <div className="space-y-2.5">
         {steps.map((step, index) => {
           const Icon = step.icon;
           const isActive = step.id === currentStep;
@@ -103,18 +103,18 @@ export function GenerationProgress({
               key={step.id}
               className={cn(
                 "flex items-center gap-3 p-3 rounded-xl transition-all duration-300",
-                isActive && "bg-primary/10",
-                isComplete && step.id !== "complete" && "bg-success/10",
+                isActive && "glass-primary",
+                isComplete && step.id !== "complete" && "glass-success",
                 isPending && "opacity-50"
               )}
             >
               <div
                 className={cn(
-                  "w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300",
-                  isActive && "bg-primary text-primary-foreground",
+                  "w-8 h-8 rounded-xl flex items-center justify-center transition-all duration-300 shadow-glass",
+                  isActive && "gradient-primary text-white",
                   isComplete && step.id !== "complete" && "bg-success text-success-foreground",
                   currentStep === "complete" && step.id === "complete" && "bg-success text-success-foreground",
-                  isPending && "bg-muted text-muted-foreground"
+                  isPending && "glass-subtle text-muted-foreground"
                 )}
               >
                 {isComplete && step.id !== "complete" ? (

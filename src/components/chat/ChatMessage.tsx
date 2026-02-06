@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import { Sparkles, Image as ImageIcon } from "lucide-react";
+import { Sparkles } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 
 interface ChatMessageProps {
@@ -22,17 +22,17 @@ export function ChatMessage({ message }: ChatMessageProps) {
       )}
     >
       {!isUser && (
-        <div className="w-9 h-9 rounded-xl bg-primary/15 flex items-center justify-center flex-shrink-0">
+        <div className="w-9 h-9 rounded-xl glass-primary flex items-center justify-center flex-shrink-0 shadow-glass">
           <Sparkles className="w-4 h-4 text-primary" />
         </div>
       )}
       
       <div
         className={cn(
-          "max-w-[85%] rounded-2xl overflow-hidden",
+          "max-w-[85%] rounded-2xl overflow-hidden transition-all duration-300",
           isUser
-            ? "bg-primary text-primary-foreground rounded-br-md"
-            : "glass-subtle text-foreground rounded-bl-md shadow-glass"
+            ? "gradient-primary text-white rounded-br-md shadow-glass-md"
+            : "glass-card text-foreground rounded-bl-md"
         )}
       >
         {/* Image attachment */}
@@ -66,12 +66,12 @@ export function ChatMessage({ message }: ChatMessageProps) {
                   h2: ({ children }) => <h4 className="font-heading font-semibold text-base mt-2 mb-1">{children}</h4>,
                   h3: ({ children }) => <h5 className="font-heading font-medium mt-2 mb-1">{children}</h5>,
                   code: ({ children }) => (
-                    <code className="bg-muted/50 px-1.5 py-0.5 rounded text-xs font-mono">
+                    <code className="glass-subtle px-1.5 py-0.5 rounded text-xs font-mono">
                       {children}
                     </code>
                   ),
                   pre: ({ children }) => (
-                    <pre className="bg-muted/50 p-3 rounded-xl overflow-x-auto my-2 text-xs">
+                    <pre className="glass-subtle p-3 rounded-xl overflow-x-auto my-2 text-xs">
                       {children}
                     </pre>
                   ),

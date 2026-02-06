@@ -16,55 +16,58 @@ const tabs = [
 
 export function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 glass-strong pb-safe">
-      <div className="flex items-center justify-around h-18 max-w-lg mx-auto px-4">
-        {tabs.map((tab) => {
-          const Icon = tab.icon;
-          const isActive = activeTab === tab.id;
+    <nav className="fixed bottom-0 left-0 right-0 z-50 pb-safe">
+      {/* Glass nav container */}
+      <div className="mx-3 mb-2 glass-strong rounded-[1.75rem] shadow-glass-lg glass-shimmer">
+        <div className="flex items-center justify-around h-[4.25rem] max-w-lg mx-auto px-2">
+          {tabs.map((tab) => {
+            const Icon = tab.icon;
+            const isActive = activeTab === tab.id;
 
-          return (
-            <button
-              key={tab.id}
-              onClick={() => onTabChange(tab.id)}
-              className={cn(
-                "flex flex-col items-center justify-center flex-1 py-3 transition-all duration-300 ease-out",
-                "focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-2 rounded-2xl",
-                isActive && "scale-105"
-              )}
-            >
-              <div
+            return (
+              <button
+                key={tab.id}
+                onClick={() => onTabChange(tab.id)}
                 className={cn(
-                  "flex items-center justify-center w-14 h-10 rounded-2xl transition-all duration-300 ease-out",
-                  isActive && tab.color === "primary" && "bg-primary/15 shadow-sm",
-                  isActive && tab.color === "tertiary" && "bg-tertiary/15 shadow-sm",
-                  isActive && tab.color === "accent" && "bg-accent/15 shadow-sm",
-                  !isActive && "bg-transparent hover:bg-muted/50"
+                  "flex flex-col items-center justify-center flex-1 py-2 transition-all duration-400 ease-out",
+                  "focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 rounded-2xl",
+                  isActive && "scale-105"
                 )}
               >
-                <Icon
+                <div
                   className={cn(
-                    "w-6 h-6 transition-all duration-300",
+                    "flex items-center justify-center w-12 h-9 rounded-2xl transition-all duration-400 ease-out relative",
+                    isActive && tab.color === "primary" && "bg-primary/15 shadow-glow",
+                    isActive && tab.color === "tertiary" && "bg-tertiary/15 shadow-glow-tertiary",
+                    isActive && tab.color === "accent" && "bg-accent/15 shadow-glow-accent",
+                    !isActive && "bg-transparent hover:bg-muted/40"
+                  )}
+                >
+                  <Icon
+                    className={cn(
+                      "w-[22px] h-[22px] transition-all duration-400",
+                      isActive && tab.color === "primary" && "text-primary drop-shadow-sm",
+                      isActive && tab.color === "tertiary" && "text-tertiary drop-shadow-sm",
+                      isActive && tab.color === "accent" && "text-accent drop-shadow-sm",
+                      !isActive && "text-muted-foreground"
+                    )}
+                  />
+                </div>
+                <span
+                  className={cn(
+                    "text-[10px] mt-1 font-semibold tracking-wide transition-all duration-400",
                     isActive && tab.color === "primary" && "text-primary",
                     isActive && tab.color === "tertiary" && "text-tertiary",
                     isActive && tab.color === "accent" && "text-accent",
                     !isActive && "text-muted-foreground"
                   )}
-                />
-              </div>
-              <span
-                className={cn(
-                  "text-xs mt-1.5 font-medium transition-all duration-300",
-                  isActive && tab.color === "primary" && "text-primary",
-                  isActive && tab.color === "tertiary" && "text-tertiary",
-                  isActive && tab.color === "accent" && "text-accent",
-                  !isActive && "text-muted-foreground"
-                )}
-              >
-                {tab.label}
-              </span>
-            </button>
-          );
-        })}
+                >
+                  {tab.label}
+                </span>
+              </button>
+            );
+          })}
+        </div>
       </div>
     </nav>
   );

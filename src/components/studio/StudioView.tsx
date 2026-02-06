@@ -329,11 +329,14 @@ export function StudioView({ hasFiles, onUploadClick, selectedContextId, onClear
 
   if (isLoading) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 p-4">
-        <div className="w-16 h-16 rounded-2xl gradient-primary flex items-center justify-center animate-pulse-soft">
-          <Loader2 className="w-8 h-8 text-white animate-spin" />
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-5 p-4">
+        <div className="w-20 h-20 rounded-[1.75rem] gradient-primary flex items-center justify-center animate-pulse-soft shadow-glass-lg">
+          <Loader2 className="w-9 h-9 text-white animate-spin" />
         </div>
-        <p className="text-muted-foreground font-medium">Caricamento lezioni...</p>
+        <p className="text-muted-foreground font-medium font-heading">Caricamento lezioni...</p>
+        <div className="w-32 h-1.5 bg-muted/30 rounded-full overflow-hidden backdrop-blur-sm">
+          <div className="h-full progress-animated rounded-full w-2/3" />
+        </div>
       </div>
     );
   }
@@ -345,9 +348,9 @@ export function StudioView({ hasFiles, onUploadClick, selectedContextId, onClear
 
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-5 p-6 text-center">
-        <div className={`w-20 h-20 rounded-3xl flex items-center justify-center ${
+        <div className={`w-20 h-20 rounded-[1.75rem] flex items-center justify-center shadow-glass-lg ${
           isPdfProcessing ? "gradient-primary animate-pulse-soft" : 
-          isPdfFailed ? "bg-destructive/15" : "bg-tertiary/15"
+          isPdfFailed ? "glass-accent" : "glass-tertiary"
         }`}>
           {isPdfProcessing ? (
             <Loader2 className="w-10 h-10 text-white animate-spin" />
@@ -367,7 +370,7 @@ export function StudioView({ hasFiles, onUploadClick, selectedContextId, onClear
              "L'AI analizzerà i tuoi materiali e creerà un percorso di mini-lezioni personalizzato."}
           </p>
           {contextFileName && (
-            <p className="text-sm text-primary font-medium mt-2">{contextFileName}</p>
+            <p className="text-sm text-primary font-medium mt-2 glass-primary inline-block px-3 py-1 rounded-full">{contextFileName}</p>
           )}
         </div>
         
@@ -375,7 +378,7 @@ export function StudioView({ hasFiles, onUploadClick, selectedContextId, onClear
           <Button 
             onClick={fetchLessons}
             variant="outline"
-            className="h-12 px-6 font-semibold rounded-2xl"
+            className="h-12 px-6 font-semibold rounded-2xl glass-subtle border-border/30 hover:shadow-glass transition-all"
           >
             <RefreshCw className="w-4 h-4 mr-2" />
             Aggiorna stato
@@ -384,7 +387,7 @@ export function StudioView({ hasFiles, onUploadClick, selectedContextId, onClear
           <Button 
             onClick={handleGenerateLessons} 
             disabled={isGenerating}
-            className="h-12 px-6 font-semibold gradient-primary text-white border-0 shadow-soft-md rounded-2xl"
+            className="h-12 px-6 font-semibold gradient-primary text-white border-0 shadow-glass-lg rounded-2xl hover:shadow-glass-xl hover:scale-105 transition-all duration-300 glow-ring"
           >
             {isGenerating ? (
               <>
@@ -426,7 +429,7 @@ export function StudioView({ hasFiles, onUploadClick, selectedContextId, onClear
   if (!currentLesson.is_generated || isGeneratingLesson) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-5 p-6">
-        <div className="w-20 h-20 rounded-3xl gradient-primary flex items-center justify-center shadow-soft-lg animate-pulse-soft">
+        <div className="w-20 h-20 rounded-[1.75rem] gradient-primary flex items-center justify-center shadow-glass-xl animate-pulse-soft glow-ring">
           <Sparkles className="w-10 h-10 text-white" />
         </div>
         <div className="text-center">
@@ -437,7 +440,7 @@ export function StudioView({ hasFiles, onUploadClick, selectedContextId, onClear
             L'AI sta creando "<span className="text-primary font-medium">{currentLesson.title}</span>" con esercizi interattivi
           </p>
         </div>
-        <div className="w-full max-w-xs h-2 bg-muted rounded-full overflow-hidden">
+        <div className="w-full max-w-xs h-2.5 bg-muted/30 rounded-full overflow-hidden backdrop-blur-sm">
           <div className="h-full progress-animated rounded-full w-2/3" />
         </div>
       </div>
@@ -445,14 +448,14 @@ export function StudioView({ hasFiles, onUploadClick, selectedContextId, onClear
   }
 
   return (
-    <div className="p-4 pb-24">
+    <div className="p-4 pb-28">
       {/* List toggle button */}
       <div className="flex justify-end mb-4">
         <Button
           variant="outline"
           size="sm"
           onClick={() => setShowList(true)}
-          className="rounded-xl border-border/50 bg-card shadow-soft-sm"
+          className="rounded-xl glass-subtle border-border/30 shadow-glass hover:shadow-glass-md transition-all duration-300"
         >
           <List className="w-4 h-4 mr-2" />
           Tutte le lezioni ({lessons.length})
@@ -478,6 +481,7 @@ export function StudioView({ hasFiles, onUploadClick, selectedContextId, onClear
           size="sm"
           onClick={handleGenerateLessons}
           disabled={isGenerating}
+          className="glass-subtle rounded-xl border-border/30 hover:shadow-glass transition-all duration-300"
         >
           {isGenerating ? (
             <Loader2 className="w-4 h-4 mr-2 animate-spin" />

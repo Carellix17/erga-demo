@@ -10,29 +10,30 @@ export function EmptyState({ onUploadClick }: EmptyStateProps) {
     <div className="flex flex-col items-center justify-center min-h-[70vh] px-6 text-center animate-fade-up relative">
       {/* Decorative glass orbs */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-20 -right-20 w-72 h-72 bg-gradient-to-br from-primary/15 to-tertiary/10 rounded-full blur-3xl animate-float" />
-        <div className="absolute -bottom-20 -left-20 w-72 h-72 bg-gradient-to-tr from-accent/10 to-primary/5 rounded-full blur-3xl animate-float" style={{ animationDelay: '-3s' }} />
+        <div className="glass-orb glass-orb-primary w-72 h-72 -top-20 -right-20 animate-float" />
+        <div className="glass-orb glass-orb-accent w-60 h-60 -bottom-16 -left-16" style={{ animationDelay: '-3s' }} />
+        <div className="glass-orb glass-orb-tertiary w-48 h-48 top-1/2 left-1/2 -translate-x-1/2" style={{ animationDelay: '-6s', animationDuration: '10s' }} />
       </div>
 
       <div className="relative z-10">
         {/* Animated icon with floating badges */}
         <div className="relative mb-8">
-          <div className="w-28 h-28 rounded-[2rem] gradient-primary flex items-center justify-center shadow-glass-xl animate-bounce-in">
+          <div className="w-28 h-28 rounded-[2rem] gradient-primary flex items-center justify-center shadow-glass-xl animate-bounce-in glow-ring">
             <Sparkles className="w-14 h-14 text-white" />
           </div>
           {/* Floating badge - top right */}
           <div 
-            className="absolute -right-3 -top-3 w-12 h-12 rounded-xl bg-accent/90 flex items-center justify-center shadow-glass-md animate-bounce-in backdrop-blur-sm" 
+            className="absolute -right-3 -top-3 w-12 h-12 rounded-xl glass-accent flex items-center justify-center shadow-glass-md animate-bounce-in" 
             style={{ animationDelay: "0.15s" }}
           >
-            <BookOpen className="w-6 h-6 text-white" />
+            <BookOpen className="w-6 h-6 text-accent" />
           </div>
           {/* Floating badge - bottom left */}
           <div 
-            className="absolute -left-3 -bottom-3 w-12 h-12 rounded-xl bg-tertiary/90 flex items-center justify-center shadow-glass-md animate-bounce-in backdrop-blur-sm" 
+            className="absolute -left-3 -bottom-3 w-12 h-12 rounded-xl glass-tertiary flex items-center justify-center shadow-glass-md animate-bounce-in" 
             style={{ animationDelay: "0.3s" }}
           >
-            <Brain className="w-6 h-6 text-white" />
+            <Brain className="w-6 h-6 text-tertiary" />
           </div>
         </div>
         
@@ -47,7 +48,7 @@ export function EmptyState({ onUploadClick }: EmptyStateProps) {
         <Button
           onClick={onUploadClick}
           size="lg"
-          className="h-14 px-8 text-base font-semibold gradient-primary text-white border-0 rounded-2xl shadow-glass-lg hover:shadow-glass-xl transition-all duration-300 hover:scale-105 active:scale-100"
+          className="h-14 px-8 text-base font-semibold gradient-primary text-white border-0 rounded-2xl shadow-glass-lg hover:shadow-glass-xl transition-all duration-300 hover:scale-105 active:scale-100 glow-ring"
         >
           <FileUp className="w-5 h-5 mr-2" />
           Carica PDF
@@ -55,9 +56,9 @@ export function EmptyState({ onUploadClick }: EmptyStateProps) {
         
         <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
           {[
-            { label: "Appunti", className: "chip-primary" },
-            { label: "Dispense", className: "chip-tertiary" },
-            { label: "Libri", className: "chip-accent" },
+            { label: "Appunti", className: "chip-primary glass-primary" },
+            { label: "Dispense", className: "chip-tertiary glass-tertiary" },
+            { label: "Libri", className: "chip-accent glass-accent" },
           ].map((item) => (
             <span key={item.label} className={item.className}>
               {item.label}

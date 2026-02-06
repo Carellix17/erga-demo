@@ -22,7 +22,6 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
 
     let imageUrl: string | undefined;
 
-    // If there's an image, convert to base64 for display
     if (selectedImage) {
       setIsUploading(true);
       try {
@@ -66,7 +65,6 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
 
       setSelectedImage(file);
       
-      // Create preview
       const reader = new FileReader();
       reader.onload = () => {
         setImagePreview(reader.result as string);
@@ -91,7 +89,7 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
           <img 
             src={imagePreview} 
             alt="Preview" 
-            className="h-20 w-auto rounded-xl object-cover border border-border/50 shadow-glass"
+            className="h-20 w-auto rounded-xl object-cover border border-border/30 shadow-glass"
           />
           <button
             type="button"
@@ -118,7 +116,7 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
           size="icon"
           onClick={() => fileInputRef.current?.click()}
           disabled={disabled || isUploading}
-          className="flex-shrink-0 rounded-xl h-12 w-12 border-border/50 hover:bg-primary/10 hover:border-primary/30 transition-all"
+          className="flex-shrink-0 rounded-xl h-12 w-12 glass-subtle border-border/30 hover:shadow-glass hover:border-primary/30 transition-all duration-300"
         >
           <ImageIcon className="w-5 h-5 text-muted-foreground" />
         </Button>
@@ -129,7 +127,7 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
           onChange={(e) => setMessage(e.target.value)}
           onKeyDown={handleKeyDown}
           placeholder="Chiedi qualcosa sui tuoi appunti..."
-          className="min-h-[48px] max-h-32 resize-none rounded-2xl border-border/50 bg-background/50 backdrop-blur-sm focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
+          className="min-h-[48px] max-h-32 resize-none rounded-2xl border-border/30 bg-background/30 backdrop-blur-sm focus:border-primary/40 focus:ring-2 focus:ring-primary/20 transition-all"
           disabled={disabled || isUploading}
         />
 

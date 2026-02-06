@@ -1,4 +1,4 @@
-import { ChevronLeft, CheckCircle2, Circle, Lock, Loader2 } from "lucide-react";
+import { ChevronLeft, CheckCircle2, Circle, Lock, Loader2, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Exercise } from "./exercises/ExerciseRenderer";
@@ -33,19 +33,40 @@ export function LessonsList({
     <div className="p-4 pb-24 animate-fade-up">
       {/* Header */}
       <div className="flex items-center gap-3 mb-6">
-        <Button variant="ghost" size="icon" onClick={onBack}>
+        <Button variant="ghost" size="icon" onClick={onBack} className="rounded-xl glass-subtle">
           <ChevronLeft className="w-5 h-5" />
         </Button>
         <div>
-          <h2 className="text-lg font-semibold">Percorso di studio</h2>
+          <h2 className="text-lg font-heading font-semibold">Percorso di studio</h2>
           <p className="text-sm text-muted-foreground">
             {lessons.filter(l => l.is_generated).length} di {lessons.length} lezioni generate
           </p>
         </div>
       </div>
 
+      {/* Progress overview */}
+      <div className="glass-card rounded-2xl p-4 mb-5">
+        <div className="flex items-center gap-3 mb-3">
+          <div className="w-10 h-10 rounded-xl gradient-primary flex items-center justify-center shadow-glass">
+            <Sparkles className="w-5 h-5 text-white" />
+          </div>
+          <div className="flex-1">
+            <p className="text-sm font-medium">Progresso totale</p>
+            <p className="text-xs text-muted-foreground">
+              {Math.round((lessons.filter(l => l.is_generated).length / lessons.length) * 100)}% completato
+            </p>
+          </div>
+        </div>
+        <div className="h-2 bg-muted/30 rounded-full overflow-hidden backdrop-blur-sm">
+          <div 
+            className="h-full progress-animated rounded-full transition-all duration-500"
+            style={{ width: `${(lessons.filter(l => l.is_generated).length / lessons.length) * 100}%` }}
+          />
+        </div>
+      </div>
+
       {/* Lessons List */}
-      <div className="space-y-2">
+      <div className="space-y-2.5">
         {lessons.map((lesson, index) => {
           const isCompleted = index < currentIndex;
           const isCurrent = index === currentIndex;
@@ -57,28 +78,28 @@ export function LessonsList({
               onClick={() => !isGenerating && onSelectLesson(index)}
               disabled={isGenerating}
               className={cn(
-                "w-full p-4 rounded-xl text-left transition-all",
+                "w-full p-4 rounded-2xl text-left transition-all duration-300",
                 "flex items-center gap-3",
-                isCurrent && "bg-primary/10 border-2 border-primary",
-                isCompleted && !isCurrent && "bg-secondary",
-                !isCurrent && !isCompleted && "bg-card border border-border",
-                isLocked && "opacity-60",
-                !isGenerating && "hover:shadow-md"
+                isCurrent && "glass-primary border border-primary/20 shadow-glass-md",
+                isCompleted && !isCurrent && "glass-subtle",
+                !isCurrent && !isCompleted && "glass-subtle border border-border/20",
+                isLocked && "opacity-50",
+                !isGenerating && "hover:shadow-glass-md hover:translate-x-1"
               )}
             >
               {/* Status Icon */}
               <div className={cn(
-                "w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0",
-                isCompleted && "bg-green-100 dark:bg-green-900/30",
-                isCurrent && "bg-primary",
-                !isCurrent && !isCompleted && "bg-muted"
+                "w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 transition-all duration-300 shadow-glass",
+                isCompleted && "glass-success",
+                isCurrent && "gradient-primary",
+                !isCurrent && !isCompleted && "glass-subtle"
               )}>
                 {isGenerating && isCurrent ? (
-                  <Loader2 className="w-4 h-4 text-primary-foreground animate-spin" />
+                  <Loader2 className="w-4 h-4 text-white animate-spin" />
                 ) : isCompleted ? (
-                  <CheckCircle2 className="w-4 h-4 text-green-600 dark:text-green-400" />
+                  <CheckCircle2 className="w-4 h-4 text-success" />
                 ) : isCurrent ? (
-                  <span className="text-sm font-bold text-primary-foreground">
+                  <span className="text-sm font-bold text-white">
                     {index + 1}
                   </span>
                 ) : isLocked ? (
@@ -107,7 +128,7 @@ export function LessonsList({
 
               {/* Generated badge */}
               {lesson.is_generated && (
-                <span className="text-xs px-2 py-1 rounded-full bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                <span className="text-xs px-2.5 py-1 rounded-full glass-success text-success font-medium">
                   Pronta
                 </span>
               )}
