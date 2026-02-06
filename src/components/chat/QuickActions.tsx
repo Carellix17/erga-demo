@@ -5,24 +5,25 @@ interface QuickActionsProps {
 }
 
 const quickActions = [
-  "Spiegami meglio",
-  "Fammi un esempio",
-  "Riassumi",
-  "Quiz veloce",
+  { label: "Spiegami meglio", emoji: "💡" },
+  { label: "Fammi un esempio", emoji: "📝" },
+  { label: "Riassumi", emoji: "📋" },
+  { label: "Quiz veloce", emoji: "⚡" },
 ];
 
 export function QuickActions({ onAction }: QuickActionsProps) {
   return (
-    <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+    <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
       {quickActions.map((action) => (
         <Button
-          key={action}
-          variant="secondary"
+          key={action.label}
+          variant="outline"
           size="sm"
-          onClick={() => onAction(action)}
-          className="whitespace-nowrap flex-shrink-0"
+          onClick={() => onAction(action.label)}
+          className="whitespace-nowrap flex-shrink-0 glass-subtle border-border/30 rounded-xl hover:shadow-glass hover:scale-[1.03] transition-all duration-300 text-xs font-medium"
         >
-          {action}
+          <span className="mr-1.5">{action.emoji}</span>
+          {action.label}
         </Button>
       ))}
     </div>

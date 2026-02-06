@@ -9,10 +9,10 @@ interface AppHeaderProps {
 
 export function AppHeader({ onUploadClick, hasFiles }: AppHeaderProps) {
   return (
-    <header className="sticky top-0 z-40 glass-strong">
+    <header className="sticky top-0 z-40 glass-strong glass-shimmer">
       <div className="flex items-center justify-between h-16 px-4 max-w-lg mx-auto">
         <div className="flex items-center gap-3">
-          <div className="w-11 h-11 rounded-2xl gradient-primary flex items-center justify-center shadow-glass-md">
+          <div className="w-11 h-11 rounded-2xl gradient-primary flex items-center justify-center shadow-glass-md animate-glow-pulse">
             <Sparkles className="w-5 h-5 text-white" />
           </div>
           <div>
@@ -30,7 +30,7 @@ export function AppHeader({ onUploadClick, hasFiles }: AppHeaderProps) {
             className={
               !hasFiles 
                 ? "gradient-primary text-white border-0 shadow-glass-md rounded-xl hover:shadow-glass-lg transition-all duration-300 hover:scale-105" 
-                : "rounded-xl hover:bg-muted/80"
+                : "rounded-xl glass-subtle hover:shadow-glass transition-all duration-300"
             }
           >
             <FileUp className="w-4 h-4 mr-2" />

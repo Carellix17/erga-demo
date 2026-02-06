@@ -309,15 +309,17 @@ export function PianoView({ hasFiles, onUploadClick }: PianoViewProps) {
 
   if (isLoading) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
-        <Loader2 className="w-8 h-8 text-primary animate-spin" />
-        <p className="text-muted-foreground">Caricamento eventi...</p>
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-5">
+        <div className="w-16 h-16 rounded-[1.5rem] gradient-primary flex items-center justify-center shadow-glass-lg animate-pulse-soft">
+          <Loader2 className="w-8 h-8 text-white animate-spin" />
+        </div>
+        <p className="text-muted-foreground font-heading font-medium">Caricamento eventi...</p>
       </div>
     );
   }
 
   return (
-    <div className="p-4 pb-24 space-y-4">
+    <div className="p-4 pb-28 space-y-4">
       {/* AI Suggestion */}
       {suggestion && (
         <PlanSuggestion
@@ -333,7 +335,7 @@ export function PianoView({ hasFiles, onUploadClick }: PianoViewProps) {
           variant="outline"
           onClick={generatePlan}
           disabled={isGeneratingPlan}
-          className="w-full glass-subtle border-primary/20 hover:bg-primary/5"
+          className="w-full h-12 glass-card border-primary/20 hover:shadow-glow rounded-2xl font-medium transition-all duration-300"
         >
           {isGeneratingPlan ? (
             <>
@@ -347,7 +349,7 @@ export function PianoView({ hasFiles, onUploadClick }: PianoViewProps) {
       )}
 
       {/* Calendar */}
-      <div className="glass-subtle rounded-2xl p-4 shadow-glass">
+      <div className="glass-card rounded-2xl p-4">
         <Calendar
           mode="single"
           selected={selectedDate}
@@ -362,7 +364,7 @@ export function PianoView({ hasFiles, onUploadClick }: PianoViewProps) {
             caption: "flex justify-center pt-1 relative items-center",
             caption_label: "text-sm font-heading font-semibold",
             nav: "space-x-1 flex items-center",
-            nav_button: "h-8 w-8 bg-transparent p-0 opacity-50 hover:opacity-100 rounded-xl hover:bg-muted transition-colors",
+            nav_button: "h-8 w-8 bg-transparent p-0 opacity-50 hover:opacity-100 rounded-xl hover:bg-muted/50 transition-all",
             nav_button_previous: "absolute left-1",
             nav_button_next: "absolute right-1",
             table: "w-full border-collapse space-y-1",
@@ -370,10 +372,10 @@ export function PianoView({ hasFiles, onUploadClick }: PianoViewProps) {
             head_cell: "text-muted-foreground rounded-md w-full font-normal text-[0.8rem]",
             row: "flex w-full mt-2",
             cell: "h-10 w-full text-center text-sm p-0 relative",
-            day: "h-10 w-10 p-0 font-normal mx-auto rounded-xl hover:bg-muted transition-colors",
+            day: "h-10 w-10 p-0 font-normal mx-auto rounded-xl hover:bg-muted/50 transition-all",
             day_range_end: "day-range-end",
-            day_selected: "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground",
-            day_today: "bg-accent/20 text-accent-foreground font-semibold",
+            day_selected: "gradient-primary text-white hover:text-white focus:text-white shadow-glass",
+            day_today: "glass-accent text-foreground font-semibold",
             day_outside: "opacity-30",
             day_disabled: "opacity-30",
             day_hidden: "invisible",
@@ -381,17 +383,17 @@ export function PianoView({ hasFiles, onUploadClick }: PianoViewProps) {
         />
         
         {/* Legend */}
-        <div className="flex flex-wrap gap-3 mt-4 pt-4 border-t border-border/50 justify-center">
-          <div className="flex items-center gap-1.5 text-xs">
-            <div className="w-3 h-3 rounded-full bg-primary/30" />
+        <div className="flex flex-wrap gap-3 mt-4 pt-4 border-t border-border/20 justify-center">
+          <div className="flex items-center gap-1.5 text-xs glass-subtle px-2.5 py-1 rounded-full">
+            <div className="w-2.5 h-2.5 rounded-full bg-primary/50" />
             <span className="text-muted-foreground">Studio</span>
           </div>
-          <div className="flex items-center gap-1.5 text-xs">
-            <div className="w-3 h-3 rounded-full bg-accent/30" />
+          <div className="flex items-center gap-1.5 text-xs glass-subtle px-2.5 py-1 rounded-full">
+            <div className="w-2.5 h-2.5 rounded-full bg-accent/50" />
             <span className="text-muted-foreground">Verifica</span>
           </div>
-          <div className="flex items-center gap-1.5 text-xs">
-            <div className="w-3 h-3 rounded-full bg-tertiary/30" />
+          <div className="flex items-center gap-1.5 text-xs glass-subtle px-2.5 py-1 rounded-full">
+            <div className="w-2.5 h-2.5 rounded-full bg-tertiary/50" />
             <span className="text-muted-foreground">Compito</span>
           </div>
         </div>
@@ -409,7 +411,7 @@ export function PianoView({ hasFiles, onUploadClick }: PianoViewProps) {
           variant="outline"
           size="sm"
           onClick={() => setShowAddSheet(true)}
-          className="rounded-xl"
+          className="rounded-xl glass-subtle border-border/30 hover:shadow-glass transition-all"
         >
           <Plus className="w-4 h-4 mr-1" />
           Aggiungi
@@ -418,8 +420,8 @@ export function PianoView({ hasFiles, onUploadClick }: PianoViewProps) {
 
       {/* Events List for Selected Date */}
       {selectedDate && selectedDateEvents.length === 0 ? (
-        <div className="text-center py-6 text-muted-foreground glass-subtle rounded-2xl">
-          <p>Nessun evento per questa data.</p>
+        <div className="text-center py-8 text-muted-foreground glass-card rounded-2xl">
+          <p className="font-medium">Nessun evento per questa data.</p>
           <Button 
             variant="link" 
             onClick={() => setShowAddSheet(true)}
@@ -459,8 +461,8 @@ export function PianoView({ hasFiles, onUploadClick }: PianoViewProps) {
       ) : (
         /* All upcoming events when no date selected */
         events.length === 0 ? (
-          <div className="text-center py-8 text-muted-foreground glass-subtle rounded-2xl">
-            <p>Nessun evento in programma.</p>
+          <div className="text-center py-10 text-muted-foreground glass-card rounded-2xl">
+            <p className="font-medium">Nessun evento in programma.</p>
             <p className="text-sm mt-1">Aggiungi verifiche e compiti per generare un piano di studio.</p>
           </div>
         ) : (

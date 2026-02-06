@@ -1,8 +1,7 @@
 import { useState } from "react";
-import { ChevronRight, Clock, Lightbulb, BookOpen, Dumbbell, ChevronDown, ChevronUp, Trophy, Target } from "lucide-react";
+import { ChevronRight, Clock, Lightbulb, BookOpen, Dumbbell, ChevronUp, Trophy, Target } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
 import { ExerciseRenderer, Exercise } from "./exercises/ExerciseRenderer";
 import { cn } from "@/lib/utils";
 
@@ -65,10 +64,10 @@ export function MiniLesson({
   return (
     <div className="space-y-5 animate-fade-up">
       {/* Progress Header */}
-      <div className="glass-subtle rounded-2xl p-4 shadow-glass">
+      <div className="glass-card rounded-2xl p-4">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
-            <div className="w-9 h-9 rounded-xl bg-primary/15 flex items-center justify-center">
+            <div className="w-9 h-9 rounded-xl glass-primary flex items-center justify-center shadow-glass">
               <Target className="w-4 h-4 text-primary" />
             </div>
             <span className="font-heading font-semibold">
@@ -80,7 +79,7 @@ export function MiniLesson({
             <span>~{lesson.duration} min</span>
           </div>
         </div>
-        <div className="h-2.5 bg-muted/50 rounded-full overflow-hidden">
+        <div className="h-2.5 bg-muted/30 rounded-full overflow-hidden backdrop-blur-sm">
           <div 
             className="h-full progress-animated rounded-full transition-all duration-500"
             style={{ width: `${progress}%` }}
@@ -89,11 +88,11 @@ export function MiniLesson({
       </div>
 
       {/* Concept Card - Glass effect */}
-      <Card className="border-0 glass-primary shadow-glass-md overflow-hidden">
+      <Card className="border-0 glass-primary shadow-glass-md overflow-hidden glow-ring">
         <CardHeader className="pb-2">
           <div className="flex items-center gap-2">
-            <div className="w-9 h-9 rounded-xl bg-primary flex items-center justify-center shadow-sm">
-              <Lightbulb className="w-4 h-4 text-primary-foreground" />
+            <div className="w-9 h-9 rounded-xl gradient-primary flex items-center justify-center shadow-glass">
+              <Lightbulb className="w-4 h-4 text-white" />
             </div>
             <span className="text-sm font-semibold text-primary uppercase tracking-wide">
               Concetto chiave
@@ -108,10 +107,10 @@ export function MiniLesson({
       </Card>
 
       {/* Lesson Content - Glass card */}
-      <Card className="glass-subtle shadow-glass-md border-0">
+      <Card className="glass-card border-0">
         <CardHeader>
           <CardTitle className="flex items-center gap-3 font-heading">
-            <div className="w-11 h-11 rounded-xl bg-tertiary/15 flex items-center justify-center">
+            <div className="w-11 h-11 rounded-xl glass-tertiary flex items-center justify-center shadow-glass">
               <BookOpen className="w-5 h-5 text-tertiary" />
             </div>
             <span className="text-xl">{lesson.title}</span>
@@ -136,19 +135,19 @@ export function MiniLesson({
 
       {/* Exercises Section */}
       {hasExercises && (
-        <Card className="glass-subtle shadow-glass-md border-0 overflow-hidden">
+        <Card className="glass-card border-0 overflow-hidden">
           <CardHeader 
             className={cn(
               "cursor-pointer transition-all duration-300",
-              showExercises ? "bg-accent/10" : "hover:bg-muted/30"
+              showExercises ? "glass-accent" : "hover:bg-muted/20"
             )}
             onClick={() => !showExercises && handleStartExercises()}
           >
             <CardTitle className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className={cn(
-                  "w-11 h-11 rounded-xl flex items-center justify-center transition-all duration-300",
-                  showExercises ? "bg-accent text-accent-foreground shadow-sm" : "bg-accent/15"
+                  "w-11 h-11 rounded-xl flex items-center justify-center transition-all duration-300 shadow-glass",
+                  showExercises ? "gradient-warm text-white" : "glass-accent"
                 )}>
                   <Dumbbell className={cn("w-5 h-5", !showExercises && "text-accent")} />
                 </div>
@@ -160,7 +159,7 @@ export function MiniLesson({
               {showExercises ? (
                 <ChevronUp className="w-5 h-5 text-muted-foreground" />
               ) : (
-                <div className="chip-accent text-xs">Inizia</div>
+                <div className="chip-accent glass-accent text-xs">Inizia</div>
               )}
             </CardTitle>
           </CardHeader>
@@ -177,7 +176,7 @@ export function MiniLesson({
                     {correctCount}/{exerciseResults.length} corretti
                   </span>
                 </div>
-                <div className="h-2 bg-muted rounded-full overflow-hidden">
+                <div className="h-2 bg-muted/30 rounded-full overflow-hidden backdrop-blur-sm">
                   <div 
                     className="h-full bg-accent rounded-full transition-all duration-500"
                     style={{ width: `${exerciseProgress}%` }}
@@ -187,7 +186,7 @@ export function MiniLesson({
 
               {/* Current Exercise */}
               {!allExercisesCompleted && exercises[currentExerciseIndex] && (
-                <div className="p-5 rounded-2xl bg-muted/50 border border-border/50">
+                <div className="p-5 rounded-2xl glass-subtle border border-border/30">
                   <ExerciseRenderer
                     exercise={exercises[currentExerciseIndex]}
                     onComplete={handleExerciseComplete}
@@ -201,10 +200,10 @@ export function MiniLesson({
                 <div className={cn(
                   "p-6 rounded-2xl text-center space-y-4",
                   correctCount >= exercises.length * 0.7
-                    ? "bg-success/15"
-                    : "bg-warning/15"
+                    ? "glass-success"
+                    : "glass-accent"
                 )}>
-                  <div className="w-16 h-16 rounded-2xl mx-auto flex items-center justify-center animate-bounce-in"
+                  <div className="w-16 h-16 rounded-2xl mx-auto flex items-center justify-center animate-bounce-in shadow-glass-lg"
                     style={{ background: correctCount >= exercises.length * 0.7 ? "hsl(var(--success))" : "hsl(var(--warning))" }}
                   >
                     <Trophy className="w-8 h-8 text-white" />
@@ -224,7 +223,7 @@ export function MiniLesson({
                   <Button 
                     variant="outline" 
                     onClick={handleStartExercises}
-                    className="mt-2"
+                    className="mt-2 glass-subtle rounded-xl"
                   >
                     Ripeti esercizi
                   </Button>
@@ -239,7 +238,7 @@ export function MiniLesson({
       {!hasExercises || allExercisesCompleted ? (
         <Button 
           onClick={onNext} 
-          className="w-full h-14 text-base font-semibold gradient-primary text-white border-0 rounded-2xl shadow-glass-md hover:shadow-glass-lg transition-all duration-300 hover:scale-[1.02] active:scale-100" 
+          className="w-full h-14 text-base font-semibold gradient-primary text-white border-0 rounded-2xl shadow-glass-lg hover:shadow-glass-xl transition-all duration-300 hover:scale-[1.02] active:scale-100 glow-ring" 
           size="lg"
         >
           {isLastLesson ? "Completa corso 🎓" : "Prossima lezione"}
@@ -248,7 +247,7 @@ export function MiniLesson({
       ) : !showExercises ? (
         <Button 
           onClick={handleStartExercises} 
-          className="w-full h-14 text-base font-semibold bg-accent hover:bg-accent/90 text-accent-foreground rounded-2xl shadow-glass-md hover:shadow-glass-lg transition-all duration-300 hover:scale-[1.02] active:scale-100" 
+          className="w-full h-14 text-base font-semibold gradient-warm text-white border-0 rounded-2xl shadow-glass-lg hover:shadow-glass-xl transition-all duration-300 hover:scale-[1.02] active:scale-100" 
           size="lg"
         >
           Inizia esercizi

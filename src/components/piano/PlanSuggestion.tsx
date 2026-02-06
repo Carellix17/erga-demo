@@ -1,5 +1,4 @@
 import { Sparkles, Check, X } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
 interface PlanSuggestionProps {
@@ -10,40 +9,40 @@ interface PlanSuggestionProps {
 
 export function PlanSuggestion({ explanation, onAccept, onDecline }: PlanSuggestionProps) {
   return (
-    <Card className="border-2 border-primary/30 bg-primary/5 animate-scale-in">
-      <CardHeader className="pb-2">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center">
-            <Sparkles className="w-4 h-4 text-primary" />
-          </div>
-          <CardTitle className="text-base">Piano suggerito</CardTitle>
+    <div className="glass-primary rounded-2xl p-5 shadow-glass-md animate-scale-in glow-ring">
+      <div className="flex items-center gap-3 mb-4">
+        <div className="w-10 h-10 rounded-xl gradient-primary flex items-center justify-center shadow-glass animate-glow-pulse">
+          <Sparkles className="w-5 h-5 text-white" />
         </div>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <p className="text-sm text-muted-foreground leading-relaxed">
-          {explanation}
-        </p>
-        
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={onDecline}
-            className="flex-1"
-          >
-            <X className="w-4 h-4 mr-1" />
-            Modifica
-          </Button>
-          <Button
-            size="sm"
-            onClick={onAccept}
-            className="flex-1"
-          >
-            <Check className="w-4 h-4 mr-1" />
-            Accetta
-          </Button>
+        <div>
+          <h3 className="font-heading font-semibold text-base">Piano suggerito</h3>
+          <p className="text-xs text-muted-foreground">Generato dall'AI</p>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+      
+      <p className="text-sm text-muted-foreground leading-relaxed mb-5">
+        {explanation}
+      </p>
+      
+      <div className="flex gap-2">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={onDecline}
+          className="flex-1 glass-subtle rounded-xl border-border/30 hover:shadow-glass transition-all"
+        >
+          <X className="w-4 h-4 mr-1.5" />
+          Modifica
+        </Button>
+        <Button
+          size="sm"
+          onClick={onAccept}
+          className="flex-1 gradient-primary text-white border-0 rounded-xl shadow-glass-md hover:shadow-glass-lg transition-all hover:scale-[1.02]"
+        >
+          <Check className="w-4 h-4 mr-1.5" />
+          Accetta
+        </Button>
+      </div>
+    </div>
   );
 }

@@ -56,8 +56,6 @@ export function ChatView({ hasFiles, onUploadClick }: ChatViewProps) {
     setMessages((prev) => [...prev, userMessage]);
     setIsLoading(true);
 
-    // Prepare messages for API (exclude welcome message id issues)
-    // Include image info in the message content if present
     const apiMessages = [...messages.filter(m => m.id !== "welcome"), userMessage].map(m => ({
       role: m.role,
       content: m.imageUrl 
@@ -83,13 +81,11 @@ export function ChatView({ hasFiles, onUploadClick }: ChatViewProps) {
         }
       );
 
-      // Check for error responses
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.error || "Errore nella risposta");
       }
 
-      // Check if it's a non-streaming response (no content)
       const contentType = response.headers.get("content-type");
       if (contentType?.includes("application/json")) {
         const data = await response.json();
@@ -103,7 +99,6 @@ export function ChatView({ hasFiles, onUploadClick }: ChatViewProps) {
         }
       }
 
-      // Handle streaming response
       const reader = response.body?.getReader();
       if (!reader) throw new Error("No response body");
 
@@ -148,14 +143,12 @@ export function ChatView({ hasFiles, onUploadClick }: ChatViewProps) {
               updateAssistantMessage(assistantContent + deltaContent);
             }
           } catch {
-            // Incomplete JSON, put back
             textBuffer = line + "\n" + textBuffer;
             break;
           }
         }
       }
 
-      // Final flush
       if (textBuffer.trim()) {
         for (let raw of textBuffer.split("\n")) {
           if (!raw) continue;
@@ -183,7 +176,6 @@ export function ChatView({ hasFiles, onUploadClick }: ChatViewProps) {
         variant: "destructive",
       });
 
-      // Add error message
       setMessages((prev) => [
         ...prev,
         {
@@ -204,20 +196,20 @@ export function ChatView({ hasFiles, onUploadClick }: ChatViewProps) {
   return (
     <div className="flex flex-col h-[calc(100vh-7.5rem)]">
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+      <div className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-thin">
         {messages.map((message) => (
           <ChatMessage key={message.id} message={message} />
         ))}
         {isLoading && (
-          <div className="flex gap-3">
-            <div className="w-9 h-9 rounded-xl bg-primary/15 flex items-center justify-center">
+          <div className="flex gap-3 animate-fade-up">
+            <div className="w-9 h-9 rounded-xl glass-primary flex items-center justify-center shadow-glass">
               <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
             </div>
-            <div className="glass-subtle rounded-2xl rounded-bl-md px-4 py-3 shadow-glass">
-              <div className="flex gap-1">
-                <div className="w-2 h-2 bg-primary/50 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
-                <div className="w-2 h-2 bg-primary/50 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
-                <div className="w-2 h-2 bg-primary/50 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+            <div className="glass-card rounded-2xl rounded-bl-md px-4 py-3">
+              <div className="flex gap-1.5">
+                <div className="w-2 h-2 bg-primary/60 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
+                <div className="w-2 h-2 bg-primary/60 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
+                <div className="w-2 h-2 bg-primary/60 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
               </div>
             </div>
           </div>
@@ -226,7 +218,7 @@ export function ChatView({ hasFiles, onUploadClick }: ChatViewProps) {
       </div>
 
       {/* Input Area */}
-      <div className="p-4 pb-20 glass-strong border-t-0 space-y-3">
+      <div className="p-4 pb-24 glass-strong border-t-0 space-y-3">
         <QuickActions onAction={handleQuickAction} />
         <ChatInput onSend={handleSend} disabled={isLoading} />
       </div>
