@@ -66,6 +66,9 @@ const Index = () => {
     }));
     setUploadedFiles((prev) => [...prev, ...newFiles]);
     setHasCloudContent(true);
+    if (contextId) {
+      setSelectedContextId(contextId);
+    }
     setRefreshKey(prev => prev + 1);
   };
 

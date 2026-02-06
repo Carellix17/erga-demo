@@ -75,6 +75,7 @@ export function UploadSheet({ open, onOpenChange, onUpload, uploadedFiles, onSel
     setIsUploading(true);
     setGenerationStep("uploading");
     const uploadedFileInfos: { name: string; size: number }[] = [];
+    const uploadedContextIds: string[] = [];
 
     try {
       for (const file of selectedFiles) {
@@ -117,6 +118,9 @@ export function UploadSheet({ open, onOpenChange, onUpload, uploadedFiles, onSel
         }
 
         uploadedFileInfos.push({ name: file.name, size: file.size });
+        if (data.contextId) {
+          uploadedContextIds.push(data.contextId as string);
+        }
         
         // Processing
         setGenerationStep("processing");
@@ -133,24 +137,27 @@ export function UploadSheet({ open, onOpenChange, onUpload, uploadedFiles, onSel
         const { data: { session: sessionForLessons } } = await supabase.auth.getSession();
         const authTokenForLessons = sessionForLessons?.access_token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
-        await fetch(
-          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-lessons`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${authTokenForLessons}`,
-            },
-            body: JSON.stringify({ userId: currentUser }),
-          }
-        );
+        for (const contextId of uploadedContextIds) {
+          await fetch(
+            `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-lessons`,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${authTokenForLessons}`,
+              },
+              body: JSON.stringify({ userId: currentUser, contextId }),
+            }
+          );
+        }
 
         setGenerationStep("complete");
         
         // Show success for a moment
         await new Promise(resolve => setTimeout(resolve, 1500));
         
-        onUpload(uploadedFileInfos);
+        const latestContextId = uploadedContextIds.at(-1);
+        onUpload(uploadedFileInfos, latestContextId);
         setSelectedFiles([]);
         setGenerationStep("idle");
         onOpenChange(false);
