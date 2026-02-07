@@ -75,6 +75,7 @@ export function UploadSheet({ open, onOpenChange, onUpload, uploadedFiles, onSel
     setIsUploading(true);
     setGenerationStep("uploading");
     const uploadedFileInfos: { name: string; size: number }[] = [];
+    let lastContextId: string | undefined;
 
     try {
       for (const file of selectedFiles) {
@@ -117,19 +118,52 @@ export function UploadSheet({ open, onOpenChange, onUpload, uploadedFiles, onSel
         }
 
         uploadedFileInfos.push({ name: file.name, size: file.size });
+        lastContextId = data.contextId;
         
-        // Processing
+        // Processing - poll until PDF is ready
         setGenerationStep("processing");
       }
 
-      if (uploadedFileInfos.length > 0) {
-        // Generating lessons
-        setGenerationStep("generating");
-        
-        // Wait for processing then generate lessons
-        await new Promise(resolve => setTimeout(resolve, 3000));
+      if (uploadedFileInfos.length > 0 && lastContextId) {
+        // Poll for PDF processing completion (max 30s)
+        setGenerationStep("processing");
+        const { data: { session: pollSession } } = await supabase.auth.getSession();
+        const pollToken = pollSession?.access_token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
-        // Get OAuth session token if available
+        let processingComplete = false;
+        for (let i = 0; i < 15; i++) {
+          await new Promise(resolve => setTimeout(resolve, 2000));
+          
+          const statusRes = await fetch(
+            `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-lessons`,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${pollToken}`,
+              },
+              body: JSON.stringify({ userId: currentUser, action: "listContexts" }),
+            }
+          );
+          const statusData = await statusRes.json();
+          const ctx = statusData.contexts?.find((c: { id: string }) => c.id === lastContextId);
+          
+          if (ctx?.processing_status === "completed") {
+            processingComplete = true;
+            break;
+          }
+          if (ctx?.processing_status === "failed") {
+            throw new Error("Elaborazione del PDF fallita. Riprova con un altro file.");
+          }
+        }
+
+        if (!processingComplete) {
+          throw new Error("Elaborazione del PDF troppo lenta. Riprova tra poco.");
+        }
+
+        // Generate lessons WITH the correct contextId
+        setGenerationStep("generating");
+
         const { data: { session: sessionForLessons } } = await supabase.auth.getSession();
         const authTokenForLessons = sessionForLessons?.access_token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
@@ -141,7 +175,7 @@ export function UploadSheet({ open, onOpenChange, onUpload, uploadedFiles, onSel
               "Content-Type": "application/json",
               Authorization: `Bearer ${authTokenForLessons}`,
             },
-            body: JSON.stringify({ userId: currentUser }),
+            body: JSON.stringify({ userId: currentUser, contextId: lastContextId }),
           }
         );
 
@@ -150,7 +184,7 @@ export function UploadSheet({ open, onOpenChange, onUpload, uploadedFiles, onSel
         // Show success for a moment
         await new Promise(resolve => setTimeout(resolve, 1500));
         
-        onUpload(uploadedFileInfos);
+        onUpload(uploadedFileInfos, lastContextId);
         setSelectedFiles([]);
         setGenerationStep("idle");
         onOpenChange(false);
