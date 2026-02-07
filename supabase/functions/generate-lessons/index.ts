@@ -62,25 +62,30 @@ serve(async (req) => {
       // Prompt per la generazione della lezione
       const prompt = `Sei un tutor universitario esperto. Crea una lezione basata ESCLUSIVAMENTE sul materiale fornito.
 
-      OBIETTIVO: Creare una lezione chiara, densa di contenuto ma facile da leggere.
-      
+      OBIETTIVO: Creare una mini-lezione breve, divisa in micro-step stile Duolingo/Mimo.
+      Lunghezza massima totale: 120-150 parole.
+
       TITOLO LEZIONE: "${lessons.title}"
-      
+
       ISTRUZIONI SPECIFICHE:
-      1. Concept: Spiega il nucleo dell'argomento in modo sintetico.
-      2. Explanation: Sviluppa l'argomento in modo discorsivo (4-6 frasi), collegando i punti chiave trovati nel testo.
-      3. Exercises: 
-         - Crea domande che richiedano ragionamento, non solo memoria.
-         - Per "short_answer", fornisci ALMENO 10 parole chiave/sinonimi accettabili.
-      
+      1. Concept: 1-2 frasi massimo.
+      2. Explanation: suddividi in 2-4 micro-step separati da "•" (bullet), ogni bullet 1 frase corta.
+         - Ogni bullet deve trattare un SOLO concetto.
+         - Evita blocchi lunghi o discorsi unici.
+      3. Example: 1 esempio molto breve (1-2 frasi).
+      4. Exercises:
+         - Massimo 2 esercizi.
+         - Domande brevi, concrete.
+         - Per "short_answer", fornisci ALMENO 6 parole chiave/sinonimi.
+
       Formato JSON richiesto:
       {
         "concept": "...",
-        "explanation": "...",
+        "explanation": "• Step 1...\n• Step 2...\n• Step 3...",
         "example": "...",
         "exercises": [
            { "type": "multiple_choice", "question": "...", "options": ["..."], "correct_index": 0 },
-           { "type": "short_answer", "question": "...", "expected_keywords": ["keyword1", "keyword2", "sinonimo", "variante"] }
+           { "type": "short_answer", "question": "...", "expected_keywords": ["keyword1", "keyword2", "sinonimo"] }
         ]
       }
 
