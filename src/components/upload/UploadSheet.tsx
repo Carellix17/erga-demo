@@ -228,7 +228,6 @@ export function UploadSheet({ open, onOpenChange, onUpload, uploadedFiles, onSel
         
         const latestContextId = uploadedContextIds.at(-1);
         onUpload(uploadedFileInfos, latestContextId);
-
         setSelectedFiles([]);
         setGenerationStep("idle");
         onOpenChange(false);

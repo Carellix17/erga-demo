@@ -12,7 +12,8 @@ serve(async (req) => {
 
     // Validate authentication and get userId
     const auth = await validateAuth(req, body);
-    const { userId, supabase } = auth;
+    const { userId, userEmail, supabase } = auth;
+    const legacyUserId = userEmail && userEmail !== userId ? userEmail : null;
 
     console.log(`Delete context for user: ${userId} (authenticated: ${auth.isAuthenticated})`);
 
@@ -23,6 +24,13 @@ serve(async (req) => {
         .select("id, file_name, created_at")
         .eq("user_id", userId)
         .order("created_at", { ascending: false });
+      const { data: legacyContexts } = legacyUserId
+        ? await supabase
+            .from("study_contexts")
+            .select("id, file_name, created_at")
+            .eq("user_id", legacyUserId)
+            .order("created_at", { ascending: false })
+        : { data: null };
 
       if (error) {
         console.error("Error fetching contexts:", error);
@@ -34,17 +42,23 @@ serve(async (req) => {
         .from("mini_lessons")
         .select("context_id")
         .eq("user_id", userId);
+      const { data: legacyLessons } = legacyUserId
+        ? await supabase
+            .from("mini_lessons")
+            .select("context_id")
+            .eq("user_id", legacyUserId)
+        : { data: null };
 
       const lessonCounts: Record<string, number> = {};
-      if (lessons) {
-        for (const l of lessons) {
-          if (l.context_id) {
-            lessonCounts[l.context_id] = (lessonCounts[l.context_id] || 0) + 1;
-          }
+      const allLessons = [...(lessons || []), ...(legacyLessons || [])];
+      for (const l of allLessons) {
+        if (l.context_id) {
+          lessonCounts[l.context_id] = (lessonCounts[l.context_id] || 0) + 1;
         }
       }
 
-      const contextsWithCounts = (contexts || []).map((c: { id: string; file_name: string; created_at: string }) => ({
+      const allContexts = [...(contexts || []), ...(legacyContexts || [])];
+      const contextsWithCounts = allContexts.map((c: { id: string; file_name: string; created_at: string }) => ({
         ...c,
         lesson_count: lessonCounts[c.id] || 0,
       }));
@@ -60,7 +74,7 @@ serve(async (req) => {
       const { error: lessonsError } = await supabase
         .from("mini_lessons")
         .delete()
-        .eq("user_id", userId)
+        .in("user_id", legacyUserId ? [userId, legacyUserId] : [userId])
         .eq("context_id", contextId);
 
       if (lessonsError) {
@@ -72,7 +86,7 @@ serve(async (req) => {
         .from("study_contexts")
         .delete()
         .eq("id", contextId)
-        .eq("user_id", userId);
+        .in("user_id", legacyUserId ? [userId, legacyUserId] : [userId]);
 
       if (error) {
         console.error("Error deleting context:", error);

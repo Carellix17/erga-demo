@@ -12,7 +12,7 @@ serve(async (req) => {
 
     // Validate authentication and get userId
     const auth = await validateAuth(req, body);
-    const { userId, supabase } = auth;
+    const { userId, userEmail, supabase } = auth;
 
     if (!messages) {
       return errorResponse("Missing messages", 400);
@@ -25,6 +25,13 @@ serve(async (req) => {
       .from("study_contexts")
       .select("content, file_name")
       .eq("user_id", userId);
+    const legacyUserId = userEmail && userEmail !== userId ? userEmail : null;
+    const { data: legacyContexts } = legacyUserId
+      ? await supabase
+          .from("study_contexts")
+          .select("content, file_name")
+          .eq("user_id", legacyUserId)
+      : { data: null };
 
     // Fetch study events
     const { data: events } = await supabase
@@ -33,7 +40,9 @@ serve(async (req) => {
       .eq("user_id", userId)
       .order("event_date", { ascending: true });
 
-    if (!contexts || contexts.length === 0) {
+    const mergedContexts = [...(contexts || []), ...(legacyContexts || [])];
+
+    if (mergedContexts.length === 0) {
       return new Response(
         JSON.stringify({ 
           response: "Non ho ancora accesso a nessun materiale di studio. Per poterti aiutare, carica prima dei PDF con i tuoi appunti o dispense usando il pulsante in alto a destra." 
@@ -52,7 +61,7 @@ serve(async (req) => {
 
     // Build context (trim aggressively to avoid 413 / TPM issues)
     const studyContent = trimTo(
-      contexts
+      mergedContexts
         .map((c: { file_name: string; content: string }) => `--- ${c.file_name} ---\n${c.content}`)
         .join("\n\n"),
       MAX_STUDY_CHARS

@@ -12,7 +12,8 @@ serve(async (req) => {
 
     // Validate authentication and get userId
     const auth = await validateAuth(req, body);
-    const { userId, supabase } = auth;
+    const { userId, userEmail, supabase } = auth;
+    const legacyUserId = userEmail && userEmail !== userId ? userEmail : null;
 
     console.log(`Get lessons for user: ${userId} (authenticated: ${auth.isAuthenticated})`);
 
@@ -29,6 +30,13 @@ serve(async (req) => {
       }
 
       const { data: lessons, error: lessonsError } = await lessonsQuery;
+      const { data: legacyLessons } = legacyUserId
+        ? await supabase
+            .from("mini_lessons")
+            .select("*")
+            .eq("user_id", legacyUserId)
+            .order("lesson_order", { ascending: true })
+        : { data: null };
 
       // Get progress
       const { data: progress } = await supabase
@@ -44,7 +52,7 @@ serve(async (req) => {
 
       return successResponse({ 
         success: true, 
-        lessons: lessons || [],
+        lessons: [...(lessons || []), ...(legacyLessons || [])],
         currentIndex: progress?.current_lesson_index || 0
       });
     }
@@ -96,10 +104,17 @@ serve(async (req) => {
         .select("id")
         .eq("user_id", userId)
         .limit(1);
+      const { data: legacyContexts } = legacyUserId
+        ? await supabase
+            .from("study_contexts")
+            .select("id")
+            .eq("user_id", legacyUserId)
+            .limit(1)
+        : { data: null };
 
       return successResponse({ 
         success: true, 
-        hasContent: contexts && contexts.length > 0 
+        hasContent: (contexts && contexts.length > 0) || (legacyContexts && legacyContexts.length > 0)
       });
     }
 
@@ -110,22 +125,35 @@ serve(async (req) => {
         .select("id, file_name, created_at, processing_status, error_message")
         .eq("user_id", userId)
         .order("created_at", { ascending: false });
+      const { data: legacyContexts } = legacyUserId
+        ? await supabase
+            .from("study_contexts")
+            .select("id, file_name, created_at, processing_status, error_message")
+            .eq("user_id", legacyUserId)
+            .order("created_at", { ascending: false })
+        : { data: null };
 
       const { data: lessons } = await supabase
         .from("mini_lessons")
         .select("context_id")
         .eq("user_id", userId);
+      const { data: legacyLessons } = legacyUserId
+        ? await supabase
+            .from("mini_lessons")
+            .select("context_id")
+            .eq("user_id", legacyUserId)
+        : { data: null };
 
       const lessonCounts: Record<string, number> = {};
-      if (lessons) {
-        for (const l of lessons) {
-          if (l.context_id) {
-            lessonCounts[l.context_id] = (lessonCounts[l.context_id] || 0) + 1;
-          }
+      const allLessons = [...(lessons || []), ...(legacyLessons || [])];
+      for (const l of allLessons) {
+        if (l.context_id) {
+          lessonCounts[l.context_id] = (lessonCounts[l.context_id] || 0) + 1;
         }
       }
 
-      const contextsWithCounts = (contexts || []).map((c: { 
+      const allContexts = [...(contexts || []), ...(legacyContexts || [])];
+      const contextsWithCounts = allContexts.map((c: { 
         id: string; 
         file_name: string; 
         created_at: string;
