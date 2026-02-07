@@ -69,7 +69,7 @@ const Index = () => {
     if (contextId) {
       setSelectedContextId(contextId);
     }
-    setActiveTab("studio");
+
     setRefreshKey(prev => prev + 1);
   };
 
