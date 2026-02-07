@@ -1,8 +1,55 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { validateAuth, corsHeaders, errorResponse, successResponse } from "../_shared/auth.ts";
 
-// Configurazione Limiti
 const MAX_CONTEXT_CHARS = 80000;
+
+/**
+ * Robustly extract a JSON object or array from a potentially mixed AI response.
+ * Handles markdown code blocks, conversational preamble, trailing commas, and truncation.
+ */
+function extractJson(raw: string): unknown {
+  // Strip markdown code fences
+  let cleaned = raw
+    .replace(/```json\s*/gi, "")
+    .replace(/```\s*/g, "")
+    .trim();
+
+  // Try direct parse first
+  try { return JSON.parse(cleaned); } catch { /* continue */ }
+
+  // Try to isolate a JSON object {...}
+  const objMatch = cleaned.match(/\{[\s\S]*\}/);
+  if (objMatch) {
+    try { return JSON.parse(objMatch[0]); } catch { /* continue */ }
+  }
+
+  // Try to isolate a JSON array [...]
+  const arrMatch = cleaned.match(/\[[\s\S]*\]/);
+  if (arrMatch) {
+    try { return JSON.parse(arrMatch[0]); } catch { /* continue */ }
+  }
+
+  // Repair attempt: fix trailing commas, control chars, unbalanced braces
+  const candidate = (objMatch?.[0] || arrMatch?.[0] || cleaned)
+    .replace(/,\s*}/g, "}")
+    .replace(/,\s*]/g, "]")
+    .replace(/[\x00-\x1F\x7F]/g, "");
+
+  let braces = 0, brackets = 0;
+  let repaired = candidate;
+  for (const ch of repaired) {
+    if (ch === "{") braces++;
+    if (ch === "}") braces--;
+    if (ch === "[") brackets++;
+    if (ch === "]") brackets--;
+  }
+  while (brackets > 0) { repaired += "]"; brackets--; }
+  while (braces > 0) { repaired += "}"; braces--; }
+
+  try { return JSON.parse(repaired); } catch { /* continue */ }
+
+  throw new Error("Impossibile estrarre JSON dalla risposta AI. Riprova.");
+}
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -13,31 +60,26 @@ serve(async (req) => {
     const body = await req.json();
     const { action, lessonIndex, contextId } = body;
 
-    // Validate authentication and get userId
     const auth = await validateAuth(req, body);
     const { userId, supabase } = auth;
 
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const PERPLEXITY_API_KEY = Deno.env.get("ERGA_DEMO_PERPLEXITY_KEY");
-
     if (!PERPLEXITY_API_KEY) throw new Error("API Key mancante");
 
     console.log(`Generate lessons for user: ${userId} (authenticated: ${auth.isAuthenticated})`);
 
     // -----------------------------------------------------------------------
-    // AZIONE 1: GENERA IL CONTENUTO DI UNA SINGOLA LEZIONE
+    // ACTION 1: GENERATE A SINGLE LESSON'S CONTENT
     // -----------------------------------------------------------------------
     if (action === "generateLesson" && lessonIndex !== undefined) {
-      // Recupera la lezione specifica
       let lessonsQuery = supabase.from("mini_lessons").select("*").eq("user_id", userId).eq("lesson_order", lessonIndex);
       if (contextId) lessonsQuery = lessonsQuery.eq("context_id", contextId);
-      
+
       const { data: lessons } = await lessonsQuery.maybeSingle();
       if (!lessons) throw new Error("Lezione non trovata");
       if (lessons.is_generated) return successResponse({ success: true, lesson: lessons });
 
-      // Recupera il contenuto del file
+      // Fetch study content
       let studyContent = "";
       if (lessons.context_id) {
         const { data: context } = await supabase
@@ -59,61 +101,65 @@ serve(async (req) => {
 
       if (!studyContent) throw new Error("Contenuto vuoto. Caricamento fallito?");
 
-      // Prompt per la generazione della lezione
       const prompt = `Sei un tutor universitario esperto. Crea una lezione basata ESCLUSIVAMENTE sul materiale fornito.
 
-      OBIETTIVO: Creare una mini-lezione breve, divisa in micro-step stile Duolingo/Mimo.
-      Lunghezza massima totale: 120-150 parole.
+IMPORTANTE: Rispondi SOLO con un oggetto JSON valido. NON aggiungere testo prima o dopo il JSON. NON usare markdown. SOLO JSON puro.
 
-      TITOLO LEZIONE: "${lessons.title}"
+OBIETTIVO: Creare una mini-lezione breve, divisa in micro-step stile Duolingo/Mimo.
+Lunghezza massima totale: 120-150 parole.
 
-      ISTRUZIONI SPECIFICHE:
-      1. Concept: 1-2 frasi massimo.
-      2. Explanation: suddividi in 2-4 micro-step separati da "•" (bullet), ogni bullet 1 frase corta.
-         - Ogni bullet deve trattare un SOLO concetto.
-         - Evita blocchi lunghi o discorsi unici.
-      3. Example: 1 esempio molto breve (1-2 frasi).
-      4. Exercises:
-         - Massimo 2 esercizi.
-         - Domande brevi, concrete.
-         - Per "short_answer", fornisci ALMENO 6 parole chiave/sinonimi.
+TITOLO LEZIONE: "${lessons.title}"
 
-      Formato JSON richiesto:
-      {
-        "concept": "...",
-        "explanation": "• Step 1...\n• Step 2...\n• Step 3...",
-        "example": "...",
-        "exercises": [
-           { "type": "multiple_choice", "question": "...", "options": ["..."], "correct_index": 0 },
-           { "type": "short_answer", "question": "...", "expected_keywords": ["keyword1", "keyword2", "sinonimo"] }
-        ]
-      }
+ISTRUZIONI SPECIFICHE:
+1. Concept: 1-2 frasi massimo.
+2. Explanation: suddividi in 2-4 micro-step separati da "•" (bullet), ogni bullet 1 frase corta.
+   - Ogni bullet deve trattare un SOLO concetto.
+   - Evita blocchi lunghi o discorsi unici.
+3. Example: 1 esempio molto breve (1-2 frasi).
+4. Exercises:
+   - Massimo 2 esercizi.
+   - Domande brevi, concrete.
+   - Per "short_answer", fornisci ALMENO 6 parole chiave/sinonimi.
 
-      MATERIALE DI STUDIO:
-      ${studyContent}`;
+Formato JSON richiesto (SOLO QUESTO, nient'altro):
+{
+  "concept": "...",
+  "explanation": "• Step 1...\\n• Step 2...\\n• Step 3...",
+  "example": "...",
+  "exercises": [
+     { "type": "multiple_choice", "question": "...", "options": ["..."], "correct_index": 0 },
+     { "type": "short_answer", "question": "...", "expected_keywords": ["keyword1", "keyword2", "sinonimo"] }
+  ]
+}
 
-      // Chiamata AI
+MATERIALE DI STUDIO:
+${studyContent}`;
+
       const aiResponse = await fetch("https://api.perplexity.ai/chat/completions", {
         method: "POST",
         headers: { "Content-Type": "application/json", "Authorization": `Bearer ${PERPLEXITY_API_KEY}` },
         body: JSON.stringify({
           model: "sonar",
-          messages: [{ role: "user", content: prompt }],
+          messages: [
+            { role: "system", content: "Rispondi ESCLUSIVAMENTE con JSON valido. Nessun testo aggiuntivo, nessuna spiegazione, nessun commento. Solo l'oggetto JSON richiesto." },
+            { role: "user", content: prompt }
+          ],
           temperature: 0.1
         }),
       });
 
       const aiData = await aiResponse.json();
       const content = aiData.choices?.[0]?.message?.content || "{}";
-      const jsonMatch = content.match(/\{[\s\S]*\}/);
-      const lessonData = JSON.parse(jsonMatch ? jsonMatch[0] : content);
+      console.log("AI lesson response (first 300 chars):", content.substring(0, 300));
 
-      // Salvataggio
+      const lessonData = extractJson(content) as Record<string, unknown>;
+
+      // Save
       await supabase.from("mini_lessons").update({
-        concept: lessonData.concept,
-        explanation: lessonData.explanation,
-        example: lessonData.example,
-        exercises: lessonData.exercises,
+        concept: lessonData.concept || "",
+        explanation: lessonData.explanation || "",
+        example: lessonData.example || "",
+        exercises: lessonData.exercises || [],
         is_generated: true,
       }).eq("id", lessons.id);
 
@@ -122,53 +168,57 @@ serve(async (req) => {
     }
 
     // -----------------------------------------------------------------------
-    // AZIONE 2: GENERA L'ELENCO DEI TITOLI (IL PIANO DI STUDIO)
+    // ACTION 2: GENERATE LESSON TITLES (STUDY PLAN)
     // -----------------------------------------------------------------------
-    
-    // Recupera contesto (singolo o tutti)
+
     let combinedContent = "";
     if (contextId) {
-       const { data: ctx } = await supabase
-         .from("study_contexts")
-         .select("content, file_name, processing_status")
-         .eq("id", contextId)
-         .eq("user_id", userId)
-         .single();
-       if (!ctx) throw new Error("Contesto non trovato");
-       if (ctx.processing_status !== "completed") {
-         throw new Error("Il PDF è ancora in elaborazione. Riprova tra qualche secondo.");
-       }
-       if (!ctx.content) {
-         throw new Error("Nessun contenuto disponibile per questo PDF.");
-       }
-       combinedContent = `FILE: ${ctx.file_name}\n${ctx.content}`;
+      const { data: ctx } = await supabase
+        .from("study_contexts")
+        .select("content, file_name, processing_status")
+        .eq("id", contextId)
+        .eq("user_id", userId)
+        .single();
+      if (!ctx) throw new Error("Contesto non trovato");
+      if (ctx.processing_status !== "completed") {
+        throw new Error("Il PDF è ancora in elaborazione. Riprova tra qualche secondo.");
+      }
+      if (!ctx.content) {
+        throw new Error("Nessun contenuto disponibile per questo PDF.");
+      }
+      combinedContent = `FILE: ${ctx.file_name}\n${ctx.content}`;
     } else {
-       const { data: ctxs } = await supabase.from("study_contexts").select("content, file_name").eq("user_id", userId);
-       if (ctxs) combinedContent = ctxs.map((c: { file_name: string; content: string }) => `FILE: ${c.file_name}\n${c.content}`).join("\n\n");
+      const { data: ctxs } = await supabase.from("study_contexts").select("content, file_name").eq("user_id", userId);
+      if (ctxs) combinedContent = ctxs.map((c: { file_name: string; content: string }) => `FILE: ${c.file_name}\n${c.content}`).join("\n\n");
     }
 
     combinedContent = combinedContent.substring(0, MAX_CONTEXT_CHARS);
 
     const titlesPrompt = `Analizza il testo fornito e crea un piano di studi strutturato.
-    
-    IMPORTANTE:
-    1. NON creare una lezione per ogni piccola definizione. RAGGRUPPA i concetti correlati.
-    2. Ogni lezione deve coprire un argomento sostanzioso (es. un intero paragrafo o sottocapitolo).
-    3. Segui l'ordine logico del documento (dall'inizio alla fine).
-    4. Ignora indici, bibliografie o note a piè di pagina.
-    
-    Output richiesto: Un array JSON di oggetti "title".
-    Esempio: [{"title": "Introduzione e contesto storico"}, {"title": "I principi fondamentali della dinamica"}]
-    
-    TESTO DA ANALIZZARE:
-    ${combinedContent}`;
+
+IMPORTANTE: Rispondi SOLO con un array JSON valido. NON aggiungere testo prima o dopo il JSON. NON usare markdown. SOLO JSON puro.
+
+REGOLE:
+1. NON creare una lezione per ogni piccola definizione. RAGGRUPPA i concetti correlati.
+2. Ogni lezione deve coprire un argomento sostanzioso (es. un intero paragrafo o sottocapitolo).
+3. Segui l'ordine logico del documento (dall'inizio alla fine).
+4. Ignora indici, bibliografie o note a piè di pagina.
+
+Output richiesto (SOLO QUESTO, nient'altro):
+[{"title": "Introduzione e contesto storico"}, {"title": "I principi fondamentali della dinamica"}]
+
+TESTO DA ANALIZZARE:
+${combinedContent}`;
 
     const aiResponse = await fetch("https://api.perplexity.ai/chat/completions", {
       method: "POST",
       headers: { "Content-Type": "application/json", "Authorization": `Bearer ${PERPLEXITY_API_KEY}` },
       body: JSON.stringify({
         model: "sonar",
-        messages: [{ role: "user", content: titlesPrompt }],
+        messages: [
+          { role: "system", content: "Rispondi ESCLUSIVAMENTE con JSON valido. Nessun testo aggiuntivo, nessuna spiegazione, nessun commento. Solo l'array JSON richiesto." },
+          { role: "user", content: titlesPrompt }
+        ],
         temperature: 0.1,
         max_tokens: 3000,
       }),
@@ -176,21 +226,9 @@ serve(async (req) => {
 
     const aiData = await aiResponse.json();
     const content = aiData.choices?.[0]?.message?.content || "[]";
+    console.log("AI titles response (first 300 chars):", content.substring(0, 300));
 
-    // Try to extract JSON array from the response
-    const jsonMatch = content.match(/\[[\s\S]*\]/);
-    if (!jsonMatch) {
-      console.error("AI response is not valid JSON array:", content.substring(0, 500));
-      throw new Error("L'AI non ha restituito un formato valido. Riprova.");
-    }
-
-    let parsedTitles: unknown;
-    try {
-      parsedTitles = JSON.parse(jsonMatch[0]);
-    } catch (parseError) {
-      console.error("JSON parse error:", parseError, "Content:", jsonMatch[0].substring(0, 500));
-      throw new Error("Errore nel parsing della risposta AI. Riprova.");
-    }
+    const parsedTitles = extractJson(content);
 
     if (!Array.isArray(parsedTitles)) throw new Error("Formato titoli non valido");
 
@@ -206,16 +244,15 @@ serve(async (req) => {
       .filter((t): t is { title: string } => !!t && !!t.title);
 
     if (titles.length === 0) {
-      console.error("No valid titles produced by AI. Raw:", jsonMatch[0].substring(0, 500));
+      console.error("No valid titles produced by AI. Raw:", content.substring(0, 500));
       throw new Error("Non sono riuscito a creare un indice valido. Riprova.");
     }
 
-    // Pulizia vecchie lezioni (stesso contesto)
+    // Delete old lessons for same context
     let deleteQuery = supabase.from("mini_lessons").delete().eq("user_id", userId);
     if (contextId) {
       deleteQuery = deleteQuery.eq("context_id", contextId);
     } else {
-      // When generating from all materials, lessons are stored with NULL context_id
       deleteQuery = deleteQuery.is("context_id", null);
     }
     const { error: deleteError } = await deleteQuery;
@@ -224,15 +261,15 @@ serve(async (req) => {
       throw new Error("Errore durante la pulizia delle vecchie lezioni");
     }
 
-    // Inserimento nuovi titoli
+    // Insert new titles
     const lessonsToInsert = titles.map((t: { title: string }, i: number) => ({
       user_id: userId,
       context_id: contextId ?? null,
       title: t.title,
       lesson_order: i,
       is_generated: false,
-      concept: "", // Will be filled when lesson is generated on-demand
-      explanation: "" // Will be filled when lesson is generated on-demand
+      concept: "",
+      explanation: ""
     }));
 
     const { error: insertError } = await supabase.from("mini_lessons").insert(lessonsToInsert);
@@ -241,9 +278,8 @@ serve(async (req) => {
       throw new Error("Errore durante il salvataggio delle lezioni");
     }
 
-    // Nota: la generazione del contenuto delle lezioni avviene on-demand lato UI
-    return successResponse({ 
-      success: true, 
+    return successResponse({
+      success: true,
       lessonsCount: titles.length,
       titles: titles.map((t: { title: string }) => t.title),
     });
