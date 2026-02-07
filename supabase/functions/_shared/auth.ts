@@ -8,6 +8,7 @@ export const corsHeaders = {
 export interface AuthResult {
   userId: string;
   isAuthenticated: boolean;
+  userEmail?: string;
   // deno-lint-ignore no-explicit-any
   supabase: any;
 }
@@ -51,6 +52,7 @@ export async function validateAuth(
           
           return {
             userId: data.user.id,
+            userEmail: data.user.email ?? undefined,
             isAuthenticated: true,
             supabase,
           };

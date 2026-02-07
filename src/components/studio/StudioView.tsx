@@ -36,10 +36,17 @@ export function StudioView({ hasFiles, onUploadClick, selectedContextId, onClear
   const [isGeneratingLesson, setIsGeneratingLesson] = useState(false);
   const [showList, setShowList] = useState(false);
   const [contextFileName, setContextFileName] = useState<string | null>(null);
+  const [activeContextId, setActiveContextId] = useState<string | null>(null);
   const { currentUser } = useAuth();
   const { toast } = useToast();
 
   const [contextStatus, setContextStatus] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (selectedContextId) {
+      setActiveContextId(selectedContextId);
+    }
+  }, [selectedContextId]);
 
   const fetchLessons = useCallback(async () => {
     if (!currentUser || !hasFiles) return;
@@ -50,10 +57,60 @@ export function StudioView({ hasFiles, onUploadClick, selectedContextId, onClear
       const { data: { session } } = await supabase.auth.getSession();
       const authToken = session?.access_token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
+      // Always check context status and name
+      const contextsResponse = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-lessons`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${authToken}`,
+          },
+          body: JSON.stringify({ userId: currentUser, action: "listContexts" }),
+        }
+      );
+      const contextsData = await contextsResponse.json();
+      const contexts = (contextsData.contexts || []) as { id: string; file_name?: string; processing_status?: string | null }[];
+      const availableContextIds = new Set(contexts.map((c) => c.id));
+      const latestContext = contexts[0] || null;
+
+      let effectiveContextId = selectedContextId && availableContextIds.has(selectedContextId)
+        ? selectedContextId
+        : null;
+      if (!effectiveContextId && activeContextId && availableContextIds.has(activeContextId)) {
+        effectiveContextId = activeContextId;
+      }
+      if (!effectiveContextId && latestContext) {
+        effectiveContextId = latestContext.id;
+      }
+
+      if (contexts.length > 0 && !effectiveContextId && selectedContextId) {
+        onClearContext?.();
+      }
+
+      if (contexts.length > 0) {
+        const ctx = effectiveContextId
+          ? contexts.find((c) => c.id === effectiveContextId)
+          : contexts[0];
+
+        if (ctx) {
+          setContextFileName(ctx.file_name || null);
+          setContextStatus(ctx.processing_status || null);
+          if (!selectedContextId && ctx.id !== activeContextId) {
+            setActiveContextId(ctx.id);
+          }
+        }
+      } else {
+        setContextFileName(null);
+        setContextStatus(null);
+        setActiveContextId(null);
+        setLessons([]);
+      }
+
       // If a specific context is selected, fetch only its lessons
       const body: Record<string, unknown> = { userId: currentUser, action: "get" };
-      if (selectedContextId) {
-        body.contextId = selectedContextId;
+      if (effectiveContextId) {
+        body.contextId = effectiveContextId;
       }
 
       const response = await fetch(
@@ -74,40 +131,12 @@ export function StudioView({ hasFiles, onUploadClick, selectedContextId, onClear
         setLessons(data.lessons);
         setCurrentLessonIndex(data.currentIndex || 0);
       }
-
-      // Always check context status and name
-      const contextsResponse = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-lessons`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${authToken}`,
-          },
-          body: JSON.stringify({ userId: currentUser, action: "listContexts" }),
-        }
-      );
-      const contextsData = await contextsResponse.json();
-      if (contextsData.contexts && contextsData.contexts.length > 0) {
-        // Find context - either selected or the first one
-        const ctx = selectedContextId 
-          ? contextsData.contexts.find((c: { id: string }) => c.id === selectedContextId)
-          : contextsData.contexts[0];
-        
-        if (ctx) {
-          setContextFileName(ctx.file_name || null);
-          setContextStatus(ctx.processing_status || null);
-        }
-      } else {
-        setContextFileName(null);
-        setContextStatus(null);
-      }
     } catch (error) {
       console.error("Error fetching lessons:", error);
     } finally {
       setIsLoading(false);
     }
-  }, [currentUser, hasFiles, selectedContextId]);
+  }, [currentUser, hasFiles, selectedContextId, activeContextId, onClearContext]);
 
   useEffect(() => {
     fetchLessons();
@@ -145,6 +174,7 @@ export function StudioView({ hasFiles, onUploadClick, selectedContextId, onClear
       const { data: { session } } = await supabase.auth.getSession();
       const authToken = session?.access_token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
+      const contextId = selectedContextId || activeContextId;
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-lessons`,
         {
@@ -155,7 +185,7 @@ export function StudioView({ hasFiles, onUploadClick, selectedContextId, onClear
           },
           body: JSON.stringify({ 
             userId: currentUser,
-            ...(selectedContextId ? { contextId: selectedContextId } : {}),
+            ...(contextId ? { contextId } : {}),
           }),
         }
       );
@@ -198,8 +228,9 @@ export function StudioView({ hasFiles, onUploadClick, selectedContextId, onClear
         action: "generateLesson",
         lessonIndex 
       };
-      if (selectedContextId) {
-        body.contextId = selectedContextId;
+      const contextId = selectedContextId || activeContextId;
+      if (contextId) {
+        body.contextId = contextId;
       }
 
       const response = await fetch(

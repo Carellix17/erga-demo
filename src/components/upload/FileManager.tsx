@@ -3,6 +3,7 @@ import { Trash2, FileText, BookOpen, Loader2, FolderOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -38,13 +39,16 @@ export function FileManager({ onFileDeleted, onSelectFile }: FileManagerProps) {
     if (!currentUser) return;
 
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const authToken = session?.access_token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/delete-context`,
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+            Authorization: `Bearer ${authToken}`,
           },
           body: JSON.stringify({ userId: currentUser, action: "list" }),
         }
@@ -70,13 +74,16 @@ export function FileManager({ onFileDeleted, onSelectFile }: FileManagerProps) {
 
     setIsDeleting(true);
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const authToken = session?.access_token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/delete-context`,
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+            Authorization: `Bearer ${authToken}`,
           },
           body: JSON.stringify({
             userId: currentUser,
