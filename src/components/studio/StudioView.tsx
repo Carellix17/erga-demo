@@ -70,17 +70,29 @@ export function StudioView({ hasFiles, onUploadClick, selectedContextId, onClear
         }
       );
       const contextsData = await contextsResponse.json();
-      const resolvedContextId = selectedContextId || activeContextId;
-      const latestContext = contextsData.contexts?.[0];
-      const fallbackContextId = latestContext?.id || null;
-      const effectiveContextId = resolvedContextId || fallbackContextId;
+      const contexts = (contextsData.contexts || []) as { id: string; file_name?: string; processing_status?: string | null }[];
+      const availableContextIds = new Set(contexts.map((c) => c.id));
+      const latestContext = contexts[0] || null;
 
-      if (contextsData.contexts && contextsData.contexts.length > 0) {
-        // Find context - either selected or the first one
+      let effectiveContextId = selectedContextId && availableContextIds.has(selectedContextId)
+        ? selectedContextId
+        : null;
+      if (!effectiveContextId && activeContextId && availableContextIds.has(activeContextId)) {
+        effectiveContextId = activeContextId;
+      }
+      if (!effectiveContextId && latestContext) {
+        effectiveContextId = latestContext.id;
+      }
+
+      if (contexts.length > 0 && !effectiveContextId && selectedContextId) {
+        onClearContext?.();
+      }
+
+      if (contexts.length > 0) {
         const ctx = effectiveContextId
-          ? contextsData.contexts.find((c: { id: string }) => c.id === effectiveContextId)
-          : contextsData.contexts[0];
-        
+          ? contexts.find((c) => c.id === effectiveContextId)
+          : contexts[0];
+
         if (ctx) {
           setContextFileName(ctx.file_name || null);
           setContextStatus(ctx.processing_status || null);
@@ -92,6 +104,7 @@ export function StudioView({ hasFiles, onUploadClick, selectedContextId, onClear
         setContextFileName(null);
         setContextStatus(null);
         setActiveContextId(null);
+        setLessons([]);
       }
 
       // If a specific context is selected, fetch only its lessons
@@ -123,7 +136,7 @@ export function StudioView({ hasFiles, onUploadClick, selectedContextId, onClear
     } finally {
       setIsLoading(false);
     }
-  }, [currentUser, hasFiles, selectedContextId, activeContextId]);
+  }, [currentUser, hasFiles, selectedContextId, activeContextId, onClearContext]);
 
   useEffect(() => {
     fetchLessons();
