@@ -127,44 +127,8 @@ export function UploadSheet({ open, onOpenChange, onUpload, uploadedFiles, onSel
         setGenerationStep("processing");
       }
 
-      if (uploadedFileInfos.length > 0 && lastContextId) {
-        // Poll for PDF processing completion (max 30s)
-        setGenerationStep("processing");
-        const { data: { session: pollSession } } = await supabase.auth.getSession();
-        const pollToken = pollSession?.access_token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-
-        let processingComplete = false;
-        for (let i = 0; i < 15; i++) {
-          await new Promise(resolve => setTimeout(resolve, 2000));
-          
-          const statusRes = await fetch(
-            `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-lessons`,
-            {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${pollToken}`,
-              },
-              body: JSON.stringify({ userId: currentUser, action: "listContexts" }),
-            }
-          );
-          const statusData = await statusRes.json();
-          const ctx = statusData.contexts?.find((c: { id: string }) => c.id === lastContextId);
-          
-          if (ctx?.processing_status === "completed") {
-            processingComplete = true;
-            break;
-          }
-          if (ctx?.processing_status === "failed") {
-            throw new Error("Elaborazione del PDF fallita. Riprova con un altro file.");
-          }
-        }
-
-        if (!processingComplete) {
-          throw new Error("Elaborazione del PDF troppo lenta. Riprova tra poco.");
-        }
-
-        // Generate lessons WITH the correct contextId
+      if (uploadedFileInfos.length > 0 && uploadedContextIds.length > 0) {
+        // Generate lessons for each uploaded context
         setGenerationStep("generating");
 
         const { data: { session: sessionForLessons } } = await supabase.auth.getSession();
@@ -198,6 +162,7 @@ export function UploadSheet({ open, onOpenChange, onUpload, uploadedFiles, onSel
         };
 
         for (const contextId of uploadedContextIds) {
+          setGenerationStep("processing");
           const processingResult = await waitForContextProcessing(contextId);
           if (!processingResult.ok) {
             toast({
@@ -208,6 +173,7 @@ export function UploadSheet({ open, onOpenChange, onUpload, uploadedFiles, onSel
             continue;
           }
 
+          setGenerationStep("generating");
           await fetch(
             `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-lessons`,
             {
