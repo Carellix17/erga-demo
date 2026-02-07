@@ -69,6 +69,7 @@ const Index = () => {
     if (contextId) {
       setSelectedContextId(contextId);
     }
+
     setRefreshKey(prev => prev + 1);
   };
 
