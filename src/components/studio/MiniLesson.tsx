@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ExerciseRenderer, Exercise } from "./exercises/ExerciseRenderer";
 import { cn } from "@/lib/utils";
+import ReactMarkdown from "react-markdown";
 
 interface MiniLessonProps {
   lesson: {
@@ -100,9 +101,9 @@ export function MiniLesson({
           </div>
         </CardHeader>
         <CardContent>
-          <p className="text-lg font-heading font-semibold text-foreground leading-relaxed">
-            {lesson.concept}
-          </p>
+          <div className="text-lg font-heading font-semibold text-foreground leading-relaxed prose prose-sm max-w-none">
+            <ReactMarkdown>{lesson.concept}</ReactMarkdown>
+          </div>
         </CardContent>
       </Card>
 
@@ -117,9 +118,9 @@ export function MiniLesson({
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-5">
-          <p className="text-muted-foreground leading-relaxed text-[15px]">
-            {lesson.explanation}
-          </p>
+          <div className="text-muted-foreground leading-relaxed text-[15px] prose prose-sm max-w-none prose-p:text-muted-foreground prose-strong:text-foreground prose-em:text-foreground/90">
+            <ReactMarkdown>{lesson.explanation}</ReactMarkdown>
+          </div>
 
           {/* Example - subtle glass accent */}
           {lesson.example && (
@@ -127,7 +128,7 @@ export function MiniLesson({
               <p className="text-sm font-semibold text-accent mb-2 flex items-center gap-2">
                 <span className="text-lg">💡</span> Esempio pratico
               </p>
-              <p className="text-foreground leading-relaxed">{lesson.example}</p>
+              <div className="text-foreground leading-relaxed prose prose-sm max-w-none"><ReactMarkdown>{lesson.example}</ReactMarkdown></div>
             </div>
           )}
         </CardContent>
