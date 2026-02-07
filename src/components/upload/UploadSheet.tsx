@@ -137,7 +137,44 @@ export function UploadSheet({ open, onOpenChange, onUpload, uploadedFiles, onSel
         const { data: { session: sessionForLessons } } = await supabase.auth.getSession();
         const authTokenForLessons = sessionForLessons?.access_token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
+        const waitForContextProcessing = async (contextId: string) => {
+          const maxAttempts = 20;
+          const delayMs = 2000;
+
+          for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+            const statusResponse = await fetch(
+              `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-lessons`,
+              {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  Authorization: `Bearer ${authTokenForLessons}`,
+                },
+                body: JSON.stringify({ userId: currentUser, action: "listContexts" }),
+              }
+            );
+            const statusData = await statusResponse.json();
+            const context = statusData.contexts?.find((c: { id: string }) => c.id === contextId);
+            if (context?.processing_status === "completed") return { ok: true };
+            if (context?.processing_status === "failed") {
+              return { ok: false, error: context.error_message || "Errore durante l'elaborazione del PDF." };
+            }
+            await new Promise(resolve => setTimeout(resolve, delayMs));
+          }
+          return { ok: false, error: "Timeout durante l'elaborazione del PDF." };
+        };
+
         for (const contextId of uploadedContextIds) {
+          const processingResult = await waitForContextProcessing(contextId);
+          if (!processingResult.ok) {
+            toast({
+              title: "Elaborazione incompleta",
+              description: processingResult.error,
+              variant: "destructive",
+            });
+            continue;
+          }
+
           await fetch(
             `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-lessons`,
             {
