@@ -121,7 +121,7 @@ export function UploadSheet({ open, onOpenChange, onUpload, uploadedFiles, onSel
         if (data.contextId) {
           uploadedContextIds.push(data.contextId as string);
         }
-=
+
         
         // Processing - poll until PDF is ready
         setGenerationStep("processing");
@@ -193,7 +193,6 @@ export function UploadSheet({ open, onOpenChange, onUpload, uploadedFiles, onSel
               return { ok: false, error: context.error_message || "Errore durante l'elaborazione del PDF." };
             }
             await new Promise(resolve => setTimeout(resolve, delayMs));
-
           }
           return { ok: false, error: "Timeout durante l'elaborazione del PDF." };
         };
