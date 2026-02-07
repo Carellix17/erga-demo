@@ -66,6 +66,10 @@ const Index = () => {
     }));
     setUploadedFiles((prev) => [...prev, ...newFiles]);
     setHasCloudContent(true);
+    if (contextId) {
+      setSelectedContextId(contextId);
+    }
+    setActiveTab("studio");
     setRefreshKey(prev => prev + 1);
   };
 
