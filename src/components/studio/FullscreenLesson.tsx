@@ -151,7 +151,7 @@ export function FullscreenLesson({
       </div>
 
       {/* Bottom action */}
-      <div className="flex-shrink-0 p-4 pb-6 safe-area-bottom">
+      <div className="flex-shrink-0 p-4 pb-8 mb-20 safe-area-bottom">
         <Button
           onClick={handleContinue}
           disabled={!canContinue}
