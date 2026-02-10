@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { MiniLesson } from "./MiniLesson";
+import { FullscreenLesson } from "./FullscreenLesson";
 import { LessonsList } from "./LessonsList";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { useAuth } from "@/contexts/AuthContext";
@@ -34,7 +34,8 @@ export function StudioView({ hasFiles, onUploadClick, selectedContextId, onClear
   const [isLoading, setIsLoading] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isGeneratingLesson, setIsGeneratingLesson] = useState(false);
-  const [showList, setShowList] = useState(false);
+  const [showList, setShowList] = useState(true);
+  const [activeLessonIndex, setActiveLessonIndex] = useState<number | null>(null);
   const [contextFileName, setContextFileName] = useState<string | null>(null);
   const [activeContextId, setActiveContextId] = useState<string | null>(null);
   const { currentUser } = useAuth();
@@ -437,91 +438,102 @@ export function StudioView({ hasFiles, onUploadClick, selectedContextId, onClear
     );
   }
 
-  if (showList) {
-    return (
+  // Always show the lessons list as the main view
+  const currentLesson = activeLessonIndex !== null ? lessons[activeLessonIndex] : null;
+
+  return (
+    <>
       <LessonsList
         lessons={lessons}
         currentIndex={currentLessonIndex}
-        onSelectLesson={handleSelectLesson}
-        onBack={() => setShowList(false)}
-        isGenerating={isGeneratingLesson}
-      />
-    );
-  }
-
-  const currentLesson = lessons[currentLessonIndex];
-  const progress = ((currentLessonIndex + 1) / lessons.length) * 100;
-
-  // If lessons changed during a refresh, we may briefly have an out-of-bounds index.
-  // The clamping useEffect above will fix it on the next tick.
-  if (!currentLesson) return null;
-
-  // Show loading if current lesson needs generation
-  if (!currentLesson.is_generated || isGeneratingLesson) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-5 p-6">
-        <div className="w-20 h-20 rounded-[1.75rem] gradient-primary flex items-center justify-center shadow-glass-xl animate-pulse-soft glow-ring">
-          <Sparkles className="w-10 h-10 text-white" />
-        </div>
-        <div className="text-center">
-          <p className="font-heading font-semibold text-lg mb-2">
-            Generazione lezione in corso...
-          </p>
-          <p className="text-sm text-muted-foreground max-w-xs">
-            L'AI sta creando "<span className="text-primary font-medium">{currentLesson.title}</span>" con esercizi interattivi
-          </p>
-        </div>
-        <div className="w-full max-w-xs h-2.5 bg-muted/30 rounded-full overflow-hidden backdrop-blur-sm">
-          <div className="h-full progress-animated rounded-full w-2/3" />
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="p-4 pb-28">
-      {/* List toggle button */}
-      <div className="flex justify-end mb-4">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => setShowList(true)}
-          className="rounded-xl glass-subtle border-border/30 shadow-glass hover:shadow-glass-md transition-all duration-300"
-        >
-          <List className="w-4 h-4 mr-2" />
-          Tutte le lezioni ({lessons.length})
-        </Button>
-      </div>
-
-      <MiniLesson
-        lesson={{
-          ...currentLesson,
-          duration: 5,
+        onSelectLesson={async (index) => {
+          const lesson = lessons[index];
+          if (!lesson) return;
+          if (!lesson.is_generated) {
+            await generateLessonContent(index);
+          }
+          setActiveLessonIndex(index);
+          // Update progress
+          try {
+            const { data: { session } } = await supabase.auth.getSession();
+            const authToken = session?.access_token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+            await fetch(
+              `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-lessons`,
+              {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  Authorization: `Bearer ${authToken}`,
+                },
+                body: JSON.stringify({
+                  userId: currentUser,
+                  action: "updateProgress",
+                  lessonIndex: index,
+                }),
+              }
+            );
+          } catch (error) {
+            console.error("Error updating progress:", error);
+          }
         }}
-        progress={progress}
-        totalLessons={lessons.length}
-        currentIndex={currentLessonIndex}
-        onNext={handleNext}
-        isLastLesson={currentLessonIndex === lessons.length - 1}
+        onBack={() => {}}
+        isGenerating={isGeneratingLesson}
+        showBackButton={false}
+        onRegenerate={handleGenerateLessons}
+        isRegenerating={isGenerating}
       />
-      
-      {/* Regenerate button */}
-      <div className="mt-6 flex justify-center">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={handleGenerateLessons}
-          disabled={isGenerating}
-          className="glass-subtle rounded-xl border-border/30 hover:shadow-glass transition-all duration-300"
-        >
-          {isGenerating ? (
-            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-          ) : (
-            <RefreshCw className="w-4 h-4 mr-2" />
-          )}
-          Rigenera percorso
-        </Button>
-      </div>
-    </div>
+
+      {/* Fullscreen lesson overlay */}
+      {activeLessonIndex !== null && currentLesson && currentLesson.is_generated && !isGeneratingLesson && (
+        <FullscreenLesson
+          lesson={{
+            ...currentLesson,
+            duration: 5,
+          }}
+          lessonNumber={activeLessonIndex + 1}
+          totalLessons={lessons.length}
+          onClose={() => setActiveLessonIndex(null)}
+          onComplete={async () => {
+            if (activeLessonIndex < lessons.length - 1) {
+              const nextIndex = activeLessonIndex + 1;
+              const nextLesson = lessons[nextIndex];
+              if (nextLesson && !nextLesson.is_generated) {
+                await generateLessonContent(nextIndex);
+              }
+              setCurrentLessonIndex(nextIndex);
+              setActiveLessonIndex(nextIndex);
+              try {
+                const { data: { session } } = await supabase.auth.getSession();
+                const authToken = session?.access_token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+                await fetch(
+                  `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-lessons`,
+                  {
+                    method: "POST",
+                    headers: {
+                      "Content-Type": "application/json",
+                      Authorization: `Bearer ${authToken}`,
+                    },
+                    body: JSON.stringify({
+                      userId: currentUser,
+                      action: "updateProgress",
+                      lessonIndex: nextIndex,
+                    }),
+                  }
+                );
+              } catch (error) {
+                console.error("Error updating progress:", error);
+              }
+            } else {
+              toast({
+                title: "Complimenti! 🎉",
+                description: "Hai completato tutte le lezioni del corso!",
+              });
+              setActiveLessonIndex(null);
+            }
+          }}
+          isLastLesson={activeLessonIndex === lessons.length - 1}
+        />
+      )}
+    </>
   );
 }
