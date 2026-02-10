@@ -1,4 +1,4 @@
-import { ChevronLeft, CheckCircle2, Circle, Lock, Loader2, Sparkles } from "lucide-react";
+import { ChevronLeft, CheckCircle2, Circle, Lock, Loader2, Sparkles, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Exercise } from "./exercises/ExerciseRenderer";
@@ -20,6 +20,9 @@ interface LessonsListProps {
   onSelectLesson: (index: number) => void;
   onBack: () => void;
   isGenerating: boolean;
+  showBackButton?: boolean;
+  onRegenerate?: () => void;
+  isRegenerating?: boolean;
 }
 
 export function LessonsList({
@@ -28,20 +31,40 @@ export function LessonsList({
   onSelectLesson,
   onBack,
   isGenerating,
+  showBackButton = true,
+  onRegenerate,
+  isRegenerating,
 }: LessonsListProps) {
   return (
     <div className="p-4 pb-24 animate-fade-up">
       {/* Header */}
       <div className="flex items-center gap-3 mb-6">
-        <Button variant="ghost" size="icon" onClick={onBack} className="rounded-xl glass-subtle">
-          <ChevronLeft className="w-5 h-5" />
-        </Button>
-        <div>
+        {showBackButton && (
+          <Button variant="ghost" size="icon" onClick={onBack} className="rounded-xl glass-subtle">
+            <ChevronLeft className="w-5 h-5" />
+          </Button>
+        )}
+        <div className="flex-1">
           <h2 className="text-lg font-heading font-semibold">Percorso di studio</h2>
           <p className="text-sm text-muted-foreground">
             {lessons.filter(l => l.is_generated).length} di {lessons.length} lezioni generate
           </p>
         </div>
+        {onRegenerate && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onRegenerate}
+            disabled={isRegenerating}
+            className="rounded-xl glass-subtle border-border/30 hover:shadow-glass transition-all duration-300"
+          >
+            {isRegenerating ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <RefreshCw className="w-4 h-4" />
+            )}
+          </Button>
+        )}
       </div>
 
       {/* Progress overview */}
