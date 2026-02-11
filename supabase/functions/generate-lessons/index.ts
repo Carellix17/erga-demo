@@ -168,6 +168,79 @@ ${studyContent}`;
     }
 
     // -----------------------------------------------------------------------
+    // ACTION: GENERATE FINAL TEST
+    // -----------------------------------------------------------------------
+    if (action === "generateFinalTest") {
+      // Fetch all generated lessons for this context
+      let lessonsQuery = supabase.from("mini_lessons").select("title, concept").eq("user_id", userId).eq("is_generated", true).order("lesson_order");
+      if (contextId) lessonsQuery = lessonsQuery.eq("context_id", contextId);
+
+      const { data: allLessons } = await lessonsQuery;
+      if (!allLessons || allLessons.length === 0) throw new Error("Nessuna lezione completata per generare il test finale.");
+
+      const topicsSummary = allLessons.map((l: { title: string; concept: string }, i: number) => `${i + 1}. ${l.title}: ${l.concept}`).join("\n");
+
+      // Fetch study content for richer questions
+      let studyContent = "";
+      if (contextId) {
+        const { data: ctx } = await supabase.from("study_contexts").select("content, file_name").eq("id", contextId).eq("user_id", userId).single();
+        if (ctx?.content) studyContent = `FILE: ${ctx.file_name}\n${ctx.content}`.substring(0, MAX_CONTEXT_CHARS);
+      } else {
+        const { data: ctxs } = await supabase.from("study_contexts").select("content, file_name").eq("user_id", userId);
+        if (ctxs) studyContent = ctxs.map((c: { file_name: string; content: string }) => `FILE: ${c.file_name}\n${c.content}`).join("\n\n").substring(0, MAX_CONTEXT_CHARS);
+      }
+
+      const finalTestPrompt = `Sei un tutor universitario esperto. Crea un TEST FINALE che valuti la comprensione di TUTTI gli argomenti del percorso di studio.
+
+IMPORTANTE: Rispondi SOLO con un array JSON valido. NON aggiungere testo prima o dopo il JSON. SOLO JSON puro.
+
+ARGOMENTI TRATTATI NEL PERCORSO:
+${topicsSummary}
+
+REGOLE:
+1. Crea esattamente ${Math.min(allLessons.length * 2, 10)} domande.
+2. Copri TUTTI gli argomenti in modo equilibrato.
+3. Le domande devono essere DIVERSE da quelle già fatte durante le lezioni (non ripetere!).
+4. Mescola i tipi: multiple_choice, true_false, fill_blank, short_answer.
+5. Difficoltà media-alta: lo studente deve dimostrare comprensione, non solo memoria.
+6. Per "short_answer", fornisci ALMENO 6 parole chiave/sinonimi.
+
+Formato JSON richiesto (SOLO QUESTO):
+[
+  { "type": "multiple_choice", "question": "...", "options": ["A","B","C","D"], "correct_index": 0 },
+  { "type": "true_false", "statement": "...", "correct": true },
+  { "type": "fill_blank", "sentence_with_blank": "La ___ è...", "correct_answer": "risposta" },
+  { "type": "short_answer", "question": "...", "expected_keywords": ["k1","k2","k3","k4","k5","k6"] }
+]
+
+MATERIALE DI STUDIO:
+${studyContent}`;
+
+      const aiResp = await fetch("https://api.perplexity.ai/chat/completions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${PERPLEXITY_API_KEY}` },
+        body: JSON.stringify({
+          model: "sonar",
+          messages: [
+            { role: "system", content: "Rispondi ESCLUSIVAMENTE con JSON valido. Nessun testo aggiuntivo. Solo l'array JSON richiesto." },
+            { role: "user", content: finalTestPrompt }
+          ],
+          temperature: 0.2,
+          max_tokens: 4000,
+        }),
+      });
+
+      const aiD = await aiResp.json();
+      const raw = aiD.choices?.[0]?.message?.content || "[]";
+      console.log("AI final test response (first 300 chars):", raw.substring(0, 300));
+
+      const exercises = extractJson(raw);
+      if (!Array.isArray(exercises)) throw new Error("Formato test finale non valido");
+
+      return successResponse({ success: true, exercises });
+    }
+
+    // -----------------------------------------------------------------------
     // ACTION 2: GENERATE LESSON TITLES (STUDY PLAN)
     // -----------------------------------------------------------------------
 

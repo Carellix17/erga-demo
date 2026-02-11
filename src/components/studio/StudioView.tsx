@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { FullscreenLesson } from "./FullscreenLesson";
+import { FinalTest } from "./FinalTest";
 import { LessonsList } from "./LessonsList";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { useAuth } from "@/contexts/AuthContext";
@@ -38,6 +39,9 @@ export function StudioView({ hasFiles, onUploadClick, selectedContextId, onClear
   const [activeLessonIndex, setActiveLessonIndex] = useState<number | null>(null);
   const [contextFileName, setContextFileName] = useState<string | null>(null);
   const [activeContextId, setActiveContextId] = useState<string | null>(null);
+  const [showFinalTest, setShowFinalTest] = useState(false);
+  const [finalTestExercises, setFinalTestExercises] = useState<Exercise[]>([]);
+  const [isLoadingFinalTest, setIsLoadingFinalTest] = useState(false);
   const { currentUser } = useAuth();
   const { toast } = useToast();
 
@@ -310,11 +314,49 @@ export function StudioView({ hasFiles, onUploadClick, selectedContextId, onClear
         console.error("Error updating progress:", error);
       }
     } else {
-      // Course completed
+      // Course completed — trigger final test
+      handleStartFinalTest();
+    }
+  };
+
+  const handleStartFinalTest = async () => {
+    if (!currentUser) return;
+    setIsLoadingFinalTest(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const authToken = session?.access_token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+      const contextId = selectedContextId || activeContextId;
+
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-lessons`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${authToken}`,
+          },
+          body: JSON.stringify({
+            userId: currentUser,
+            action: "generateFinalTest",
+            ...(contextId ? { contextId } : {}),
+          }),
+        }
+      );
+
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Errore generazione test");
+
+      setFinalTestExercises(data.exercises || []);
+      setShowFinalTest(true);
+    } catch (error) {
+      console.error("Error generating final test:", error);
       toast({
-        title: "Complimenti! 🎉",
-        description: "Hai completato tutte le lezioni del corso!",
+        title: "Errore",
+        description: error instanceof Error ? error.message : "Errore nella generazione del test",
+        variant: "destructive",
       });
+    } finally {
+      setIsLoadingFinalTest(false);
     }
   };
 
@@ -441,6 +483,8 @@ export function StudioView({ hasFiles, onUploadClick, selectedContextId, onClear
   // Always show the lessons list as the main view
   const currentLesson = activeLessonIndex !== null ? lessons[activeLessonIndex] : null;
 
+  const allGenerated = lessons.length > 0 && lessons.every(l => l.is_generated);
+
   return (
     <>
       <LessonsList
@@ -453,7 +497,6 @@ export function StudioView({ hasFiles, onUploadClick, selectedContextId, onClear
             await generateLessonContent(index);
           }
           setActiveLessonIndex(index);
-          // Update progress
           try {
             const { data: { session } } = await supabase.auth.getSession();
             const authToken = session?.access_token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
@@ -481,6 +524,9 @@ export function StudioView({ hasFiles, onUploadClick, selectedContextId, onClear
         showBackButton={false}
         onRegenerate={handleGenerateLessons}
         isRegenerating={isGenerating}
+        showFinalTest={allGenerated}
+        onStartFinalTest={handleStartFinalTest}
+        isLoadingFinalTest={isLoadingFinalTest}
       />
 
       {/* Fullscreen lesson overlay */}
@@ -524,14 +570,27 @@ export function StudioView({ hasFiles, onUploadClick, selectedContextId, onClear
                 console.error("Error updating progress:", error);
               }
             } else {
-              toast({
-                title: "Complimenti! 🎉",
-                description: "Hai completato tutte le lezioni del corso!",
-              });
+              // Last lesson completed — launch final test
               setActiveLessonIndex(null);
+              handleStartFinalTest();
             }
           }}
           isLastLesson={activeLessonIndex === lessons.length - 1}
+        />
+      )}
+
+      {/* Final Test overlay */}
+      {showFinalTest && finalTestExercises.length > 0 && (
+        <FinalTest
+          exercises={finalTestExercises}
+          onClose={() => setShowFinalTest(false)}
+          onComplete={() => {
+            setShowFinalTest(false);
+            toast({
+              title: "Complimenti! 🎉",
+              description: "Hai completato il percorso e il test finale!",
+            });
+          }}
         />
       )}
     </>

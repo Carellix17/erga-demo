@@ -1,4 +1,4 @@
-import { ChevronLeft, CheckCircle2, Circle, Lock, Loader2, Sparkles, RefreshCw } from "lucide-react";
+import { ChevronLeft, CheckCircle2, Circle, Lock, Loader2, Sparkles, RefreshCw, Target } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Exercise } from "./exercises/ExerciseRenderer";
@@ -23,6 +23,9 @@ interface LessonsListProps {
   showBackButton?: boolean;
   onRegenerate?: () => void;
   isRegenerating?: boolean;
+  showFinalTest?: boolean;
+  onStartFinalTest?: () => void;
+  isLoadingFinalTest?: boolean;
 }
 
 export function LessonsList({
@@ -34,6 +37,9 @@ export function LessonsList({
   showBackButton = true,
   onRegenerate,
   isRegenerating,
+  showFinalTest,
+  onStartFinalTest,
+  isLoadingFinalTest,
 }: LessonsListProps) {
   return (
     <div className="p-4 pb-24 animate-fade-up">
@@ -159,6 +165,34 @@ export function LessonsList({
           );
         })}
       </div>
+
+      {/* Final Test Button */}
+      {showFinalTest && onStartFinalTest && (
+        <div className="mt-6">
+          <button
+            onClick={onStartFinalTest}
+            disabled={isLoadingFinalTest}
+            className="w-full p-4 rounded-2xl text-left transition-all duration-300 flex items-center gap-3 glass-card border border-primary/30 shadow-glass-md hover:shadow-glass-lg hover:scale-[1.01]"
+          >
+            <div className="w-9 h-9 rounded-xl gradient-warm flex items-center justify-center flex-shrink-0 shadow-glass">
+              {isLoadingFinalTest ? (
+                <Loader2 className="w-4 h-4 text-white animate-spin" />
+              ) : (
+                <Target className="w-4 h-4 text-white" />
+              )}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="font-semibold text-foreground">Test Finale</p>
+              <p className="text-xs text-muted-foreground">
+                {isLoadingFinalTest ? "Generazione in corso..." : "Metti alla prova le tue conoscenze"}
+              </p>
+            </div>
+            <span className="text-xs px-2.5 py-1 rounded-full gradient-warm text-white font-medium">
+              Quiz
+            </span>
+          </button>
+        </div>
+      )}
     </div>
   );
 }
