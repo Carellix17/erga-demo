@@ -66,6 +66,29 @@ serve(async (req) => {
     const PERPLEXITY_API_KEY = Deno.env.get("ERGA_DEMO_PERPLEXITY_KEY");
     if (!PERPLEXITY_API_KEY) throw new Error("API Key mancante");
 
+    // Fetch user profile for personalization
+    const { data: userProfile } = await supabase
+      .from("user_profiles")
+      .select("institute_type, subject_levels")
+      .eq("user_id", userId)
+      .maybeSingle();
+
+    const instituteMap: Record<string, string> = {
+      liceo_scientifico: "Liceo Scientifico",
+      liceo_classico: "Liceo Classico",
+      liceo_linguistico: "Liceo Linguistico",
+      istituto_tecnico: "Istituto Tecnico",
+    };
+    let profileContext = "";
+    if (userProfile) {
+      profileContext = `\nLo studente frequenta un ${instituteMap[userProfile.institute_type] || userProfile.institute_type}.`;
+      if (userProfile.subject_levels && typeof userProfile.subject_levels === "object") {
+        const levels = userProfile.subject_levels as Record<string, number>;
+        profileContext += " Livelli: " + Object.entries(levels).map(([s, l]) => `${s}: ${l}/10`).join(", ") + ".";
+      }
+      profileContext += "\nAdatta la difficoltà e gli esempi al livello dello studente.";
+    }
+
     console.log(`Generate lessons for user: ${userId} (authenticated: ${auth.isAuthenticated})`);
 
     // -----------------------------------------------------------------------
@@ -102,6 +125,7 @@ serve(async (req) => {
       if (!studyContent) throw new Error("Contenuto vuoto. Caricamento fallito?");
 
       const prompt = `Sei un tutor universitario esperto. Crea una lezione basata ESCLUSIVAMENTE sul materiale fornito.
+${profileContext}
 
 IMPORTANTE: Rispondi SOLO con un oggetto JSON valido. NON aggiungere testo prima o dopo il JSON. NON usare markdown. SOLO JSON puro.
 
@@ -191,6 +215,7 @@ ${studyContent}`;
       }
 
       const finalTestPrompt = `Sei un tutor universitario esperto. Crea un TEST FINALE che valuti la comprensione di TUTTI gli argomenti del percorso di studio.
+${profileContext}
 
 IMPORTANTE: Rispondi SOLO con un array JSON valido. NON aggiungere testo prima o dopo il JSON. SOLO JSON puro.
 
