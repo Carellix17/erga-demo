@@ -32,6 +32,29 @@ serve(async (req) => {
       return errorResponse("Nessun contenuto di studio trovato. Carica dei PDF.", 400);
     }
 
+    // Fetch user profile
+    const { data: userProfile } = await supabase
+      .from("user_profiles")
+      .select("institute_type, subject_levels")
+      .eq("user_id", userId)
+      .maybeSingle();
+
+    const instituteMap: Record<string, string> = {
+      liceo_scientifico: "Liceo Scientifico",
+      liceo_classico: "Liceo Classico",
+      liceo_linguistico: "Liceo Linguistico",
+      istituto_tecnico: "Istituto Tecnico",
+    };
+    let profileInfo = "";
+    if (userProfile) {
+      profileInfo = `\nPROFILO STUDENTE: ${instituteMap[userProfile.institute_type] || userProfile.institute_type}`;
+      if (userProfile.subject_levels && typeof userProfile.subject_levels === "object") {
+        const levels = userProfile.subject_levels as Record<string, number>;
+        profileInfo += "\nLivelli: " + Object.entries(levels).map(([s, l]) => `${s}: ${l}/10`).join(", ");
+      }
+      profileInfo += "\nDai più tempo alle materie dove lo studente ha un livello basso.";
+    }
+
     // Prepare context summary
     const contextSummary = contexts
       .map((c: { file_name: string; content: string }) => `File: ${c.file_name}\nContenuto: ${c.content.substring(0, 2000)}...`)
@@ -53,6 +76,7 @@ serve(async (req) => {
     }
 
     const prompt = `Sei un tutor esperto che crea piani di studio personalizzati. Analizza il contenuto di studio e gli eventi esistenti per creare un piano ottimale.
+${profileInfo}
 
 IMPORTANTE: Rispondi SOLO con un oggetto JSON valido, senza markdown, senza codice.
 

@@ -4,12 +4,13 @@ import { BottomNav } from "@/components/layout/BottomNav";
 import { StudioView } from "@/components/studio/StudioView";
 import { PianoView } from "@/components/piano/PianoView";
 import { ChatView } from "@/components/chat/ChatView";
+import { ProfileView } from "@/components/profile/ProfileView";
 import { UploadSheet } from "@/components/upload/UploadSheet";
 import { useUserData } from "@/hooks/useUserData";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 
-type Tab = "studio" | "piano" | "chat";
+type Tab = "studio" | "piano" | "chat" | "profilo";
 
 interface UploadedFile {
   name: string;
@@ -128,6 +129,9 @@ const Index = () => {
               hasFiles={hasFiles}
               onUploadClick={() => setShowUpload(true)}
             />
+          )}
+          {activeTab === "profilo" && (
+            <ProfileView />
           )}
         </main>
 

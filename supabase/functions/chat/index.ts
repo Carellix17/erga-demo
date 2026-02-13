@@ -40,6 +40,13 @@ serve(async (req) => {
       .eq("user_id", userId)
       .order("event_date", { ascending: true });
 
+    // Fetch user profile for personalization
+    const { data: userProfile } = await supabase
+      .from("user_profiles")
+      .select("institute_type, subject_levels")
+      .eq("user_id", userId)
+      .maybeSingle();
+
     const mergedContexts = [...(contexts || []), ...(legacyContexts || [])];
 
     if (mergedContexts.length === 0) {
@@ -74,6 +81,23 @@ serve(async (req) => {
       : "Nessun evento programmato nel diario.";
     const eventsText = trimTo(eventsTextRaw, MAX_EVENTS_CHARS);
 
+    // Build profile context
+    const instituteMap: Record<string, string> = {
+      liceo_scientifico: "Liceo Scientifico",
+      liceo_classico: "Liceo Classico",
+      liceo_linguistico: "Liceo Linguistico",
+      istituto_tecnico: "Istituto Tecnico",
+    };
+    let profileText = "";
+    if (userProfile) {
+      profileText = `\nPROFILO STUDENTE:\n- Istituto: ${instituteMap[userProfile.institute_type] || userProfile.institute_type}`;
+      if (userProfile.subject_levels && typeof userProfile.subject_levels === "object") {
+        const levels = userProfile.subject_levels as Record<string, number>;
+        profileText += "\n- Livelli per materia: " + Object.entries(levels).map(([s, l]) => `${s}: ${l}/10`).join(", ");
+      }
+      profileText += "\n\nAdatta il tuo linguaggio e la difficoltà delle spiegazioni in base al tipo di istituto e ai livelli dello studente. Approfondisci di più le materie dove lo studente ha un livello basso.";
+    }
+
     const systemPrompt = `Sei un tutor di studio personale. Rispondi SOLO basandoti sui contenuti di studio forniti e sul diario dello studente.
 
 REGOLE IMPORTANTI:
@@ -82,6 +106,7 @@ REGOLE IMPORTANTI:
 3. Sii chiaro, conciso e incoraggiante
 4. Quando possibile, fai riferimento al diario dello studente per contestualizzare le risposte
 5. Usa esempi pratici tratti dai materiali
+${profileText}
 
 MATERIALI DI STUDIO DISPONIBILI:
 ${studyContent}
