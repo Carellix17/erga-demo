@@ -8,47 +8,40 @@ interface EmptyStateProps {
 export function EmptyState({ onUploadClick }: EmptyStateProps) {
   return (
     <div className="flex flex-col items-center justify-center min-h-[70vh] px-6 text-center animate-fade-up relative">
-      {/* Decorative glass orbs */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="glass-orb glass-orb-primary w-72 h-72 -top-20 -right-20 animate-float" />
-        <div className="glass-orb glass-orb-accent w-60 h-60 -bottom-16 -left-16" style={{ animationDelay: '-3s' }} />
-        <div className="glass-orb glass-orb-tertiary w-48 h-48 top-1/2 left-1/2 -translate-x-1/2" style={{ animationDelay: '-6s', animationDuration: '10s' }} />
-      </div>
-
       <div className="relative z-10">
-        {/* Animated icon with floating badges */}
+        {/* Icon with M3 containers */}
         <div className="relative mb-8">
-          <div className="w-28 h-28 rounded-[2rem] gradient-primary flex items-center justify-center shadow-glass-xl animate-bounce-in glow-ring">
-            <Sparkles className="w-14 h-14 text-white" />
+          <div className="w-24 h-24 rounded-xl bg-primary flex items-center justify-center shadow-level-3 animate-bounce-in">
+            <Sparkles className="w-12 h-12 text-primary-foreground" />
           </div>
-          {/* Floating badge - top right */}
+          {/* Badge - top right */}
           <div 
-            className="absolute -right-3 -top-3 w-12 h-12 rounded-xl glass-accent flex items-center justify-center shadow-glass-md animate-bounce-in" 
+            className="absolute -right-3 -top-3 w-11 h-11 rounded-lg bg-tertiary-container flex items-center justify-center shadow-level-2 animate-bounce-in" 
             style={{ animationDelay: "0.15s" }}
           >
-            <BookOpen className="w-6 h-6 text-accent" />
+            <BookOpen className="w-5 h-5 text-tertiary" />
           </div>
-          {/* Floating badge - bottom left */}
+          {/* Badge - bottom left */}
           <div 
-            className="absolute -left-3 -bottom-3 w-12 h-12 rounded-xl glass-tertiary flex items-center justify-center shadow-glass-md animate-bounce-in" 
+            className="absolute -left-3 -bottom-3 w-11 h-11 rounded-lg bg-secondary-container flex items-center justify-center shadow-level-2 animate-bounce-in" 
             style={{ animationDelay: "0.3s" }}
           >
-            <Brain className="w-6 h-6 text-tertiary" />
+            <Brain className="w-5 h-5 text-secondary" />
           </div>
         </div>
         
-        <h2 className="font-heading text-2xl font-bold mb-3 bg-gradient-to-r from-primary to-tertiary bg-clip-text text-transparent">
+        <h2 className="font-display text-2xl font-bold mb-3 text-foreground">
           Inizia il tuo percorso
         </h2>
         
-        <p className="text-muted-foreground mb-8 max-w-sm leading-relaxed">
+        <p className="body-large text-muted-foreground mb-8 max-w-sm leading-relaxed">
           Carica i tuoi appunti o dispense in PDF. L'AI creerà un piano di studio personalizzato con mini-lezioni ed esercizi interattivi.
         </p>
         
         <Button
           onClick={onUploadClick}
           size="lg"
-          className="h-14 px-8 text-base font-semibold gradient-primary text-white border-0 rounded-2xl shadow-glass-lg hover:shadow-glass-xl transition-all duration-300 hover:scale-105 active:scale-100 glow-ring"
+          className="h-14 px-8"
         >
           <FileUp className="w-5 h-5 mr-2" />
           Carica PDF
@@ -56,11 +49,11 @@ export function EmptyState({ onUploadClick }: EmptyStateProps) {
         
         <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
           {[
-            { label: "Appunti", className: "chip-primary glass-primary" },
-            { label: "Dispense", className: "chip-tertiary glass-tertiary" },
-            { label: "Libri", className: "chip-accent glass-accent" },
+            { label: "Appunti", cls: "bg-primary-container text-primary" },
+            { label: "Dispense", cls: "bg-secondary-container text-secondary" },
+            { label: "Libri", cls: "bg-tertiary-container text-tertiary" },
           ].map((item) => (
-            <span key={item.label} className={item.className}>
+            <span key={item.label} className={`m3-chip ${item.cls}`}>
               {item.label}
             </span>
           ))}

@@ -15,9 +15,9 @@ interface PlanItemProps {
 }
 
 const typeConfig = {
-  study: { glass: "glass-primary", border: "border-l-primary", badge: "glass-primary text-primary", label: "Studio" },
-  test: { glass: "glass-accent", border: "border-l-accent", badge: "glass-accent text-accent", label: "Verifica" },
-  assignment: { glass: "glass-tertiary", border: "border-l-tertiary", badge: "glass-tertiary text-tertiary", label: "Compito" },
+  study: { bg: "bg-primary-container", border: "border-l-primary", badge: "bg-primary-container text-primary", label: "Studio" },
+  test: { bg: "bg-tertiary-container", border: "border-l-tertiary", badge: "bg-tertiary-container text-tertiary", label: "Verifica" },
+  assignment: { bg: "bg-secondary-container", border: "border-l-secondary", badge: "bg-secondary-container text-secondary", label: "Compito" },
 };
 
 export function PlanItem({ item, onClick }: PlanItemProps) {
@@ -26,7 +26,7 @@ export function PlanItem({ item, onClick }: PlanItemProps) {
   return (
     <div
       className={cn(
-        "glass-card rounded-2xl border-l-4 cursor-pointer p-4",
+        "m3-card-elevated rounded-xl border-l-4 cursor-pointer p-4 state-layer",
         config.border,
         item.completed && "opacity-60"
       )}
@@ -35,28 +35,28 @@ export function PlanItem({ item, onClick }: PlanItemProps) {
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1.5">
-            <span className={cn("text-xs font-medium px-2.5 py-0.5 rounded-full", config.badge)}>
+            <span className={cn("label-small px-2.5 py-0.5 rounded-full", config.badge)}>
               {config.label}
             </span>
-            <span className="text-xs text-muted-foreground font-medium">
+            <span className="label-small text-muted-foreground">
               {item.subject}
             </span>
           </div>
           <p className={cn(
-            "font-medium truncate",
+            "title-small truncate",
             item.completed && "line-through"
           )}>
             {item.title}
           </p>
         </div>
 
-        <div className="flex flex-col items-end gap-1 text-xs text-muted-foreground">
-          <div className="flex items-center gap-1 glass-subtle px-2 py-0.5 rounded-full">
+        <div className="flex flex-col items-end gap-1 body-small text-muted-foreground">
+          <div className="flex items-center gap-1 bg-surface-container-highest px-2 py-0.5 rounded-full">
             <Calendar className="w-3 h-3" />
             <span>{item.date}</span>
           </div>
           {item.time && (
-            <div className="flex items-center gap-1 glass-subtle px-2 py-0.5 rounded-full">
+            <div className="flex items-center gap-1 bg-surface-container-highest px-2 py-0.5 rounded-full">
               <Clock className="w-3 h-3" />
               <span>{item.time}</span>
             </div>

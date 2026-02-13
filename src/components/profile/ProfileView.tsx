@@ -147,41 +147,41 @@ export function ProfileView() {
     <div className="px-4 pt-6 pb-32 space-y-6 max-w-lg mx-auto animate-fade-up">
       {/* Header */}
       <div className="flex items-center gap-3">
-        <div className="w-12 h-12 rounded-2xl bg-primary/15 flex items-center justify-center">
+        <div className="w-12 h-12 rounded-full bg-primary-container flex items-center justify-center">
           <User className="w-6 h-6 text-primary" />
         </div>
         <div>
-          <h1 className="text-xl font-heading font-bold text-foreground">Il tuo profilo</h1>
-          <p className="text-sm text-muted-foreground">Personalizza la tua esperienza di studio</p>
+          <h1 className="title-large font-display font-bold text-foreground">Il tuo profilo</h1>
+          <p className="body-medium text-muted-foreground">Personalizza la tua esperienza di studio</p>
         </div>
       </div>
 
       {/* Institute Section */}
-      <div className="glass-card rounded-2xl p-5 space-y-4">
+      <div className="m3-card-elevated rounded-xl p-5 space-y-4">
         <div className="flex items-center gap-2 mb-1">
           <GraduationCap className="w-5 h-5 text-tertiary" />
-          <h2 className="font-heading font-semibold text-foreground">Tipo di istituto</h2>
+          <h2 className="title-medium font-display text-foreground">Tipo di istituto</h2>
         </div>
-        <RadioGroup value={institute} onValueChange={setInstitute} className="space-y-2">
+        <RadioGroup value={institute} onValueChange={setInstitute} className="space-y-1">
           {INSTITUTES.map((inst) => (
             <label
               key={inst.value}
-              className="flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all hover:bg-muted/50 has-[data-state=checked]:bg-primary/10 has-[data-state=checked]:border-primary/20"
+              className="flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-all duration-200 ease-m3-standard hover:bg-foreground/[0.08] has-[data-state=checked]:bg-secondary-container"
             >
               <RadioGroupItem value={inst.value} />
-              <span className="text-sm font-medium text-foreground">{inst.label}</span>
+              <span className="body-large text-foreground">{inst.label}</span>
             </label>
           ))}
         </RadioGroup>
       </div>
 
       {/* Subject Levels Section */}
-      <div className="glass-card rounded-2xl p-5 space-y-5">
+      <div className="m3-card-elevated rounded-xl p-5 space-y-5">
         <div className="flex items-center gap-2 mb-1">
-          <BookOpen className="w-5 h-5 text-accent" />
-          <h2 className="font-heading font-semibold text-foreground">Livello per materia</h2>
+          <BookOpen className="w-5 h-5 text-tertiary" />
+          <h2 className="title-medium font-display text-foreground">Livello per materia</h2>
         </div>
-        <p className="text-xs text-muted-foreground -mt-2">Indica come vai in ogni materia (da 2 a 10)</p>
+        <p className="body-small text-muted-foreground -mt-2">Indica come vai in ogni materia (da 2 a 10)</p>
 
         <div className="space-y-5">
           {SUBJECTS.map((subject) => {
@@ -189,8 +189,8 @@ export function ProfileView() {
             return (
               <div key={subject} className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <Label className="text-sm font-medium text-foreground">{subject}</Label>
-                  <span className={`text-sm font-semibold ${getLevelColor(level)}`}>
+                  <Label className="body-large text-foreground">{subject}</Label>
+                  <span className={`label-large ${getLevelColor(level)}`}>
                     {level} — {getLevelLabel(level)}
                   </span>
                 </div>
@@ -212,8 +212,8 @@ export function ProfileView() {
       <Button
         onClick={handleSave}
         disabled={isSaving}
-        className="w-full h-14 text-lg rounded-2xl"
-        variant={saved ? "default" : "default"}
+        className="w-full h-14"
+        size="lg"
       >
         {isSaving ? (
           <Loader2 className="w-5 h-5 animate-spin mr-2" />

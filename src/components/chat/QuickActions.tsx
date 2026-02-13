@@ -20,7 +20,7 @@ export function QuickActions({ onAction }: QuickActionsProps) {
           variant="outline"
           size="sm"
           onClick={() => onAction(action.label)}
-          className="whitespace-nowrap flex-shrink-0 glass-subtle border-border/30 rounded-xl hover:shadow-glass hover:scale-[1.03] transition-all duration-300 text-xs font-medium"
+          className="whitespace-nowrap flex-shrink-0 rounded-full border-outline-variant hover:bg-foreground/[0.08] transition-all duration-200 ease-m3-standard label-large"
         >
           <span className="mr-1.5">{action.emoji}</span>
           {action.label}

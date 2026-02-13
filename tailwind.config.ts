@@ -1,5 +1,4 @@
 import type { Config } from "tailwindcss";
-import plugin from "tailwindcss/plugin";
 
 export default {
   darkMode: ["class"],
@@ -28,10 +27,12 @@ export default {
         primary: {
           DEFAULT: "hsl(var(--primary))",
           foreground: "hsl(var(--primary-foreground))",
+          container: "hsl(var(--primary-container))",
         },
         secondary: {
           DEFAULT: "hsl(var(--secondary))",
           foreground: "hsl(var(--secondary-foreground))",
+          container: "hsl(var(--secondary-container))",
         },
         destructive: {
           DEFAULT: "hsl(var(--destructive))",
@@ -46,16 +47,37 @@ export default {
           foreground: "hsl(var(--accent-foreground))",
         },
         tertiary: {
-            DEFAULT: "hsl(var(--tertiary))",
-            foreground: "hsl(var(--tertiary-foreground))",
+          DEFAULT: "hsl(var(--tertiary))",
+          foreground: "hsl(var(--tertiary-foreground))",
+          container: "hsl(var(--tertiary-container))",
         },
         success: {
-            DEFAULT: "hsl(var(--success))",
-            foreground: "hsl(var(--success-foreground))",
+          DEFAULT: "hsl(var(--success))",
+          foreground: "hsl(var(--success-foreground))",
+          container: "hsl(var(--success-container))",
         },
         warning: {
-            DEFAULT: "hsl(var(--warning))",
-            foreground: "hsl(var(--warning-foreground))",
+          DEFAULT: "hsl(var(--warning))",
+          foreground: "hsl(var(--warning-foreground))",
+        },
+        outline: {
+          DEFAULT: "hsl(var(--outline))",
+          variant: "hsl(var(--outline-variant))",
+        },
+        surface: {
+          DEFAULT: "hsl(var(--background))",
+          dim: "hsl(var(--surface-dim))",
+          bright: "hsl(var(--surface-bright))",
+          "container-lowest": "hsl(var(--surface-container-lowest))",
+          "container-low": "hsl(var(--surface-container-low))",
+          container: "hsl(var(--surface-container))",
+          "container-high": "hsl(var(--surface-container-high))",
+          "container-highest": "hsl(var(--surface-container-highest))",
+        },
+        inverse: {
+          surface: "hsl(var(--inverse-surface))",
+          "on-surface": "hsl(var(--inverse-on-surface))",
+          primary: "hsl(var(--inverse-primary))",
         },
         popover: {
           DEFAULT: "hsl(var(--popover))",
@@ -77,31 +99,24 @@ export default {
         },
       },
       borderRadius: {
-        lg: "var(--radius)",
-        md: "calc(var(--radius) - 2px)",
-        sm: "calc(var(--radius) - 4px)",
-        xl: "1.5rem",   // Più morbido per le card
-        "2xl": "2rem",  // Molto morbido per i container principali
-        "3xl": "3rem",  // Quasi circolare per effetti liquidi
-      },
-      backgroundImage: {
-        // Gradienti sottili per dare profondità al vetro
-        'glass-gradient': 'linear-gradient(135deg, rgba(255, 255, 255, 0.4) 0%, rgba(255, 255, 255, 0.05) 100%)',
-        'glass-shine': 'linear-gradient(45deg, transparent 25%, rgba(255,255,255,0.3) 50%, transparent 75%)',
-        'mesh': 'radial-gradient(at 0% 0%, hsla(var(--primary), 0.15) 0, transparent 50%), radial-gradient(at 100% 0%, hsla(var(--secondary), 0.15) 0, transparent 50%), radial-gradient(at 100% 100%, hsla(var(--accent), 0.1) 0, transparent 50%)',
+        xs: "var(--radius-xs)",
+        sm: "var(--radius-sm)",
+        md: "var(--radius-md)",
+        lg: "var(--radius-lg)",
+        xl: "var(--radius-xl)",
+        full: "var(--radius-full)",
       },
       boxShadow: {
-        // Ombre sofisticate per l'effetto galleggiamento
-        "soft-sm": "0 2px 10px rgba(0, 0, 0, 0.03)",
-        "soft-md": "0 4px 20px rgba(0, 0, 0, 0.05)",
-        "glass": "0 8px 32px 0 rgba(31, 38, 135, 0.10), inset 0 0 0 1px rgba(255, 255, 255, 0.2)",
-        "glass-sm": "0 4px 16px 0 rgba(31, 38, 135, 0.08), inset 0 0 0 1px rgba(255, 255, 255, 0.2)",
-        "glass-hover": "0 12px 40px 0 rgba(31, 38, 135, 0.15), inset 0 0 0 1px rgba(255, 255, 255, 0.4)",
-        "glow": "0 0 20px hsla(var(--primary), 0.3)",
+        "level-0": "var(--shadow-level-0)",
+        "level-1": "var(--shadow-level-1)",
+        "level-2": "var(--shadow-level-2)",
+        "level-3": "var(--shadow-level-3)",
+        "level-4": "var(--shadow-level-4)",
+        "level-5": "var(--shadow-level-5)",
       },
       fontFamily: {
-        sans: ['Inter', 'system-ui', 'sans-serif'],
-        heading: ['Outfit', 'Inter', 'system-ui', 'sans-serif'],
+        sans: ['"Google Sans Text"', '"Google Sans"', 'system-ui', 'sans-serif'],
+        display: ['"Google Sans"', 'system-ui', 'sans-serif'],
       },
       keyframes: {
         "accordion-down": {
@@ -112,60 +127,21 @@ export default {
           from: { height: "var(--radix-accordion-content-height)" },
           to: { height: "0" },
         },
-        "float": {
-          "0%, 100%": { transform: "translateY(0)" },
-          "50%": { transform: "translateY(-10px)" },
-        },
-        "pulse-soft": {
-          "0%, 100%": { opacity: "1", transform: "scale(1)" },
-          "50%": { opacity: "0.8", transform: "scale(0.98)" },
-        },
-        "shimmer": {
-          "100%": { transform: "translateX(100%)" },
-        },
-        "scale-in": {
-          from: { opacity: "0", transform: "scale(0.95)" },
-          to: { opacity: "1", transform: "scale(1)" },
-        },
-        "slide-up": {
-          from: { transform: "translateY(20px)", opacity: "0" },
-          to: { transform: "translateY(0)", opacity: "1" },
-        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
-        "float": "float 6s ease-in-out infinite",
-        "float-delayed": "float 6s ease-in-out 3s infinite",
-        "pulse-soft": "pulse-soft 3s ease-in-out infinite",
-        "scale-in": "scale-in 0.3s cubic-bezier(0.16, 1, 0.3, 1)",
-        "slide-up": "slide-up 0.5s cubic-bezier(0.16, 1, 0.3, 1)",
+      },
+      transitionTimingFunction: {
+        "m3-emphasized": "cubic-bezier(0.2, 0, 0, 1)",
+        "m3-emphasized-decel": "cubic-bezier(0.05, 0.7, 0.1, 1)",
+        "m3-emphasized-accel": "cubic-bezier(0.3, 0, 0.8, 0.15)",
+        "m3-standard": "cubic-bezier(0.2, 0, 0, 1)",
+        "m3-standard-decel": "cubic-bezier(0, 0, 0, 1)",
       },
     },
   },
   plugins: [
     require("tailwindcss-animate"),
-    // Plugin personalizzato per la classe .glass
-    plugin(function({ addUtilities }) {
-      addUtilities({
-        '.glass': {
-          'background': 'rgba(255, 255, 255, 0.2)',
-          'backdrop-filter': 'blur(12px)',
-          '-webkit-backdrop-filter': 'blur(12px)',
-          'border': '1px solid rgba(255, 255, 255, 0.3)',
-          'box-shadow': '0 8px 32px 0 rgba(31, 38, 135, 0.05)',
-        },
-        '.glass-dark': {
-          'background': 'rgba(15, 23, 42, 0.6)',
-          'backdrop-filter': 'blur(16px)',
-          '-webkit-backdrop-filter': 'blur(16px)',
-          'border': '1px solid rgba(255, 255, 255, 0.1)',
-          'box-shadow': '0 8px 32px 0 rgba(0, 0, 0, 0.2)',
-        },
-        '.text-glow': {
-          'text-shadow': '0 0 20px hsla(var(--primary), 0.5)',
-        }
-      })
-    }),
   ],
 } satisfies Config;

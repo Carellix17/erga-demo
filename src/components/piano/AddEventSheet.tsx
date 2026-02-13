@@ -34,9 +34,9 @@ export function AddEventSheet({ open, onOpenChange, onAdd }: AddEventSheetProps)
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="bottom" className="rounded-t-3xl pb-safe">
+      <SheetContent side="bottom" className="rounded-t-xl pb-safe bg-surface-container-low">
         <SheetHeader className="mb-6">
-          <SheetTitle>Aggiungi evento</SheetTitle>
+          <SheetTitle className="title-large font-display">Aggiungi evento</SheetTitle>
         </SheetHeader>
 
         <form onSubmit={handleSubmit} className="space-y-5">
@@ -62,36 +62,18 @@ export function AddEventSheet({ open, onOpenChange, onAdd }: AddEventSheetProps)
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="subject">Materia</Label>
-            <Input
-              id="subject"
-              placeholder="Es. Matematica"
-              value={subject}
-              onChange={(e) => setSubject(e.target.value)}
-              className="h-12 rounded-xl"
-            />
+            <Label htmlFor="subject" className="label-large">Materia</Label>
+            <Input id="subject" placeholder="Es. Matematica" value={subject} onChange={(e) => setSubject(e.target.value)} />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="title">Titolo</Label>
-            <Input
-              id="title"
-              placeholder="Es. Capitolo 5 - Derivate"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              className="h-12 rounded-xl"
-            />
+            <Label htmlFor="title" className="label-large">Titolo</Label>
+            <Input id="title" placeholder="Es. Capitolo 5 - Derivate" value={title} onChange={(e) => setTitle(e.target.value)} />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="date">Data</Label>
-            <Input
-              id="date"
-              type="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-              className="h-12 rounded-xl"
-            />
+            <Label htmlFor="date" className="label-large">Data</Label>
+            <Input id="date" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
           </div>
 
           <Button type="submit" className="w-full" size="lg">

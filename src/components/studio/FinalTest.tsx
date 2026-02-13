@@ -50,24 +50,24 @@ export function FinalTest({ exercises, onClose, onComplete }: FinalTestProps) {
             variant="ghost"
             size="icon-sm"
             onClick={onClose}
-            className="rounded-xl glass-subtle"
+            className="rounded-full"
           >
             <X className="w-5 h-5" />
           </Button>
-          <div className="flex-1 h-2.5 bg-muted/30 rounded-full overflow-hidden">
+          <div className="flex-1 h-1 m3-progress-track">
             <div
-              className="h-full progress-animated rounded-full transition-all duration-500"
+              className="h-full m3-progress-indicator"
               style={{ width: `${progress}%` }}
             />
           </div>
-          <span className="text-xs text-muted-foreground font-medium whitespace-nowrap">
+          <span className="label-medium text-muted-foreground whitespace-nowrap">
             {showResults ? "Risultati" : `${currentIndex + 1}/${total}`}
           </span>
         </div>
         <div className="flex items-center justify-center gap-2">
           <Target className="w-4 h-4 text-primary" />
-          <p className="text-xs text-muted-foreground text-center">
-            <span className="text-foreground font-semibold">Test Finale</span> · Verifica le tue conoscenze
+          <p className="body-small text-muted-foreground text-center">
+            <span className="text-foreground title-small">Test Finale</span> · Verifica le tue conoscenze
           </p>
         </div>
       </div>
@@ -82,20 +82,20 @@ export function FinalTest({ exercises, onClose, onComplete }: FinalTestProps) {
               <div className="space-y-5">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="w-11 h-11 rounded-xl gradient-warm flex items-center justify-center shadow-glass">
-                      <Award className="w-5 h-5 text-white" />
+                    <div className="w-11 h-11 rounded-full bg-tertiary flex items-center justify-center">
+                      <Award className="w-5 h-5 text-tertiary-foreground" />
                     </div>
                     <div>
-                      <span className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+                      <span className="label-large uppercase tracking-wide text-muted-foreground">
                         Domanda
                       </span>
-                      <p className="text-xs text-muted-foreground">
+                      <p className="body-small text-muted-foreground">
                         {currentIndex + 1} di {total}
                       </p>
                     </div>
                   </div>
                 </div>
-                <div className="p-5 rounded-2xl glass-subtle border border-border/30">
+                <div className="p-5 rounded-xl bg-surface-container-high">
                   <ExerciseRenderer
                     exercise={exercises[currentIndex]}
                     onComplete={handleAnswer}
@@ -114,10 +114,8 @@ export function FinalTest({ exercises, onClose, onComplete }: FinalTestProps) {
           onClick={handleContinue}
           disabled={!showResults && !answered}
           className={cn(
-            "w-full h-14 text-base font-semibold border-0 rounded-2xl shadow-glass-lg transition-all duration-300",
-            (showResults || answered)
-              ? "gradient-primary text-white hover:shadow-glass-xl hover:scale-[1.02] active:scale-100 glow-ring"
-              : "bg-muted text-muted-foreground"
+            "w-full h-14 transition-all duration-300 ease-m3-emphasized",
+            !(showResults || answered) && "bg-surface-container-highest text-muted-foreground shadow-level-0"
           )}
           size="lg"
         >
@@ -133,27 +131,27 @@ function ResultsView({ score, correctCount, total, great }: { score: number; cor
   return (
     <div className="text-center space-y-8">
       <div
-        className="w-24 h-24 rounded-3xl mx-auto flex items-center justify-center animate-bounce-in shadow-glass-lg"
+        className="w-24 h-24 rounded-full mx-auto flex items-center justify-center animate-bounce-in shadow-level-3"
         style={{ background: great ? "hsl(var(--success))" : "hsl(var(--warning))" }}
       >
         <Trophy className="w-12 h-12 text-white" />
       </div>
 
       <div>
-        <p className="text-5xl font-heading font-bold mb-2" style={{ color: great ? "hsl(var(--success))" : "hsl(var(--warning))" }}>
+        <p className="text-5xl font-display font-bold mb-2" style={{ color: great ? "hsl(var(--success))" : "hsl(var(--warning))" }}>
           {score}%
         </p>
-        <p className={cn("font-heading font-bold text-2xl mb-2", great ? "text-success" : "text-warning")}>
+        <p className={cn("font-display font-bold text-2xl mb-2", great ? "text-success" : "text-warning")}>
           {great ? "Ottimo risultato! 🎉" : "Puoi migliorare! 💪"}
         </p>
-        <p className="text-muted-foreground">
+        <p className="body-medium text-muted-foreground">
           Hai risposto correttamente a{" "}
           <span className="font-semibold">{correctCount}</span> domande su{" "}
           <span className="font-semibold">{total}</span>.
         </p>
       </div>
 
-      <p className="text-sm text-muted-foreground">
+      <p className="body-small text-muted-foreground">
         {great
           ? "Hai dimostrato un'ottima padronanza degli argomenti!"
           : "Rivedi le lezioni e riprova il test per migliorare."}
