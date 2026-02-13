@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { Loader2, Sparkles, Check, BookOpen } from "lucide-react";
-import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 
 interface GenerationProgressProps {
@@ -27,7 +26,6 @@ export function GenerationProgress({
 }: GenerationProgressProps) {
   const [animatedProgress, setAnimatedProgress] = useState(0);
 
-  // Calculate overall progress
   const stepProgress = {
     "analyzing": 10,
     "creating-index": 25,
@@ -37,7 +35,6 @@ export function GenerationProgress({
 
   const targetProgress = stepProgress[currentStep] || 0;
 
-  // Smooth animation
   useEffect(() => {
     const timer = setInterval(() => {
       setAnimatedProgress((prev) => {
@@ -55,18 +52,18 @@ export function GenerationProgress({
   const currentStepIndex = steps.findIndex((s) => s.id === currentStep);
 
   return (
-    <div className="glass-card rounded-2xl p-6 animate-fade-up">
+    <div className="m3-card-elevated rounded-xl p-6 animate-fade-up">
       {/* Header */}
       <div className="flex items-center gap-3 mb-6">
-        <div className="w-12 h-12 rounded-2xl gradient-primary flex items-center justify-center shadow-glass-md animate-glow-pulse">
-          <Sparkles className="w-6 h-6 text-white" />
+        <div className="w-12 h-12 rounded-full bg-primary flex items-center justify-center shadow-level-2">
+          <Sparkles className="w-6 h-6 text-primary-foreground" />
         </div>
         <div>
-          <h3 className="font-heading font-semibold text-lg">
+          <h3 className="title-medium font-display">
             {currentStep === "complete" ? "Percorso pronto!" : "Generazione in corso"}
           </h3>
           {fileName && (
-            <p className="text-sm text-muted-foreground truncate max-w-[200px]">
+            <p className="body-small text-muted-foreground truncate max-w-[200px]">
               {fileName}
             </p>
           )}
@@ -75,15 +72,15 @@ export function GenerationProgress({
 
       {/* Progress bar */}
       <div className="mb-6">
-        <div className="flex justify-between text-sm mb-2">
+        <div className="flex justify-between label-medium mb-2">
           <span className="text-muted-foreground">Progresso</span>
-          <span className="font-medium text-primary">{Math.round(animatedProgress)}%</span>
+          <span className="text-primary">{Math.round(animatedProgress)}%</span>
         </div>
-        <div className="h-3 bg-muted/30 rounded-full overflow-hidden backdrop-blur-sm">
+        <div className="h-1 m3-progress-track">
           <div
             className={cn(
               "h-full rounded-full transition-all duration-300",
-              currentStep === "complete" ? "bg-success" : "progress-animated"
+              currentStep === "complete" ? "bg-success" : "m3-progress-indicator"
             )}
             style={{ width: `${animatedProgress}%` }}
           />
@@ -91,7 +88,7 @@ export function GenerationProgress({
       </div>
 
       {/* Steps */}
-      <div className="space-y-2.5">
+      <div className="space-y-2">
         {steps.map((step, index) => {
           const Icon = step.icon;
           const isActive = step.id === currentStep;
@@ -102,19 +99,19 @@ export function GenerationProgress({
             <div
               key={step.id}
               className={cn(
-                "flex items-center gap-3 p-3 rounded-xl transition-all duration-300",
-                isActive && "glass-primary",
-                isComplete && step.id !== "complete" && "glass-success",
-                isPending && "opacity-50"
+                "flex items-center gap-3 p-3 rounded-lg transition-all duration-300 ease-m3-standard",
+                isActive && "bg-primary-container",
+                isComplete && step.id !== "complete" && "bg-success-container",
+                isPending && "opacity-38"
               )}
             >
               <div
                 className={cn(
-                  "w-8 h-8 rounded-xl flex items-center justify-center transition-all duration-300 shadow-glass",
-                  isActive && "gradient-primary text-white",
+                  "w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300",
+                  isActive && "bg-primary text-primary-foreground",
                   isComplete && step.id !== "complete" && "bg-success text-success-foreground",
                   currentStep === "complete" && step.id === "complete" && "bg-success text-success-foreground",
-                  isPending && "glass-subtle text-muted-foreground"
+                  isPending && "bg-surface-container-highest text-muted-foreground"
                 )}
               >
                 {isComplete && step.id !== "complete" ? (
@@ -126,7 +123,7 @@ export function GenerationProgress({
               <div className="flex-1">
                 <p
                   className={cn(
-                    "font-medium text-sm transition-colors duration-300",
+                    "label-large transition-colors duration-300",
                     isActive && "text-primary",
                     isComplete && step.id !== "complete" && "text-success",
                     currentStep === "complete" && step.id === "complete" && "text-success"
@@ -135,7 +132,7 @@ export function GenerationProgress({
                   {step.label}
                 </p>
                 {isActive && step.id === "generating-lessons" && totalLessons > 0 && (
-                  <p className="text-xs text-muted-foreground">
+                  <p className="body-small text-muted-foreground">
                     {generatedCount} / {totalLessons} lezioni create
                   </p>
                 )}
@@ -147,7 +144,7 @@ export function GenerationProgress({
 
       {/* Fun message */}
       {currentStep !== "complete" && (
-        <p className="text-center text-sm text-muted-foreground mt-6 italic">
+        <p className="text-center body-small text-muted-foreground mt-6 italic">
           L'AI sta creando il tuo percorso personalizzato... ✨
         </p>
       )}

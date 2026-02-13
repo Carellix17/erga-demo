@@ -46,23 +46,22 @@ export function LessonsList({
       {/* Header */}
       <div className="flex items-center gap-3 mb-6">
         {showBackButton && (
-          <Button variant="ghost" size="icon" onClick={onBack} className="rounded-xl glass-subtle">
+          <Button variant="ghost" size="icon" onClick={onBack} className="rounded-full">
             <ChevronLeft className="w-5 h-5" />
           </Button>
         )}
         <div className="flex-1">
-          <h2 className="text-lg font-heading font-semibold">Percorso di studio</h2>
-          <p className="text-sm text-muted-foreground">
+          <h2 className="title-large font-display">Percorso di studio</h2>
+          <p className="body-small text-muted-foreground">
             {lessons.filter(l => l.is_generated).length} di {lessons.length} lezioni generate
           </p>
         </div>
         {onRegenerate && (
           <Button
             variant="outline"
-            size="sm"
+            size="icon-sm"
             onClick={onRegenerate}
             disabled={isRegenerating}
-            className="rounded-xl glass-subtle border-border/30 hover:shadow-glass transition-all duration-300"
           >
             {isRegenerating ? (
               <Loader2 className="w-4 h-4 animate-spin" />
@@ -74,28 +73,28 @@ export function LessonsList({
       </div>
 
       {/* Progress overview */}
-      <div className="glass-card rounded-2xl p-4 mb-5">
+      <div className="m3-card-elevated rounded-xl p-4 mb-5">
         <div className="flex items-center gap-3 mb-3">
-          <div className="w-10 h-10 rounded-xl gradient-primary flex items-center justify-center shadow-glass">
-            <Sparkles className="w-5 h-5 text-white" />
+          <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center">
+            <Sparkles className="w-5 h-5 text-primary-foreground" />
           </div>
           <div className="flex-1">
-            <p className="text-sm font-medium">Progresso totale</p>
-            <p className="text-xs text-muted-foreground">
+            <p className="title-small">Progresso totale</p>
+            <p className="body-small text-muted-foreground">
               {Math.round((lessons.filter(l => l.is_generated).length / lessons.length) * 100)}% completato
             </p>
           </div>
         </div>
-        <div className="h-2 bg-muted/30 rounded-full overflow-hidden backdrop-blur-sm">
+        <div className="h-1 m3-progress-track">
           <div 
-            className="h-full progress-animated rounded-full transition-all duration-500"
+            className="h-full m3-progress-indicator"
             style={{ width: `${(lessons.filter(l => l.is_generated).length / lessons.length) * 100}%` }}
           />
         </div>
       </div>
 
       {/* Lessons List */}
-      <div className="space-y-2.5">
+      <div className="space-y-2">
         {lessons.map((lesson, index) => {
           const isCompleted = index < currentIndex;
           const isCurrent = index === currentIndex;
@@ -107,28 +106,28 @@ export function LessonsList({
               onClick={() => !isGenerating && onSelectLesson(index)}
               disabled={isGenerating}
               className={cn(
-                "w-full p-4 rounded-2xl text-left transition-all duration-300",
-                "flex items-center gap-3",
-                isCurrent && "glass-primary border border-primary/20 shadow-glass-md",
-                isCompleted && !isCurrent && "glass-subtle",
-                !isCurrent && !isCompleted && "glass-subtle border border-border/20",
-                isLocked && "opacity-50",
-                !isGenerating && "hover:shadow-glass-md hover:translate-x-1"
+                "w-full p-4 rounded-xl text-left transition-all duration-300 ease-m3-emphasized",
+                "flex items-center gap-3 state-layer",
+                isCurrent && "bg-primary-container",
+                isCompleted && !isCurrent && "bg-surface-container-low",
+                !isCurrent && !isCompleted && "bg-surface-container-low",
+                isLocked && "opacity-38",
+                !isGenerating && "hover:shadow-level-1"
               )}
             >
               {/* Status Icon */}
               <div className={cn(
-                "w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 transition-all duration-300 shadow-glass",
-                isCompleted && "glass-success",
-                isCurrent && "gradient-primary",
-                !isCurrent && !isCompleted && "glass-subtle"
+                "w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 transition-all duration-300",
+                isCompleted && "bg-success-container",
+                isCurrent && "bg-primary",
+                !isCurrent && !isCompleted && "bg-surface-container-highest"
               )}>
                 {isGenerating && isCurrent ? (
-                  <Loader2 className="w-4 h-4 text-white animate-spin" />
+                  <Loader2 className="w-4 h-4 text-primary-foreground animate-spin" />
                 ) : isCompleted ? (
-                  <CheckCircle2 className="w-4 h-4 text-success" />
+                  <CheckCircle2 className="w-5 h-5 text-success" />
                 ) : isCurrent ? (
-                  <span className="text-sm font-bold text-white">
+                  <span className="label-large text-primary-foreground">
                     {index + 1}
                   </span>
                 ) : isLocked ? (
@@ -141,14 +140,14 @@ export function LessonsList({
               {/* Lesson Info */}
               <div className="flex-1 min-w-0">
                 <p className={cn(
-                  "font-medium truncate",
+                  "title-small truncate",
                   isCurrent && "text-primary",
                   isCompleted && "text-foreground",
                   isLocked && "text-muted-foreground"
                 )}>
                   {lesson.title}
                 </p>
-                <p className="text-xs text-muted-foreground">
+                <p className="body-small text-muted-foreground">
                   {lesson.is_generated 
                     ? `${(lesson.exercises?.length || 0)} esercizi`
                     : "Da generare"}
@@ -157,7 +156,7 @@ export function LessonsList({
 
               {/* Generated badge */}
               {lesson.is_generated && (
-                <span className="text-xs px-2.5 py-1 rounded-full glass-success text-success font-medium">
+                <span className="label-small px-3 py-1 rounded-full bg-success-container text-success">
                   Pronta
                 </span>
               )}
@@ -172,22 +171,22 @@ export function LessonsList({
           <button
             onClick={onStartFinalTest}
             disabled={isLoadingFinalTest}
-            className="w-full p-4 rounded-2xl text-left transition-all duration-300 flex items-center gap-3 glass-card border border-primary/30 shadow-glass-md hover:shadow-glass-lg hover:scale-[1.01]"
+            className="w-full p-4 rounded-xl text-left transition-all duration-300 ease-m3-emphasized flex items-center gap-3 bg-tertiary-container shadow-level-1 hover:shadow-level-2 state-layer"
           >
-            <div className="w-9 h-9 rounded-xl gradient-warm flex items-center justify-center flex-shrink-0 shadow-glass">
+            <div className="w-10 h-10 rounded-full bg-tertiary flex items-center justify-center flex-shrink-0">
               {isLoadingFinalTest ? (
-                <Loader2 className="w-4 h-4 text-white animate-spin" />
+                <Loader2 className="w-5 h-5 text-tertiary-foreground animate-spin" />
               ) : (
-                <Target className="w-4 h-4 text-white" />
+                <Target className="w-5 h-5 text-tertiary-foreground" />
               )}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="font-semibold text-foreground">Test Finale</p>
-              <p className="text-xs text-muted-foreground">
+              <p className="title-small text-foreground">Test Finale</p>
+              <p className="body-small text-muted-foreground">
                 {isLoadingFinalTest ? "Generazione in corso..." : "Metti alla prova le tue conoscenze"}
               </p>
             </div>
-            <span className="text-xs px-2.5 py-1 rounded-full gradient-warm text-white font-medium">
+            <span className="label-small px-3 py-1 rounded-full bg-tertiary text-tertiary-foreground">
               Quiz
             </span>
           </button>

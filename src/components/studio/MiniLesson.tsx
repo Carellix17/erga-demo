@@ -65,70 +65,70 @@ export function MiniLesson({
   return (
     <div className="space-y-5 animate-fade-up">
       {/* Progress Header */}
-      <div className="glass-card rounded-2xl p-4">
+      <div className="m3-card-elevated rounded-xl p-4">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
-            <div className="w-9 h-9 rounded-xl glass-primary flex items-center justify-center shadow-glass">
+            <div className="w-9 h-9 rounded-full bg-primary-container flex items-center justify-center">
               <Target className="w-4 h-4 text-primary" />
             </div>
-            <span className="font-heading font-semibold">
+            <span className="title-small">
               Lezione {currentIndex + 1} di {totalLessons}
             </span>
           </div>
-          <div className="flex items-center gap-1.5 text-sm text-muted-foreground glass-subtle px-3 py-1.5 rounded-full">
+          <div className="flex items-center gap-1.5 label-medium text-muted-foreground bg-surface-container-highest px-3 py-1.5 rounded-full">
             <Clock className="w-3.5 h-3.5" />
             <span>~{lesson.duration} min</span>
           </div>
         </div>
-        <div className="h-2.5 bg-muted/30 rounded-full overflow-hidden backdrop-blur-sm">
+        <div className="h-1 m3-progress-track">
           <div 
-            className="h-full progress-animated rounded-full transition-all duration-500"
+            className="h-full m3-progress-indicator"
             style={{ width: `${progress}%` }}
           />
         </div>
       </div>
 
-      {/* Concept Card - Glass effect */}
-      <Card className="border-0 glass-primary shadow-glass-md overflow-hidden glow-ring">
+      {/* Concept Card */}
+      <Card className="bg-primary-container border-0 shadow-level-0 overflow-hidden">
         <CardHeader className="pb-2">
           <div className="flex items-center gap-2">
-            <div className="w-9 h-9 rounded-xl gradient-primary flex items-center justify-center shadow-glass">
-              <Lightbulb className="w-4 h-4 text-white" />
+            <div className="w-9 h-9 rounded-full bg-primary flex items-center justify-center">
+              <Lightbulb className="w-4 h-4 text-primary-foreground" />
             </div>
-            <span className="text-sm font-semibold text-primary uppercase tracking-wide">
+            <span className="label-large text-primary uppercase tracking-wide">
               Concetto chiave
             </span>
           </div>
         </CardHeader>
         <CardContent>
-          <div className="text-lg font-heading font-semibold text-foreground leading-relaxed prose prose-sm max-w-none">
+          <div className="title-large font-display text-foreground leading-relaxed prose prose-sm max-w-none">
             <ReactMarkdown>{lesson.concept}</ReactMarkdown>
           </div>
         </CardContent>
       </Card>
 
-      {/* Lesson Content - Glass card */}
-      <Card className="glass-card border-0">
+      {/* Lesson Content */}
+      <Card className="border-0">
         <CardHeader>
-          <CardTitle className="flex items-center gap-3 font-heading">
-            <div className="w-11 h-11 rounded-xl glass-tertiary flex items-center justify-center shadow-glass">
-              <BookOpen className="w-5 h-5 text-tertiary" />
+          <CardTitle className="flex items-center gap-3">
+            <div className="w-11 h-11 rounded-full bg-secondary-container flex items-center justify-center">
+              <BookOpen className="w-5 h-5 text-secondary" />
             </div>
-            <span className="text-xl">{lesson.title}</span>
+            <span>{lesson.title}</span>
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-5">
-          <div className="text-muted-foreground leading-relaxed text-[15px] prose prose-sm max-w-none prose-p:text-muted-foreground prose-strong:text-foreground prose-em:text-foreground/90">
+          <div className="body-large text-muted-foreground leading-relaxed prose prose-sm max-w-none prose-p:text-muted-foreground prose-strong:text-foreground prose-em:text-foreground/90">
             <ReactMarkdown>{lesson.explanation}</ReactMarkdown>
           </div>
 
-          {/* Example - subtle glass accent */}
+          {/* Example */}
           {lesson.example && (
-            <div className="p-5 rounded-2xl glass-accent border-l-4 border-accent">
-              <p className="text-sm font-semibold text-accent mb-2 flex items-center gap-2">
+            <div className="p-5 rounded-xl bg-tertiary-container border-l-4 border-tertiary">
+              <p className="label-large text-tertiary mb-2 flex items-center gap-2">
                 <span className="text-lg">💡</span> Esempio pratico
               </p>
-              <div className="text-foreground leading-relaxed prose prose-sm max-w-none"><ReactMarkdown>{lesson.example}</ReactMarkdown></div>
+              <div className="body-large text-foreground leading-relaxed prose prose-sm max-w-none"><ReactMarkdown>{lesson.example}</ReactMarkdown></div>
             </div>
           )}
         </CardContent>
@@ -136,31 +136,31 @@ export function MiniLesson({
 
       {/* Exercises Section */}
       {hasExercises && (
-        <Card className="glass-card border-0 overflow-hidden">
+        <Card className="border-0 overflow-hidden">
           <CardHeader 
             className={cn(
-              "cursor-pointer transition-all duration-300",
-              showExercises ? "glass-accent" : "hover:bg-muted/20"
+              "cursor-pointer transition-all duration-300 ease-m3-standard",
+              showExercises ? "bg-tertiary-container" : "hover:bg-foreground/[0.08]"
             )}
             onClick={() => !showExercises && handleStartExercises()}
           >
             <CardTitle className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className={cn(
-                  "w-11 h-11 rounded-xl flex items-center justify-center transition-all duration-300 shadow-glass",
-                  showExercises ? "gradient-warm text-white" : "glass-accent"
+                  "w-11 h-11 rounded-full flex items-center justify-center transition-all duration-300",
+                  showExercises ? "bg-tertiary text-tertiary-foreground" : "bg-tertiary-container"
                 )}>
-                  <Dumbbell className={cn("w-5 h-5", !showExercises && "text-accent")} />
+                  <Dumbbell className={cn("w-5 h-5", !showExercises && "text-tertiary")} />
                 </div>
                 <div>
-                  <span className="font-heading text-lg">Esercizi</span>
-                  <span className="ml-2 text-sm text-muted-foreground">({exercises.length})</span>
+                  <span className="title-medium">Esercizi</span>
+                  <span className="ml-2 body-small text-muted-foreground">({exercises.length})</span>
                 </div>
               </div>
               {showExercises ? (
                 <ChevronUp className="w-5 h-5 text-muted-foreground" />
               ) : (
-                <div className="chip-accent glass-accent text-xs">Inizia</div>
+                <span className="label-small px-3 py-1 rounded-full bg-tertiary-container text-tertiary">Inizia</span>
               )}
             </CardTitle>
           </CardHeader>
@@ -169,17 +169,17 @@ export function MiniLesson({
             <CardContent className="space-y-5 pt-4">
               {/* Exercise Progress */}
               <div className="space-y-2">
-                <div className="flex items-center justify-between text-sm">
+                <div className="flex items-center justify-between label-medium">
                   <span className="text-muted-foreground">
                     Esercizio {Math.min(currentExerciseIndex + 1, exercises.length)} di {exercises.length}
                   </span>
-                  <span className="font-semibold text-accent">
+                  <span className="text-tertiary">
                     {correctCount}/{exerciseResults.length} corretti
                   </span>
                 </div>
-                <div className="h-2 bg-muted/30 rounded-full overflow-hidden backdrop-blur-sm">
+                <div className="h-1 m3-progress-track">
                   <div 
-                    className="h-full bg-accent rounded-full transition-all duration-500"
+                    className="h-full rounded-full bg-tertiary transition-all duration-500"
                     style={{ width: `${exerciseProgress}%` }}
                   />
                 </div>
@@ -187,7 +187,7 @@ export function MiniLesson({
 
               {/* Current Exercise */}
               {!allExercisesCompleted && exercises[currentExerciseIndex] && (
-                <div className="p-5 rounded-2xl glass-subtle border border-border/30">
+                <div className="p-5 rounded-xl bg-surface-container-high">
                   <ExerciseRenderer
                     exercise={exercises[currentExerciseIndex]}
                     onComplete={handleExerciseComplete}
@@ -199,32 +199,31 @@ export function MiniLesson({
               {/* Completion Summary */}
               {allExercisesCompleted && (
                 <div className={cn(
-                  "p-6 rounded-2xl text-center space-y-4",
+                  "p-6 rounded-xl text-center space-y-4",
                   correctCount >= exercises.length * 0.7
-                    ? "glass-success"
-                    : "glass-accent"
+                    ? "bg-success-container"
+                    : "bg-tertiary-container"
                 )}>
-                  <div className="w-16 h-16 rounded-2xl mx-auto flex items-center justify-center animate-bounce-in shadow-glass-lg"
+                  <div className="w-16 h-16 rounded-full mx-auto flex items-center justify-center animate-bounce-in shadow-level-2"
                     style={{ background: correctCount >= exercises.length * 0.7 ? "hsl(var(--success))" : "hsl(var(--warning))" }}
                   >
                     <Trophy className="w-8 h-8 text-white" />
                   </div>
                   <p className={cn(
-                    "font-heading font-bold text-xl",
+                    "font-display font-bold text-xl",
                     correctCount >= exercises.length * 0.7 ? "text-success" : "text-warning"
                   )}>
                     {correctCount >= exercises.length * 0.7 
                       ? "Ottimo lavoro! 🎉" 
                       : "Continua così! 💪"}
                   </p>
-                  <p className="text-muted-foreground">
+                  <p className="body-medium text-muted-foreground">
                     Hai completato <span className="font-semibold">{correctCount}</span> esercizi su <span className="font-semibold">{exercises.length}</span> correttamente.
                   </p>
                   
                   <Button 
                     variant="outline" 
                     onClick={handleStartExercises}
-                    className="mt-2 glass-subtle rounded-xl"
                   >
                     Ripeti esercizi
                   </Button>
@@ -239,7 +238,7 @@ export function MiniLesson({
       {!hasExercises || allExercisesCompleted ? (
         <Button 
           onClick={onNext} 
-          className="w-full h-14 text-base font-semibold gradient-primary text-white border-0 rounded-2xl shadow-glass-lg hover:shadow-glass-xl transition-all duration-300 hover:scale-[1.02] active:scale-100 glow-ring" 
+          className="w-full h-14"
           size="lg"
         >
           {isLastLesson ? "Completa corso 🎓" : "Prossima lezione"}
@@ -248,7 +247,8 @@ export function MiniLesson({
       ) : !showExercises ? (
         <Button 
           onClick={handleStartExercises} 
-          className="w-full h-14 text-base font-semibold gradient-warm text-white border-0 rounded-2xl shadow-glass-lg hover:shadow-glass-xl transition-all duration-300 hover:scale-[1.02] active:scale-100" 
+          variant="tonal"
+          className="w-full h-14 bg-tertiary-container text-tertiary hover:shadow-level-1"
           size="lg"
         >
           Inizia esercizi

@@ -22,17 +22,17 @@ export function ChatMessage({ message }: ChatMessageProps) {
       )}
     >
       {!isUser && (
-        <div className="w-9 h-9 rounded-xl glass-primary flex items-center justify-center flex-shrink-0 shadow-glass">
+        <div className="w-9 h-9 rounded-full bg-primary-container flex items-center justify-center flex-shrink-0">
           <Sparkles className="w-4 h-4 text-primary" />
         </div>
       )}
       
       <div
         className={cn(
-          "max-w-[85%] rounded-2xl overflow-hidden transition-all duration-300",
+          "max-w-[85%] overflow-hidden transition-all duration-300 ease-m3-emphasized",
           isUser
-            ? "gradient-primary text-white rounded-br-md shadow-glass-md"
-            : "glass-card text-foreground rounded-bl-md"
+            ? "bg-primary text-primary-foreground rounded-xl rounded-br-xs shadow-level-1"
+            : "bg-surface-container-high text-foreground rounded-xl rounded-bl-xs shadow-level-1"
         )}
       >
         {/* Image attachment */}
@@ -41,7 +41,7 @@ export function ChatMessage({ message }: ChatMessageProps) {
             <img 
               src={message.imageUrl} 
               alt="Allegato" 
-              className="max-w-full max-h-48 rounded-xl object-cover"
+              className="max-w-full max-h-48 rounded-lg object-cover"
             />
           </div>
         )}
@@ -49,11 +49,11 @@ export function ChatMessage({ message }: ChatMessageProps) {
         {/* Text content with Markdown */}
         <div className={cn("px-4 py-3", message.imageUrl && "pt-2")}>
           {isUser ? (
-            <p className="text-sm leading-relaxed whitespace-pre-wrap">
+            <p className="body-medium leading-relaxed whitespace-pre-wrap">
               {message.content}
             </p>
           ) : (
-            <div className="text-sm leading-relaxed prose prose-sm max-w-none prose-p:my-1.5 prose-headings:font-heading prose-headings:mt-3 prose-headings:mb-1.5 prose-strong:text-foreground prose-em:text-foreground/90 prose-ul:my-1.5 prose-ol:my-1.5 prose-li:my-0.5">
+            <div className="body-medium leading-relaxed prose prose-sm max-w-none prose-p:my-1.5 prose-headings:font-display prose-headings:mt-3 prose-headings:mb-1.5 prose-strong:text-foreground prose-em:text-foreground/90 prose-ul:my-1.5 prose-ol:my-1.5 prose-li:my-0.5">
               <ReactMarkdown
                 components={{
                   p: ({ children }) => <p className="my-1.5">{children}</p>,
@@ -62,21 +62,21 @@ export function ChatMessage({ message }: ChatMessageProps) {
                   ul: ({ children }) => <ul className="list-disc pl-4 my-1.5 space-y-0.5">{children}</ul>,
                   ol: ({ children }) => <ol className="list-decimal pl-4 my-1.5 space-y-0.5">{children}</ol>,
                   li: ({ children }) => <li className="my-0.5">{children}</li>,
-                  h1: ({ children }) => <h3 className="font-heading font-semibold text-base mt-3 mb-1">{children}</h3>,
-                  h2: ({ children }) => <h4 className="font-heading font-semibold text-base mt-2 mb-1">{children}</h4>,
-                  h3: ({ children }) => <h5 className="font-heading font-medium mt-2 mb-1">{children}</h5>,
+                  h1: ({ children }) => <h3 className="font-display font-medium text-base mt-3 mb-1">{children}</h3>,
+                  h2: ({ children }) => <h4 className="font-display font-medium text-base mt-2 mb-1">{children}</h4>,
+                  h3: ({ children }) => <h5 className="font-display font-medium mt-2 mb-1">{children}</h5>,
                   code: ({ children }) => (
-                    <code className="glass-subtle px-1.5 py-0.5 rounded text-xs font-mono">
+                    <code className="bg-surface-container-highest px-1.5 py-0.5 rounded-xs text-xs font-mono">
                       {children}
                     </code>
                   ),
                   pre: ({ children }) => (
-                    <pre className="glass-subtle p-3 rounded-xl overflow-x-auto my-2 text-xs">
+                    <pre className="bg-surface-container-highest p-3 rounded-md overflow-x-auto my-2 text-xs">
                       {children}
                     </pre>
                   ),
                   blockquote: ({ children }) => (
-                    <blockquote className="border-l-2 border-primary/30 pl-3 my-2 italic text-muted-foreground">
+                    <blockquote className="border-l-2 border-primary pl-3 my-2 italic text-muted-foreground">
                       {children}
                     </blockquote>
                   ),

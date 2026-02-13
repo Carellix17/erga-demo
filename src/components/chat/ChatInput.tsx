@@ -42,7 +42,6 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
     setMessage("");
     setSelectedImage(null);
     setImagePreview(null);
-    // Reset textarea height
     if (textareaRef.current) {
       textareaRef.current.style.height = "auto";
     }
@@ -57,7 +56,6 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
 
   const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setMessage(e.target.value);
-    // Auto-resize textarea
     const el = e.target;
     el.style.height = "auto";
     el.style.height = `${Math.min(el.scrollHeight, 120)}px`;
@@ -92,20 +90,20 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
 
   return (
     <form onSubmit={handleSubmit}>
-      <div className="relative glass-card rounded-2xl border border-border/20 shadow-glass-md focus-within:border-primary/30 focus-within:shadow-glass-lg transition-all duration-300">
-        {/* Image Preview - inside the card */}
+      <div className="relative bg-surface-container-high rounded-xl shadow-level-2 transition-all duration-300 ease-m3-standard focus-within:shadow-level-3">
+        {/* Image Preview */}
         {imagePreview && (
           <div className="px-3 pt-3 animate-scale-in">
             <div className="relative inline-block">
               <img
                 src={imagePreview}
                 alt="Preview"
-                className="h-16 w-auto rounded-xl object-cover border border-border/20"
+                className="h-16 w-auto rounded-lg object-cover"
               />
               <button
                 type="button"
                 onClick={removeImage}
-                className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center shadow-md hover:scale-110 transition-transform"
+                className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center shadow-level-1 hover:scale-110 transition-transform"
               >
                 <X className="w-3 h-3" />
               </button>
@@ -128,12 +126,12 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
             onClick={() => fileInputRef.current?.click()}
             disabled={disabled || isUploading}
             className={cn(
-              "flex-shrink-0 w-9 h-9 rounded-xl flex items-center justify-center transition-all duration-200",
-              "text-muted-foreground hover:text-foreground hover:bg-muted/50",
-              "disabled:opacity-40 disabled:pointer-events-none"
+              "flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center transition-all duration-200",
+              "text-muted-foreground hover:text-foreground hover:bg-foreground/[0.08]",
+              "disabled:opacity-38 disabled:pointer-events-none"
             )}
           >
-            <ImageIcon className="w-[18px] h-[18px]" />
+            <ImageIcon className="w-5 h-5" />
           </button>
 
           {/* Auto-resizing textarea */}
@@ -147,8 +145,8 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
             disabled={disabled || isUploading}
             className={cn(
               "flex-1 bg-transparent border-0 outline-none resize-none",
-              "text-sm leading-relaxed placeholder:text-muted-foreground/60",
-              "py-2 px-1 min-h-[36px] max-h-[120px]",
+              "body-large placeholder:text-muted-foreground",
+              "py-2 px-1 min-h-[40px] max-h-[120px]",
               "disabled:opacity-50"
             )}
           />
@@ -159,16 +157,16 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
             size="icon"
             disabled={!hasContent || disabled || isUploading}
             className={cn(
-              "flex-shrink-0 rounded-xl h-9 w-9 transition-all duration-300",
+              "flex-shrink-0 h-10 w-10 transition-all duration-300 ease-m3-emphasized",
               hasContent
-                ? "gradient-primary text-white shadow-glass scale-100 opacity-100"
-                : "bg-muted/40 text-muted-foreground scale-95 opacity-60"
+                ? "bg-primary text-primary-foreground shadow-level-0 scale-100 opacity-100"
+                : "bg-surface-container-highest text-muted-foreground scale-95 opacity-60"
             )}
           >
             {isUploading ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
+              <Loader2 className="w-5 h-5 animate-spin" />
             ) : (
-              <Send className="w-4 h-4" />
+              <Send className="w-5 h-5" />
             )}
           </Button>
         </div>
