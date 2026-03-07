@@ -5,7 +5,7 @@ import { LessonsList } from "./LessonsList";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, RefreshCw, List, Sparkles } from "lucide-react";
+import { Loader2, RefreshCw, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Exercise } from "./exercises/ExerciseRenderer";
 import { supabase } from "@/integrations/supabase/client";
@@ -44,279 +44,107 @@ export function StudioView({ hasFiles, onUploadClick, selectedContextId, onClear
   const [isLoadingFinalTest, setIsLoadingFinalTest] = useState(false);
   const { currentUser } = useAuth();
   const { toast } = useToast();
-
   const [contextStatus, setContextStatus] = useState<string | null>(null);
 
   useEffect(() => {
-    if (selectedContextId) {
-      setActiveContextId(selectedContextId);
-    }
+    if (selectedContextId) setActiveContextId(selectedContextId);
   }, [selectedContextId]);
 
   const fetchLessons = useCallback(async () => {
     if (!currentUser || !hasFiles) return;
-
     setIsLoading(true);
     try {
-      // Get OAuth session token if available
       const { data: { session } } = await supabase.auth.getSession();
       const authToken = session?.access_token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-
-      // Always check context status and name
       const contextsResponse = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-lessons`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${authToken}`,
-          },
-          body: JSON.stringify({ userId: currentUser, action: "listContexts" }),
-        }
+        { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${authToken}` },
+          body: JSON.stringify({ userId: currentUser, action: "listContexts" }) }
       );
       const contextsData = await contextsResponse.json();
       const contexts = (contextsData.contexts || []) as { id: string; file_name?: string; processing_status?: string | null }[];
       const availableContextIds = new Set(contexts.map((c) => c.id));
       const latestContext = contexts[0] || null;
-
-      let effectiveContextId = selectedContextId && availableContextIds.has(selectedContextId)
-        ? selectedContextId
-        : null;
-      if (!effectiveContextId && activeContextId && availableContextIds.has(activeContextId)) {
-        effectiveContextId = activeContextId;
-      }
-      if (!effectiveContextId && latestContext) {
-        effectiveContextId = latestContext.id;
-      }
-
-      if (contexts.length > 0 && !effectiveContextId && selectedContextId) {
-        onClearContext?.();
-      }
-
+      let effectiveContextId = selectedContextId && availableContextIds.has(selectedContextId) ? selectedContextId : null;
+      if (!effectiveContextId && activeContextId && availableContextIds.has(activeContextId)) effectiveContextId = activeContextId;
+      if (!effectiveContextId && latestContext) effectiveContextId = latestContext.id;
+      if (contexts.length > 0 && !effectiveContextId && selectedContextId) onClearContext?.();
       if (contexts.length > 0) {
-        const ctx = effectiveContextId
-          ? contexts.find((c) => c.id === effectiveContextId)
-          : contexts[0];
-
-        if (ctx) {
-          setContextFileName(ctx.file_name || null);
-          setContextStatus(ctx.processing_status || null);
-          if (!selectedContextId && ctx.id !== activeContextId) {
-            setActiveContextId(ctx.id);
-          }
-        }
-      } else {
-        setContextFileName(null);
-        setContextStatus(null);
-        setActiveContextId(null);
-        setLessons([]);
-      }
-
-      // If a specific context is selected, fetch only its lessons
+        const ctx = effectiveContextId ? contexts.find((c) => c.id === effectiveContextId) : contexts[0];
+        if (ctx) { setContextFileName(ctx.file_name || null); setContextStatus(ctx.processing_status || null);
+          if (!selectedContextId && ctx.id !== activeContextId) setActiveContextId(ctx.id); }
+      } else { setContextFileName(null); setContextStatus(null); setActiveContextId(null); setLessons([]); }
       const body: Record<string, unknown> = { userId: currentUser, action: "get" };
-      if (effectiveContextId) {
-        body.contextId = effectiveContextId;
-      }
-
+      if (effectiveContextId) body.contextId = effectiveContextId;
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-lessons`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${authToken}`,
-          },
-          body: JSON.stringify(body),
-        }
+        { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${authToken}` },
+          body: JSON.stringify(body) }
       );
-
       const data = await response.json();
-
-      if (response.ok && data.lessons) {
-        setLessons(data.lessons);
-        setCurrentLessonIndex(data.currentIndex || 0);
-      }
-    } catch (error) {
-      console.error("Error fetching lessons:", error);
-    } finally {
-      setIsLoading(false);
-    }
+      if (response.ok && data.lessons) { setLessons(data.lessons); setCurrentLessonIndex(data.currentIndex || 0); }
+    } catch (error) { console.error("Error fetching lessons:", error); }
+    finally { setIsLoading(false); }
   }, [currentUser, hasFiles, selectedContextId, activeContextId, onClearContext]);
 
-  useEffect(() => {
-    fetchLessons();
-  }, [fetchLessons]);
-
-  // Keep index always within bounds (prevents undefined currentLesson during refresh/regenerate)
-  useEffect(() => {
-    if (lessons.length === 0) return;
-    setCurrentLessonIndex((idx) => {
-      if (idx < 0) return 0;
-      if (idx > lessons.length - 1) return lessons.length - 1;
-      return idx;
-    });
-  }, [lessons.length]);
-
-  // Auto-generate current lesson content if it exists but hasn't been generated yet
-  useEffect(() => {
-    if (lessons.length === 0) return;
-    const lesson = lessons[currentLessonIndex];
-    if (!lesson) return;
-    if (lesson.is_generated) return;
-    if (isGeneratingLesson) return; // Already generating
-    if (isGenerating) return; // Generating the whole plan
-
-    generateLessonContent(currentLessonIndex);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentLessonIndex, lessons, isGeneratingLesson, isGenerating]);
+  useEffect(() => { fetchLessons(); }, [fetchLessons]);
+  useEffect(() => { if (lessons.length === 0) return; setCurrentLessonIndex((idx) => { if (idx < 0) return 0; if (idx > lessons.length - 1) return lessons.length - 1; return idx; }); }, [lessons.length]);
+  useEffect(() => { if (lessons.length === 0) return; const lesson = lessons[currentLessonIndex]; if (!lesson || lesson.is_generated || isGeneratingLesson || isGenerating) return; generateLessonContent(currentLessonIndex); }, [currentLessonIndex, lessons, isGeneratingLesson, isGenerating]);
 
   const handleGenerateLessons = async () => {
     if (!currentUser) return;
-
     setIsGenerating(true);
     try {
-      // Get OAuth session token if available
       const { data: { session } } = await supabase.auth.getSession();
       const authToken = session?.access_token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-
       const contextId = selectedContextId || activeContextId;
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-lessons`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${authToken}`,
-          },
-          body: JSON.stringify({ 
-            userId: currentUser,
-            ...(contextId ? { contextId } : {}),
-          }),
-        }
-      );
-
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-lessons`,
+        { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${authToken}` },
+          body: JSON.stringify({ userId: currentUser, ...(contextId ? { contextId } : {}) }) });
       const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || "Errore nella generazione");
-      }
-
-      toast({
-        title: "Percorso creato!",
-        description: `Creato un percorso con ${data.lessonsCount} mini-lezioni.`,
-      });
-
+      if (!response.ok) throw new Error(data.error || "Errore nella generazione");
+      toast({ title: "Percorso creato!", description: `Creato un percorso con ${data.lessonsCount} mini-lezioni.` });
       await fetchLessons();
-    } catch (error) {
-      console.error("Error generating lessons:", error);
-      toast({
-        title: "Errore",
-        description: error instanceof Error ? error.message : "Errore nella generazione",
-        variant: "destructive",
-      });
-    } finally {
-      setIsGenerating(false);
-    }
+    } catch (error) { console.error("Error generating lessons:", error);
+      toast({ title: "Errore", description: error instanceof Error ? error.message : "Errore nella generazione", variant: "destructive" });
+    } finally { setIsGenerating(false); }
   };
 
   const generateLessonContent = async (lessonIndex: number) => {
     if (!currentUser) return null;
-
     setIsGeneratingLesson(true);
     try {
-      // Get OAuth session token if available
       const { data: { session } } = await supabase.auth.getSession();
       const authToken = session?.access_token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-
-      const body: Record<string, unknown> = { 
-        userId: currentUser, 
-        action: "generateLesson",
-        lessonIndex 
-      };
+      const body: Record<string, unknown> = { userId: currentUser, action: "generateLesson", lessonIndex };
       const contextId = selectedContextId || activeContextId;
-      if (contextId) {
-        body.contextId = contextId;
-      }
-
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-lessons`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${authToken}`,
-          },
-          body: JSON.stringify(body),
-        }
-      );
-
+      if (contextId) body.contextId = contextId;
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-lessons`,
+        { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${authToken}` }, body: JSON.stringify(body) });
       const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || "Errore nella generazione");
-      }
-
-      // Update local state with the new lesson
-      if (data.lesson) {
-        setLessons(prev => prev.map(l => 
-          l.lesson_order === lessonIndex ? data.lesson : l
-        ));
-      }
-
+      if (!response.ok) throw new Error(data.error || "Errore nella generazione");
+      if (data.lesson) setLessons(prev => prev.map(l => l.lesson_order === lessonIndex ? data.lesson : l));
       return data.lesson;
-    } catch (error) {
-      console.error("Error generating lesson:", error);
-      toast({
-        title: "Errore",
-        description: error instanceof Error ? error.message : "Errore nella generazione",
-        variant: "destructive",
-      });
-      return null;
-    } finally {
-      setIsGeneratingLesson(false);
-    }
+    } catch (error) { console.error("Error generating lesson:", error);
+      toast({ title: "Errore", description: error instanceof Error ? error.message : "Errore nella generazione", variant: "destructive" }); return null;
+    } finally { setIsGeneratingLesson(false); }
   };
 
   const handleNext = async () => {
     if (currentLessonIndex < lessons.length - 1) {
       const newIndex = currentLessonIndex + 1;
-
-      // Check if next lesson needs generation
       const nextLesson = lessons[newIndex];
       if (!nextLesson) return;
-      if (!nextLesson.is_generated) {
-        await generateLessonContent(newIndex);
-      }
-
+      if (!nextLesson.is_generated) await generateLessonContent(newIndex);
       setCurrentLessonIndex(newIndex);
-
-      // Update progress in database
       try {
         const { data: { session } } = await supabase.auth.getSession();
         const authToken = session?.access_token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-
-        await fetch(
-          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-lessons`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${authToken}`,
-            },
-            body: JSON.stringify({
-              userId: currentUser,
-              action: "updateProgress",
-              lessonIndex: newIndex,
-            }),
-          }
-        );
-      } catch (error) {
-        console.error("Error updating progress:", error);
-      }
-    } else {
-      // Course completed — trigger final test
-      handleStartFinalTest();
-    }
+        await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-lessons`,
+          { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${authToken}` },
+            body: JSON.stringify({ userId: currentUser, action: "updateProgress", lessonIndex: newIndex }) });
+      } catch (error) { console.error("Error updating progress:", error); }
+    } else { handleStartFinalTest(); }
   };
 
   const handleStartFinalTest = async () => {
@@ -326,153 +154,91 @@ export function StudioView({ hasFiles, onUploadClick, selectedContextId, onClear
       const { data: { session } } = await supabase.auth.getSession();
       const authToken = session?.access_token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
       const contextId = selectedContextId || activeContextId;
-
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-lessons`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${authToken}`,
-          },
-          body: JSON.stringify({
-            userId: currentUser,
-            action: "generateFinalTest",
-            ...(contextId ? { contextId } : {}),
-          }),
-        }
-      );
-
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-lessons`,
+        { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${authToken}` },
+          body: JSON.stringify({ userId: currentUser, action: "generateFinalTest", ...(contextId ? { contextId } : {}) }) });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Errore generazione test");
-
       setFinalTestExercises(data.exercises || []);
       setShowFinalTest(true);
-    } catch (error) {
-      console.error("Error generating final test:", error);
-      toast({
-        title: "Errore",
-        description: error instanceof Error ? error.message : "Errore nella generazione del test",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoadingFinalTest(false);
-    }
+    } catch (error) { console.error("Error generating final test:", error);
+      toast({ title: "Errore", description: error instanceof Error ? error.message : "Errore nella generazione del test", variant: "destructive" });
+    } finally { setIsLoadingFinalTest(false); }
   };
 
   const handleSelectLesson = async (index: number) => {
     const selectedLesson = lessons[index];
     if (!selectedLesson) return;
-
-    // Generate if not yet generated
-    if (!selectedLesson.is_generated) {
-      await generateLessonContent(index);
-    }
-    
-    setCurrentLessonIndex(index);
-    setShowList(false);
-
-    // Update progress
+    if (!selectedLesson.is_generated) await generateLessonContent(index);
+    setCurrentLessonIndex(index); setShowList(false);
     try {
       const { data: { session } } = await supabase.auth.getSession();
       const authToken = session?.access_token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-
-      await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-lessons`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${authToken}`,
-          },
-          body: JSON.stringify({
-            userId: currentUser,
-            action: "updateProgress",
-            lessonIndex: index,
-          }),
-        }
-      );
-    } catch (error) {
-      console.error("Error updating progress:", error);
-    }
+      await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-lessons`,
+        { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${authToken}` },
+          body: JSON.stringify({ userId: currentUser, action: "updateProgress", lessonIndex: index }) });
+    } catch (error) { console.error("Error updating progress:", error); }
   };
 
-  if (!hasFiles) {
-    return <EmptyState onUploadClick={onUploadClick} />;
-  }
+  if (!hasFiles) return <EmptyState onUploadClick={onUploadClick} />;
 
   if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-5 p-4">
-        <div className="w-20 h-20 rounded-[1.75rem] gradient-primary flex items-center justify-center animate-pulse-soft shadow-glass-lg">
-          <Loader2 className="w-9 h-9 text-white animate-spin" />
+        <div className="w-20 h-20 rounded-xl bg-primary flex items-center justify-center animate-pulse-soft shadow-level-3">
+          <Loader2 className="w-9 h-9 text-primary-foreground animate-spin" />
         </div>
-        <p className="text-muted-foreground font-medium font-heading">Caricamento lezioni...</p>
-        <div className="w-32 h-1.5 bg-muted/30 rounded-full overflow-hidden backdrop-blur-sm">
-          <div className="h-full progress-animated rounded-full w-2/3" />
+        <p className="text-muted-foreground font-display font-medium animate-fade-up">Caricamento lezioni...</p>
+        <div className="w-32 h-1.5 m3-progress-track overflow-hidden">
+          <div className="h-full m3-progress-indicator w-2/3 animate-pulse-soft" />
         </div>
       </div>
     );
   }
 
   if (lessons.length === 0) {
-    // Check if PDF is still processing
     const isPdfProcessing = contextStatus === "pending" || contextStatus === "processing";
     const isPdfFailed = contextStatus === "failed";
 
     return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-5 p-6 text-center">
-        <div className={`w-20 h-20 rounded-[1.75rem] flex items-center justify-center shadow-glass-lg ${
-          isPdfProcessing ? "gradient-primary animate-pulse-soft" : 
-          isPdfFailed ? "glass-accent" : "glass-tertiary"
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-5 p-6 text-center animate-fade-up">
+        <div className={`w-20 h-20 rounded-xl flex items-center justify-center shadow-level-3 ${
+          isPdfProcessing ? "bg-primary animate-pulse-soft" : 
+          isPdfFailed ? "bg-error-container" : "bg-tertiary-container"
         }`}>
           {isPdfProcessing ? (
-            <Loader2 className="w-10 h-10 text-white animate-spin" />
+            <Loader2 className="w-10 h-10 text-primary-foreground animate-spin" />
           ) : (
             <RefreshCw className={`w-10 h-10 ${isPdfFailed ? "text-destructive" : "text-tertiary"}`} />
           )}
         </div>
         <div>
-          <h3 className="font-heading text-xl font-bold mb-2">
+          <h3 className="font-display text-xl font-bold mb-2">
             {isPdfProcessing ? "Elaborazione PDF in corso..." : 
              isPdfFailed ? "Errore nell'elaborazione" :
              "Nessuna lezione disponibile"}
           </h3>
-          <p className="text-muted-foreground max-w-xs">
+          <p className="text-muted-foreground max-w-xs body-medium">
             {isPdfProcessing ? "Attendi qualche secondo mentre analizziamo il tuo documento." :
              isPdfFailed ? "Si è verificato un errore. Prova a ricaricare il file." :
              "L'AI analizzerà i tuoi materiali e creerà un percorso di mini-lezioni personalizzato."}
           </p>
           {contextFileName && (
-            <p className="text-sm text-primary font-medium mt-2 glass-primary inline-block px-3 py-1 rounded-full">{contextFileName}</p>
+            <p className="text-sm text-primary font-medium mt-2 bg-primary-container inline-block px-3 py-1 rounded-full animate-bounce-in">{contextFileName}</p>
           )}
         </div>
         
         {isPdfProcessing ? (
-          <Button 
-            onClick={fetchLessons}
-            variant="outline"
-            className="h-12 px-6 font-semibold rounded-2xl glass-subtle border-border/30 hover:shadow-glass transition-all"
-          >
+          <Button onClick={fetchLessons} variant="outline" className="h-12 px-6">
             <RefreshCw className="w-4 h-4 mr-2" />
             Aggiorna stato
           </Button>
         ) : (
-          <Button 
-            onClick={handleGenerateLessons} 
-            disabled={isGenerating}
-            className="h-12 px-6 font-semibold gradient-primary text-white border-0 shadow-glass-lg rounded-2xl hover:shadow-glass-xl hover:scale-105 transition-all duration-300 glow-ring"
-          >
+          <Button onClick={handleGenerateLessons} disabled={isGenerating} className="h-12 px-6">
             {isGenerating ? (
-              <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Analisi in corso...
-              </>
+              <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Analisi in corso...</>
             ) : (
-              <>
-                <Sparkles className="w-4 h-4 mr-2" />
-                Genera percorso
-              </>
+              <><Sparkles className="w-4 h-4 mr-2" />Genera percorso</>
             )}
           </Button>
         )}
@@ -480,9 +246,7 @@ export function StudioView({ hasFiles, onUploadClick, selectedContextId, onClear
     );
   }
 
-  // Always show the lessons list as the main view
   const currentLesson = activeLessonIndex !== null ? lessons[activeLessonIndex] : null;
-
   const allGenerated = lessons.length > 0 && lessons.every(l => l.is_generated);
 
   return (
@@ -493,31 +257,15 @@ export function StudioView({ hasFiles, onUploadClick, selectedContextId, onClear
         onSelectLesson={async (index) => {
           const lesson = lessons[index];
           if (!lesson) return;
-          if (!lesson.is_generated) {
-            await generateLessonContent(index);
-          }
+          if (!lesson.is_generated) await generateLessonContent(index);
           setActiveLessonIndex(index);
           try {
             const { data: { session } } = await supabase.auth.getSession();
             const authToken = session?.access_token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-            await fetch(
-              `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-lessons`,
-              {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
-                  Authorization: `Bearer ${authToken}`,
-                },
-                body: JSON.stringify({
-                  userId: currentUser,
-                  action: "updateProgress",
-                  lessonIndex: index,
-                }),
-              }
-            );
-          } catch (error) {
-            console.error("Error updating progress:", error);
-          }
+            await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-lessons`,
+              { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${authToken}` },
+                body: JSON.stringify({ userId: currentUser, action: "updateProgress", lessonIndex: index }) });
+          } catch (error) { console.error("Error updating progress:", error); }
         }}
         onBack={() => {}}
         isGenerating={isGeneratingLesson}
@@ -529,13 +277,9 @@ export function StudioView({ hasFiles, onUploadClick, selectedContextId, onClear
         isLoadingFinalTest={isLoadingFinalTest}
       />
 
-      {/* Fullscreen lesson overlay */}
       {activeLessonIndex !== null && currentLesson && currentLesson.is_generated && !isGeneratingLesson && (
         <FullscreenLesson
-          lesson={{
-            ...currentLesson,
-            duration: 5,
-          }}
+          lesson={{ ...currentLesson, duration: 5 }}
           lessonNumber={activeLessonIndex + 1}
           totalLessons={lessons.length}
           onClose={() => setActiveLessonIndex(null)}
@@ -543,54 +287,27 @@ export function StudioView({ hasFiles, onUploadClick, selectedContextId, onClear
             if (activeLessonIndex < lessons.length - 1) {
               const nextIndex = activeLessonIndex + 1;
               const nextLesson = lessons[nextIndex];
-              if (nextLesson && !nextLesson.is_generated) {
-                await generateLessonContent(nextIndex);
-              }
-              setCurrentLessonIndex(nextIndex);
-              setActiveLessonIndex(nextIndex);
+              if (nextLesson && !nextLesson.is_generated) await generateLessonContent(nextIndex);
+              setCurrentLessonIndex(nextIndex); setActiveLessonIndex(nextIndex);
               try {
                 const { data: { session } } = await supabase.auth.getSession();
                 const authToken = session?.access_token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-                await fetch(
-                  `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-lessons`,
-                  {
-                    method: "POST",
-                    headers: {
-                      "Content-Type": "application/json",
-                      Authorization: `Bearer ${authToken}`,
-                    },
-                    body: JSON.stringify({
-                      userId: currentUser,
-                      action: "updateProgress",
-                      lessonIndex: nextIndex,
-                    }),
-                  }
-                );
-              } catch (error) {
-                console.error("Error updating progress:", error);
-              }
-            } else {
-              // Last lesson completed — launch final test
-              setActiveLessonIndex(null);
-              handleStartFinalTest();
-            }
+                await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-lessons`,
+                  { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${authToken}` },
+                    body: JSON.stringify({ userId: currentUser, action: "updateProgress", lessonIndex: nextIndex }) });
+              } catch (error) { console.error("Error updating progress:", error); }
+            } else { setActiveLessonIndex(null); handleStartFinalTest(); }
           }}
           isLastLesson={activeLessonIndex === lessons.length - 1}
         />
       )}
 
-      {/* Final Test overlay */}
       {showFinalTest && finalTestExercises.length > 0 && (
         <FinalTest
           exercises={finalTestExercises}
           onClose={() => setShowFinalTest(false)}
-          onComplete={() => {
-            setShowFinalTest(false);
-            toast({
-              title: "Complimenti! 🎉",
-              description: "Hai completato il percorso e il test finale!",
-            });
-          }}
+          onComplete={() => { setShowFinalTest(false);
+            toast({ title: "Complimenti! 🎉", description: "Hai completato il percorso e il test finale!" }); }}
         />
       )}
     </>

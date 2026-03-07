@@ -11,8 +11,8 @@ export function AppHeader({ onUploadClick, hasFiles }: AppHeaderProps) {
   return (
     <header className="sticky top-0 z-40 m3-top-app-bar border-b border-outline-variant">
       <div className="flex items-center justify-between h-16 px-4 max-w-lg mx-auto">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center">
+        <div className="flex items-center gap-3 animate-fade-up">
+          <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center shadow-level-1">
             <Sparkles className="w-5 h-5 text-primary-foreground" />
           </div>
           <span className="font-display font-bold text-xl text-foreground">
