@@ -122,23 +122,28 @@ ${profileContext}
 
 IMPORTANTE: Rispondi SOLO con un oggetto JSON valido. NON aggiungere testo prima o dopo il JSON. SOLO JSON puro.
 
-OBIETTIVO: Creare una mini-lezione breve stile Duolingo. Lunghezza massima: 120-150 parole.
+OBIETTIVO: Creare una mini-lezione modulare stile Duolingo. Ogni parte della spiegazione sarà mostrata come uno step separato.
 
 TITOLO LEZIONE: "${lessons.title}"
 
 ISTRUZIONI:
-1. Concept: 1-2 frasi massimo.
-2. Explanation: 2-4 micro-step separati da "•", ogni bullet 1 frase corta.
-3. Example: 1 esempio molto breve (1-2 frasi).
-4. Exercises: Massimo 2 esercizi brevi. Per "short_answer", almeno 6 keywords.
+1. Concept: 1-2 frasi massimo che introducono l'argomento.
+2. Explanation_parts: Un array di 3-5 parti. Ogni parte è un blocco autonomo con titolo e contenuto breve (2-3 frasi max per parte). Le parti devono coprire l'argomento in modo progressivo.
+3. Example: 1 esempio concreto e breve (2-3 frasi).
+4. Exercises: 2-3 esercizi brevi e variegati. Per "short_answer", almeno 6 keywords.
 
 JSON richiesto:
 {
   "concept": "...",
-  "explanation": "• Step 1...\\n• Step 2...\\n• Step 3...",
+  "explanation_parts": [
+    { "part_title": "Titolo parte 1", "content": "Contenuto breve della parte 1..." },
+    { "part_title": "Titolo parte 2", "content": "Contenuto breve della parte 2..." },
+    { "part_title": "Titolo parte 3", "content": "Contenuto breve della parte 3..." }
+  ],
   "example": "...",
   "exercises": [
      { "type": "multiple_choice", "question": "...", "options": ["..."], "correct_index": 0 },
+     { "type": "true_false", "statement": "...", "correct": true },
      { "type": "short_answer", "question": "...", "expected_keywords": ["k1","k2","k3","k4","k5","k6"] }
   ]
 }
