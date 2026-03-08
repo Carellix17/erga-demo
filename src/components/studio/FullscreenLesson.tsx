@@ -115,12 +115,17 @@ export function FullscreenLesson({
 
   const handleContinue = useCallback(() => {
     if (currentStep < steps.length - 1) {
+      const nextStep = steps[currentStep + 1];
+      if (nextStep.type === "summary") {
+        fireStarBurst();
+      }
       setCurrentStep((s) => s + 1);
       setCurrentExerciseAnswered(false);
     } else {
+      fireCelebration();
       onComplete();
     }
-  }, [currentStep, steps.length, onComplete]);
+  }, [currentStep, steps, onComplete]);
 
   const handleExerciseComplete = useCallback(
     (correct: boolean) => {
