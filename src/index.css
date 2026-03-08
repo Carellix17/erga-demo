@@ -307,6 +307,20 @@
 }
 
 @layer utilities {
+  /* ═══════ GRADIENT ACCENTS ═══════ */
+  .gradient-primary {
+    background: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--tertiary)));
+  }
+  .gradient-warm {
+    background: linear-gradient(135deg, hsl(var(--secondary)), hsl(var(--warning)));
+  }
+  .gradient-cool {
+    background: linear-gradient(135deg, hsl(var(--primary)), hsl(250 90% 72%));
+  }
+  .gradient-surface {
+    background: linear-gradient(180deg, hsl(var(--primary-container) / 0.3), hsl(var(--background)));
+  }
+
   /* ═══════ M3 SURFACE CONTAINERS ═══════ */
   .surface-default { background-color: hsl(var(--background)); }
   .surface-dim { background-color: hsl(var(--surface-dim)); }
