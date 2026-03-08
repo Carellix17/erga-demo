@@ -39,7 +39,7 @@ serve(async (req) => {
     // Fetch user profile
     const { data: userProfile } = await supabase
       .from("user_profiles")
-      .select("institute_type, subject_levels")
+      .select("institute_type, subject_levels, nickname, first_name")
       .eq("user_id", userId)
       .maybeSingle();
 
@@ -77,7 +77,11 @@ serve(async (req) => {
     };
     let profileText = "";
     if (userProfile) {
-      profileText = `\nPROFILO STUDENTE:\n- Istituto: ${instituteMap[userProfile.institute_type] || userProfile.institute_type}`;
+      const studentName = (userProfile as any).nickname || (userProfile as any).first_name || "";
+      if (studentName) {
+        profileText += `\nLo studente si chiama "${studentName}". Chiamalo per nome quando interagisci.`;
+      }
+      profileText += `\nPROFILO STUDENTE:\n- Istituto: ${instituteMap[userProfile.institute_type] || userProfile.institute_type}`;
       if (userProfile.subject_levels && typeof userProfile.subject_levels === "object") {
         const levels = userProfile.subject_levels as Record<string, number>;
         profileText += "\n- Livelli per materia: " + Object.entries(levels).map(([s, l]) => `${s}: ${l}/10`).join(", ");

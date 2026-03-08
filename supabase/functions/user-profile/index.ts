@@ -24,26 +24,35 @@ serve(async (req) => {
     }
 
     if (action === "save") {
-      const { institute_type, subject_levels } = body;
+      const { institute_type, subject_levels, first_name, last_name, nickname, age, school, avatar_url } = body;
 
-      // Validate
       const validInstitutes = ["liceo_scientifico", "liceo_classico", "liceo_linguistico", "istituto_tecnico"];
-      if (!validInstitutes.includes(institute_type)) {
+      if (institute_type && !validInstitutes.includes(institute_type)) {
         return errorResponse("Tipo di istituto non valido", 400);
       }
 
-      if (typeof subject_levels !== "object" || subject_levels === null) {
+      if (subject_levels && (typeof subject_levels !== "object" || subject_levels === null)) {
         return errorResponse("Livelli materie non validi", 400);
       }
 
-      // Validate each level is 2-10 integer
-      for (const [, level] of Object.entries(subject_levels)) {
-        if (typeof level !== "number" || level < 2 || level > 10 || !Number.isInteger(level)) {
-          return errorResponse("I livelli devono essere numeri interi tra 2 e 10", 400);
+      if (subject_levels) {
+        for (const [, level] of Object.entries(subject_levels)) {
+          if (typeof level !== "number" || level < 2 || level > 10 || !Number.isInteger(level)) {
+            return errorResponse("I livelli devono essere numeri interi tra 2 e 10", 400);
+          }
         }
       }
 
-      // Upsert
+      const updateData: Record<string, unknown> = { updated_at: new Date().toISOString() };
+      if (institute_type) updateData.institute_type = institute_type;
+      if (subject_levels) updateData.subject_levels = subject_levels;
+      if (first_name !== undefined) updateData.first_name = String(first_name).slice(0, 50);
+      if (last_name !== undefined) updateData.last_name = String(last_name).slice(0, 50);
+      if (nickname !== undefined) updateData.nickname = String(nickname).slice(0, 30);
+      if (age !== undefined) updateData.age = typeof age === "number" ? age : null;
+      if (school !== undefined) updateData.school = String(school).slice(0, 100);
+      if (avatar_url !== undefined) updateData.avatar_url = String(avatar_url).slice(0, 500);
+
       const { data: existing } = await supabase
         .from("user_profiles")
         .select("id")
@@ -51,22 +60,14 @@ serve(async (req) => {
         .maybeSingle();
 
       if (existing) {
-        await supabase
-          .from("user_profiles")
-          .update({
-            institute_type,
-            subject_levels,
-            updated_at: new Date().toISOString(),
-          })
-          .eq("user_id", userId);
+        await supabase.from("user_profiles").update(updateData).eq("user_id", userId);
       } else {
-        await supabase
-          .from("user_profiles")
-          .insert({
-            user_id: userId,
-            institute_type,
-            subject_levels,
-          });
+        await supabase.from("user_profiles").insert({
+          user_id: userId,
+          institute_type: institute_type || "liceo_scientifico",
+          subject_levels: subject_levels || {},
+          ...updateData,
+        });
       }
 
       return successResponse({ success: true });

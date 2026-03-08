@@ -3,6 +3,7 @@ import { X, ChevronRight, Trophy, Target, Award } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ExerciseRenderer, Exercise } from "./exercises/ExerciseRenderer";
 import { cn } from "@/lib/utils";
+import { fireCelebration } from "@/lib/confetti";
 
 interface FinalTestProps {
   exercises: Exercise[];
@@ -26,6 +27,7 @@ export function FinalTest({ exercises, onClose, onComplete }: FinalTestProps) {
 
   const handleContinue = useCallback(() => {
     if (showResults) {
+      fireCelebration();
       onComplete();
       return;
     }
@@ -34,6 +36,7 @@ export function FinalTest({ exercises, onClose, onComplete }: FinalTestProps) {
       setAnswered(false);
     } else {
       setShowResults(true);
+      fireCelebration();
     }
   }, [currentIndex, total, showResults, onComplete]);
 

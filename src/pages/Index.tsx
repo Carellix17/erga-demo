@@ -24,6 +24,7 @@ const Index = () => {
   const [hasCloudContent, setHasCloudContent] = useState(false);
   const [selectedContextId, setSelectedContextId] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const { currentUser } = useAuth();
   
   const { data: uploadedFiles, updateData: setUploadedFiles } = useUserData<UploadedFile[]>(
@@ -108,6 +109,7 @@ const Index = () => {
             onUploadClick={() => setShowUpload(true)}
             selectedContextId={selectedContextId}
             onClearContext={() => setSelectedContextId(null)}
+            onFullscreenChange={setIsFullscreen}
           />
         )}
         {activeTab === "piano" && (
@@ -127,7 +129,7 @@ const Index = () => {
         )}
       </main>
 
-      <BottomNav activeTab={activeTab} onTabChange={setActiveTab} />
+      {!isFullscreen && <BottomNav activeTab={activeTab} onTabChange={setActiveTab} />}
 
       <UploadSheet
         open={showUpload}

@@ -153,25 +153,43 @@ export type Database = {
       }
       user_profiles: {
         Row: {
+          age: number | null
+          avatar_url: string | null
           created_at: string
+          first_name: string | null
           id: string
           institute_type: string
+          last_name: string | null
+          nickname: string | null
+          school: string | null
           subject_levels: Json
           updated_at: string
           user_id: string
         }
         Insert: {
+          age?: number | null
+          avatar_url?: string | null
           created_at?: string
+          first_name?: string | null
           id?: string
           institute_type?: string
+          last_name?: string | null
+          nickname?: string | null
+          school?: string | null
           subject_levels?: Json
           updated_at?: string
           user_id: string
         }
         Update: {
+          age?: number | null
+          avatar_url?: string | null
           created_at?: string
+          first_name?: string | null
           id?: string
           institute_type?: string
+          last_name?: string | null
+          nickname?: string | null
+          school?: string | null
           subject_levels?: Json
           updated_at?: string
           user_id?: string

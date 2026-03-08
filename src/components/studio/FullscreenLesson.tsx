@@ -1,9 +1,10 @@
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useEffect } from "react";
 import { X, ChevronRight, Lightbulb, BookOpen, Dumbbell, Trophy, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ExerciseRenderer, Exercise } from "./exercises/ExerciseRenderer";
 import { cn } from "@/lib/utils";
 import ReactMarkdown from "react-markdown";
+import { fireCelebration, fireStarBurst } from "@/lib/confetti";
 
 interface ExplanationPart {
   part_title: string;
@@ -114,12 +115,17 @@ export function FullscreenLesson({
 
   const handleContinue = useCallback(() => {
     if (currentStep < steps.length - 1) {
+      const nextStep = steps[currentStep + 1];
+      if (nextStep.type === "summary") {
+        fireStarBurst();
+      }
       setCurrentStep((s) => s + 1);
       setCurrentExerciseAnswered(false);
     } else {
+      fireCelebration();
       onComplete();
     }
-  }, [currentStep, steps.length, onComplete]);
+  }, [currentStep, steps, onComplete]);
 
   const handleExerciseComplete = useCallback(
     (correct: boolean) => {
@@ -184,7 +190,7 @@ export function FullscreenLesson({
       </div>
 
       {/* Bottom action */}
-      <div className="flex-shrink-0 p-4 pb-8 mb-20 safe-area-bottom">
+      <div className="flex-shrink-0 p-4 pb-8 safe-area-bottom">
         <Button
           onClick={handleContinue}
           disabled={!canContinue}
