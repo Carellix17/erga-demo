@@ -30,7 +30,7 @@ const buttonVariants = cva(
         "fab-tertiary":
           "bg-tertiary-container text-tertiary shadow-level-3 hover:shadow-level-4 hover:scale-[1.06] rounded-2xl state-layer",
         elevated:
-          "bg-surface-container-low text-primary shadow-level-1 hover:shadow-level-2 rounded-full state-layer",
+          "bg-surface-container-low text-primary shadow-level-1 hover:shadow-level-2 hover:scale-[1.03] rounded-full state-layer",
       },
       size: {
         default: "h-10 px-6",
