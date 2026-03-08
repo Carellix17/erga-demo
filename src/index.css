@@ -46,40 +46,40 @@
     --warning: 32 95% 52%;
     --warning-foreground: 32 100% 10%;
 
-    /* Surface / Background */
-    --background: 180 8% 98%;
-    --foreground: 200 15% 10%;
+    /* Surface / Background — Warm off-white */
+    --background: 240 20% 98%;
+    --foreground: 240 15% 12%;
 
-    --surface-dim: 180 6% 88%;
-    --surface-bright: 180 8% 98%;
+    --surface-dim: 240 12% 90%;
+    --surface-bright: 240 20% 98%;
     --surface-container-lowest: 0 0% 100%;
-    --surface-container-low: 180 8% 96%;
-    --surface-container: 180 8% 94%;
-    --surface-container-high: 180 8% 92%;
-    --surface-container-highest: 180 8% 90%;
+    --surface-container-low: 245 18% 96%;
+    --surface-container: 245 15% 94%;
+    --surface-container-high: 245 14% 92%;
+    --surface-container-highest: 245 12% 89%;
 
-    --card: 180 8% 96%;
-    --card-foreground: 200 15% 10%;
+    --card: 245 18% 96%;
+    --card-foreground: 240 15% 12%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 200 15% 10%;
+    --popover-foreground: 240 15% 12%;
 
-    --muted: 180 8% 90%;
-    --muted-foreground: 200 10% 45%;
+    --muted: 245 12% 89%;
+    --muted-foreground: 240 8% 46%;
 
-    --accent: 272 70% 93%;
-    --accent-foreground: 270 50% 16%;
+    --accent: 250 100% 93%;
+    --accent-foreground: 252 90% 22%;
 
-    --outline: 200 8% 50%;
-    --outline-variant: 200 10% 80%;
+    --outline: 240 8% 52%;
+    --outline-variant: 245 15% 82%;
 
-    --border: 200 10% 82%;
-    --input: 200 8% 50%;
-    --ring: 170 65% 36%;
+    --border: 245 15% 84%;
+    --input: 240 8% 52%;
+    --ring: 252 85% 60%;
 
-    --inverse-surface: 200 15% 18%;
-    --inverse-on-surface: 180 8% 92%;
-    --inverse-primary: 168 55% 75%;
+    --inverse-surface: 240 15% 16%;
+    --inverse-on-surface: 240 12% 92%;
+    --inverse-primary: 250 80% 78%;
 
     /* ─── M3 Expressive Shape Scale ─── */
     --radius-xs: 0.5rem;
