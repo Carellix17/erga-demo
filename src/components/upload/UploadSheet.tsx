@@ -1,8 +1,9 @@
 import { useState, useCallback } from "react";
-import { FileUp, X, FileText, Loader2, Sparkles, Check } from "lucide-react";
+import { FileUp, X, FileText, Loader2, Sparkles, Check, Globe, Search } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
@@ -20,7 +21,7 @@ interface UploadSheetProps {
 
 const MAX_FILE_SIZE = 20 * 1024 * 1024;
 
-type GenerationStep = "idle" | "uploading" | "processing" | "generating" | "complete";
+type GenerationStep = "idle" | "uploading" | "processing" | "generating" | "complete" | "searching";
 
 export function UploadSheet({ open, onOpenChange, onUpload, uploadedFiles, onSelectFile, onFileDeleted }: UploadSheetProps) {
   const [dragActive, setDragActive] = useState(false);
@@ -29,6 +30,8 @@ export function UploadSheet({ open, onOpenChange, onUpload, uploadedFiles, onSel
   const [generationStep, setGenerationStep] = useState<GenerationStep>("idle");
   const [currentFileName, setCurrentFileName] = useState("");
   const [activeTab, setActiveTab] = useState<string>("upload");
+  const [webTopic, setWebTopic] = useState("");
+  const [isSearching, setIsSearching] = useState(false);
   const { currentUser } = useAuth();
   const { toast } = useToast();
 
@@ -50,6 +53,57 @@ export function UploadSheet({ open, onOpenChange, onUpload, uploadedFiles, onSel
   };
 
   const removeFile = (index: number) => setSelectedFiles(prev => prev.filter((_, i) => i !== index));
+
+  const handleWebSearch = async () => {
+    if (!webTopic.trim() || !currentUser) return;
+    setIsSearching(true);
+    setGenerationStep("searching");
+    setCurrentFileName(`🌐 ${webTopic}`);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const authToken = session?.access_token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+
+      // Step 1: Web search
+      const searchResponse = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/web-search`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${authToken}` },
+          body: JSON.stringify({ userId: currentUser, topic: webTopic.trim() }),
+        }
+      );
+      const searchData = await searchResponse.json();
+      if (!searchResponse.ok) throw new Error(searchData.error || "Errore nella ricerca");
+
+      const contextId = searchData.contextId;
+
+      // Step 2: Generate lessons
+      setGenerationStep("generating");
+      await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-lessons`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${authToken}` },
+          body: JSON.stringify({ userId: currentUser, contextId }),
+        }
+      );
+
+      setGenerationStep("complete");
+      await new Promise(resolve => setTimeout(resolve, 1500));
+
+      onUpload([{ name: `🌐 ${webTopic}`, size: searchData.contentLength || 0 }], contextId);
+      setWebTopic("");
+      setGenerationStep("idle");
+      onOpenChange(false);
+      toast({ title: "Contenuti pronti! 🎉", description: "Le mini-lezioni sono state generate dalla ricerca web." });
+    } catch (error) {
+      console.error("Web search error:", error);
+      toast({ title: "Errore", description: error instanceof Error ? error.message : "Errore nella ricerca", variant: "destructive" });
+      setGenerationStep("idle");
+    } finally {
+      setIsSearching(false);
+    }
+  };
 
   const handleUpload = async () => {
     if (selectedFiles.length === 0 || !currentUser) return;
@@ -119,13 +173,28 @@ export function UploadSheet({ open, onOpenChange, onUpload, uploadedFiles, onSel
   };
 
   const getStepProgress = () => {
-    switch (generationStep) { case "uploading": return 25; case "processing": return 50; case "generating": return 75; case "complete": return 100; default: return 0; }
+    switch (generationStep) { case "uploading": return 25; case "searching": return 33; case "processing": return 50; case "generating": return 75; case "complete": return 100; default: return 0; }
   };
   const getStepLabel = () => {
-    switch (generationStep) { case "uploading": return "Caricamento file..."; case "processing": return "Estrazione testo..."; case "generating": return "Generazione lezioni..."; case "complete": return "Completato!"; default: return ""; }
+    switch (generationStep) { case "uploading": return "Caricamento file..."; case "searching": return "Ricerca sul web..."; case "processing": return "Estrazione testo..."; case "generating": return "Generazione lezioni..."; case "complete": return "Completato!"; default: return ""; }
   };
 
   if (generationStep !== "idle") {
+    const isWebFlow = generationStep === "searching" || isSearching;
+    const progressSteps = isWebFlow
+      ? [
+          { step: "searching", label: "Ricerca", icon: Globe },
+          { step: "generating", label: "AI", icon: Sparkles },
+          { step: "complete", label: "Fatto", icon: Check },
+        ]
+      : [
+          { step: "uploading", label: "Upload", icon: FileUp },
+          { step: "processing", label: "Analisi", icon: FileText },
+          { step: "generating", label: "AI", icon: Sparkles },
+          { step: "complete", label: "Fatto", icon: Check },
+        ];
+    const stepOrder = progressSteps.map(s => s.step);
+
     return (
       <Sheet open={open} onOpenChange={() => {}}>
         <SheetContent side="bottom" className="rounded-t-xl pb-safe h-auto bg-surface-container-high border-t border-outline-variant">
@@ -137,12 +206,14 @@ export function UploadSheet({ open, onOpenChange, onUpload, uploadedFiles, onSel
               )}>
                 {generationStep === "complete" ? (
                   <Check className="w-10 h-10 text-success animate-pop" />
+                ) : generationStep === "searching" ? (
+                  <Globe className="w-10 h-10 text-primary-foreground animate-wiggle" />
                 ) : (
                   <Sparkles className="w-10 h-10 text-primary-foreground animate-wiggle" />
                 )}
               </div>
               <h3 className="font-display text-xl font-bold mb-2 animate-fade-up">
-                {generationStep === "complete" ? "Tutto pronto!" : "Preparazione contenuti"}
+                {generationStep === "complete" ? "Tutto pronto!" : generationStep === "searching" ? "Ricerca in corso..." : "Preparazione contenuti"}
               </h3>
               <p className="text-muted-foreground body-medium max-w-xs">{currentFileName}</p>
             </div>
@@ -158,14 +229,8 @@ export function UploadSheet({ open, onOpenChange, onUpload, uploadedFiles, onSel
               </div>
             </div>
 
-            <div className="grid grid-cols-4 gap-2">
-              {[
-                { step: "uploading", label: "Upload", icon: FileUp },
-                { step: "processing", label: "Analisi", icon: FileText },
-                { step: "generating", label: "AI", icon: Sparkles },
-                { step: "complete", label: "Fatto", icon: Check },
-              ].map(({ step, label, icon: Icon }, i) => {
-                const stepOrder = ["uploading", "processing", "generating", "complete"];
+            <div className={cn("grid gap-2", `grid-cols-${progressSteps.length}`)}>
+              {progressSteps.map(({ step, label, icon: Icon }, i) => {
                 const currentIndex = stepOrder.indexOf(generationStep);
                 const stepIndex = stepOrder.indexOf(step);
                 const isActive = step === generationStep;
@@ -199,12 +264,15 @@ export function UploadSheet({ open, onOpenChange, onUpload, uploadedFiles, onSel
         </SheetHeader>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0 overflow-hidden">
-          <TabsList className="grid w-full grid-cols-2 mb-4 p-1.5 h-13 bg-surface-container-highest rounded-xl">
+          <TabsList className="grid w-full grid-cols-3 mb-4 p-1.5 h-13 bg-surface-container-highest rounded-xl">
             <TabsTrigger value="upload" className="rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-level-1 transition-all duration-300">
-              Carica nuovo
+              📄 PDF
+            </TabsTrigger>
+            <TabsTrigger value="web" className="rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-level-1 transition-all duration-300">
+              🌐 Web
             </TabsTrigger>
             <TabsTrigger value="manage" className="rounded-lg data-[state=active]:bg-tertiary data-[state=active]:text-tertiary-foreground data-[state=active]:shadow-level-1 transition-all duration-300">
-              Gestisci file
+              Gestisci
             </TabsTrigger>
           </TabsList>
 
@@ -263,6 +331,49 @@ export function UploadSheet({ open, onOpenChange, onUpload, uploadedFiles, onSel
                 ) : ("Seleziona file da caricare")}
               </Button>
               <p className="body-small text-muted-foreground text-center mt-2">✨ Ogni PDF creerà un percorso di studio personalizzato</p>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="web" className="flex-1 overflow-y-auto space-y-5 mt-0 pb-4">
+            <div className="text-center space-y-3">
+              <div className="w-16 h-16 rounded-xl bg-primary flex items-center justify-center mx-auto shadow-level-2">
+                <Globe className="w-8 h-8 text-primary-foreground" />
+              </div>
+              <div>
+                <p className="font-display font-semibold text-lg">Cerca un argomento</p>
+                <p className="body-small text-muted-foreground">L'AI cercherà sul web e creerà un percorso di studio completo</p>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                <Input
+                  value={webTopic}
+                  onChange={(e) => setWebTopic(e.target.value)}
+                  placeholder="Es: La Rivoluzione Francese, Derivate, DNA..."
+                  className="pl-10 h-14 text-base rounded-xl bg-surface-container border-outline-variant"
+                  onKeyDown={(e) => { if (e.key === "Enter" && webTopic.trim()) handleWebSearch(); }}
+                  disabled={isSearching}
+                />
+              </div>
+
+              <Button
+                onClick={handleWebSearch}
+                disabled={!webTopic.trim() || isSearching}
+                className="w-full h-14 text-base"
+                size="lg"
+              >
+                {isSearching ? (
+                  <><Loader2 className="w-5 h-5 mr-2 animate-spin" />Ricerca in corso...</>
+                ) : (
+                  <><Globe className="w-5 h-5 mr-2" />Cerca e genera lezioni</>
+                )}
+              </Button>
+
+              <p className="body-small text-muted-foreground text-center">
+                🔍 Powered by ricerca AI avanzata
+              </p>
             </div>
           </TabsContent>
 
