@@ -10,7 +10,7 @@ import { useUserData } from "@/hooks/useUserData";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 
-type Tab = "studio" | "piano" | "chat" | "profilo";
+type Tab = "studio" | "piano" | "pratica" | "profilo";
 
 interface UploadedFile {
   name: string;
