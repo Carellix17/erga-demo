@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { FullscreenLesson } from "./FullscreenLesson";
 import { FinalTest } from "./FinalTest";
 import { LessonsList } from "./LessonsList";
+import { CourseSelector } from "./CourseSelector";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
@@ -45,6 +46,7 @@ export function StudioView({ hasFiles, onUploadClick, selectedContextId, onClear
   const { currentUser } = useAuth();
   const { toast } = useToast();
   const [contextStatus, setContextStatus] = useState<string | null>(null);
+  const [allContexts, setAllContexts] = useState<{ id: string; file_name: string; processing_status?: string | null }[]>([]);
 
   useEffect(() => {
     if (selectedContextId) setActiveContextId(selectedContextId);
@@ -62,7 +64,8 @@ export function StudioView({ hasFiles, onUploadClick, selectedContextId, onClear
           body: JSON.stringify({ userId: currentUser, action: "listContexts" }) }
       );
       const contextsData = await contextsResponse.json();
-      const contexts = (contextsData.contexts || []) as { id: string; file_name?: string; processing_status?: string | null }[];
+      const contexts = (contextsData.contexts || []) as { id: string; file_name: string; processing_status?: string | null }[];
+      setAllContexts(contexts);
       const availableContextIds = new Set(contexts.map((c) => c.id));
       const latestContext = contexts[0] || null;
       let effectiveContextId = selectedContextId && availableContextIds.has(selectedContextId) ? selectedContextId : null;
@@ -249,8 +252,20 @@ export function StudioView({ hasFiles, onUploadClick, selectedContextId, onClear
   const currentLesson = activeLessonIndex !== null ? lessons[activeLessonIndex] : null;
   const allGenerated = lessons.length > 0 && lessons.every(l => l.is_generated);
 
+  const handleSelectCourse = (contextId: string) => {
+    setActiveContextId(contextId);
+    setActiveLessonIndex(null);
+    setLessons([]);
+    setCurrentLessonIndex(0);
+  };
+
   return (
     <>
+      <CourseSelector
+        courses={allContexts}
+        activeContextId={activeContextId}
+        onSelectCourse={handleSelectCourse}
+      />
       <LessonsList
         lessons={lessons}
         currentIndex={currentLessonIndex}
