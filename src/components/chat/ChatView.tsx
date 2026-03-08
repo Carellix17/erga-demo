@@ -31,9 +31,22 @@ export function ChatView({ hasFiles, onUploadClick }: ChatViewProps) {
     if (!currentUser) return;
     const userMessage: Message = { id: String(Date.now()), role: "user", content, imageUrl };
     setMessages(prev => [...prev, userMessage]); setIsLoading(true);
-    const apiMessages = [...messages.filter(m => m.id !== "welcome"), userMessage].map(m => ({
-      role: m.role, content: m.imageUrl ? `[L'utente ha allegato un'immagine] ${m.content}` : m.content,
-    }));
+
+    // Build API messages - include image data for vision
+    const apiMessages = [...messages.filter(m => m.id !== "welcome"), userMessage].map(m => {
+      if (m.imageUrl && m.imageUrl.startsWith("data:image")) {
+        // Send multimodal content for vision models
+        return {
+          role: m.role,
+          content: [
+            { type: "text", text: m.content || "Descrivi e analizza questa immagine in relazione ai materiali di studio." },
+            { type: "image_url", image_url: { url: m.imageUrl } },
+          ],
+        };
+      }
+      return { role: m.role, content: m.content };
+    });
+
     let assistantContent = "";
     try {
       const { data: { session } } = await supabase.auth.getSession();
@@ -95,10 +108,10 @@ export function ChatView({ hasFiles, onUploadClick }: ChatViewProps) {
         {messages.map((message) => <ChatMessage key={message.id} message={message} />)}
         {isLoading && (
           <div className="flex gap-3 animate-fade-up">
-            <div className="w-8 h-8 rounded-full bg-primary-container flex items-center justify-center shadow-level-1">
-              <div className="w-3.5 h-3.5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+            <div className="w-9 h-9 rounded-full bg-primary-container flex items-center justify-center shadow-level-1">
+              <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
             </div>
-            <div className="bg-surface-container-high rounded-xl rounded-bl-xs px-4 py-2.5 shadow-level-1">
+            <div className="bg-surface-container-high rounded-2xl rounded-bl-md px-4 py-3 shadow-level-1">
               <div className="flex gap-1.5">
                 <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
                 <div className="w-2 h-2 bg-secondary rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />

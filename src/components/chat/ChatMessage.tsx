@@ -22,7 +22,7 @@ export function ChatMessage({ message }: ChatMessageProps) {
       )}
     >
       {!isUser && (
-        <div className="w-9 h-9 rounded-full bg-primary-container flex items-center justify-center flex-shrink-0">
+        <div className="w-9 h-9 rounded-full bg-primary-container flex items-center justify-center flex-shrink-0 shadow-level-1">
           <Sparkles className="w-4 h-4 text-primary" />
         </div>
       )}
@@ -31,8 +31,8 @@ export function ChatMessage({ message }: ChatMessageProps) {
         className={cn(
           "max-w-[85%] overflow-hidden transition-all duration-300 ease-m3-emphasized",
           isUser
-            ? "bg-primary text-primary-foreground rounded-xl rounded-br-xs shadow-level-1"
-            : "bg-surface-container-high text-foreground rounded-xl rounded-bl-xs shadow-level-1"
+            ? "bg-primary text-primary-foreground rounded-2xl rounded-br-md shadow-level-1"
+            : "bg-surface-container-high text-foreground rounded-2xl rounded-bl-md shadow-level-1"
         )}
       >
         {/* Image attachment */}
@@ -41,7 +41,7 @@ export function ChatMessage({ message }: ChatMessageProps) {
             <img 
               src={message.imageUrl} 
               alt="Allegato" 
-              className="max-w-full max-h-48 rounded-lg object-cover"
+              className="max-w-full max-h-52 rounded-xl object-cover shadow-level-1"
             />
           </div>
         )}
@@ -66,17 +66,17 @@ export function ChatMessage({ message }: ChatMessageProps) {
                   h2: ({ children }) => <h4 className="font-display font-medium text-base mt-2 mb-1">{children}</h4>,
                   h3: ({ children }) => <h5 className="font-display font-medium mt-2 mb-1">{children}</h5>,
                   code: ({ children }) => (
-                    <code className="bg-surface-container-highest px-1.5 py-0.5 rounded-xs text-xs font-mono">
+                    <code className="bg-surface-container-highest px-1.5 py-0.5 rounded-md text-xs font-mono">
                       {children}
                     </code>
                   ),
                   pre: ({ children }) => (
-                    <pre className="bg-surface-container-highest p-3 rounded-md overflow-x-auto my-2 text-xs">
+                    <pre className="bg-surface-container-highest p-3 rounded-xl overflow-x-auto my-2 text-xs">
                       {children}
                     </pre>
                   ),
                   blockquote: ({ children }) => (
-                    <blockquote className="border-l-2 border-primary pl-3 my-2 italic text-muted-foreground">
+                    <blockquote className="border-l-3 border-primary pl-3 my-2 italic text-muted-foreground">
                       {children}
                     </blockquote>
                   ),
