@@ -94,6 +94,7 @@ export function StudioView({ hasFiles, onUploadClick, selectedContextId, onClear
   useEffect(() => { fetchLessons(); }, [fetchLessons]);
   useEffect(() => { if (lessons.length === 0) return; setCurrentLessonIndex((idx) => { if (idx < 0) return 0; if (idx > lessons.length - 1) return lessons.length - 1; return idx; }); }, [lessons.length]);
   useEffect(() => { if (lessons.length === 0) return; const lesson = lessons[currentLessonIndex]; if (!lesson || lesson.is_generated || isGeneratingLesson || isGenerating) return; generateLessonContent(currentLessonIndex); }, [currentLessonIndex, lessons, isGeneratingLesson, isGenerating]);
+  useEffect(() => { onFullscreenChange?.(activeLessonIndex !== null || showFinalTest); }, [activeLessonIndex, showFinalTest, onFullscreenChange]);
 
   const handleGenerateLessons = async () => {
     if (!currentUser) return;
