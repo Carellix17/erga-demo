@@ -3,14 +3,14 @@ import { AppHeader } from "@/components/layout/AppHeader";
 import { BottomNav } from "@/components/layout/BottomNav";
 import { StudioView } from "@/components/studio/StudioView";
 import { PianoView } from "@/components/piano/PianoView";
-import { ChatView } from "@/components/chat/ChatView";
+import { PraticaView } from "@/components/pratica/PraticaView";
 import { ProfileView } from "@/components/profile/ProfileView";
 import { UploadSheet } from "@/components/upload/UploadSheet";
 import { useUserData } from "@/hooks/useUserData";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 
-type Tab = "studio" | "piano" | "chat" | "profilo";
+type Tab = "studio" | "piano" | "pratica" | "profilo";
 
 interface UploadedFile {
   name: string;
@@ -118,8 +118,8 @@ const Index = () => {
             onUploadClick={() => setShowUpload(true)}
           />
         )}
-        {activeTab === "chat" && (
-          <ChatView
+        {activeTab === "pratica" && (
+          <PraticaView
             hasFiles={hasFiles}
             onUploadClick={() => setShowUpload(true)}
           />

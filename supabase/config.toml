@@ -32,3 +32,9 @@ verify_jwt = false
 
 [functions.user-data]
 verify_jwt = false
+
+[functions.interrogazione]
+verify_jwt = false
+
+[functions.generate-exercises]
+verify_jwt = false

@@ -103,7 +103,7 @@ export function ChatView({ hasFiles, onUploadClick }: ChatViewProps) {
   };
 
   return (
-    <div className="flex flex-col h-[calc(100vh-7.5rem)]">
+    <div className="flex flex-col h-full">
       <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3 scrollbar-thin">
         {messages.map((message) => <ChatMessage key={message.id} message={message} />)}
         {isLoading && (
