@@ -93,6 +93,7 @@ REGOLE IMPORTANTI:
 3. Sii chiaro, conciso e incoraggiante
 4. Quando possibile, fai riferimento al diario dello studente per contestualizzare le risposte
 5. Usa esempi pratici tratti dai materiali
+6. Se l'utente ti invia un'immagine, analizzala attentamente in relazione ai materiali di studio. Descrivi cosa vedi e collega i contenuti ai materiali disponibili.
 ${profileText}
 
 MATERIALI DI STUDIO DISPONIBILI:
@@ -101,12 +102,30 @@ ${studyContent}
 DIARIO DELLO STUDENTE:
 ${eventsText}`;
 
+    // Process messages: handle multimodal content (images)
     const trimmedHistory = (Array.isArray(messages) ? messages : [])
       .slice(-MAX_HISTORY_MESSAGES)
-      .map((m: { role: string; content: string }) => ({
-        role: m.role,
-        content: trimTo(String(m.content ?? ""), MAX_MESSAGE_CHARS),
-      }));
+      .map((m: any) => {
+        // If content is an array (multimodal), pass through for vision
+        if (Array.isArray(m.content)) {
+          return {
+            role: m.role,
+            content: m.content.map((part: any) => {
+              if (part.type === "text") {
+                return { type: "text", text: trimTo(String(part.text ?? ""), MAX_MESSAGE_CHARS) };
+              }
+              if (part.type === "image_url") {
+                return part; // pass image_url through
+              }
+              return part;
+            }),
+          };
+        }
+        return {
+          role: m.role,
+          content: trimTo(String(m.content ?? ""), MAX_MESSAGE_CHARS),
+        };
+      });
 
     const apiMessages = [
       { role: "system", content: systemPrompt },
@@ -118,7 +137,13 @@ ${eventsText}`;
       throw new Error("ERGA_DEMO_ROUTER is not configured");
     }
 
-    console.log("Calling OpenRouter with google/gemini-2.5-flash");
+    // Check if any message has image content - use vision model
+    const hasImages = trimmedHistory.some((m: any) => 
+      Array.isArray(m.content) && m.content.some((p: any) => p.type === "image_url")
+    );
+
+    const model = hasImages ? "google/gemini-2.5-flash" : "google/gemini-2.5-flash";
+    console.log(`Calling OpenRouter with ${model}${hasImages ? " (vision mode)" : ""}`);
 
     const aiResponse = await fetch("https://openrouter.ai/api/v1/chat/completions", {
       method: "POST",
@@ -128,7 +153,7 @@ ${eventsText}`;
         "HTTP-Referer": "https://erga-demo.lovable.app",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model,
         messages: apiMessages,
         temperature: 0.7,
         max_tokens: 1024,
