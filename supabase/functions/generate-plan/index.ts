@@ -45,8 +45,8 @@ serve(async (req) => {
       ? events.map((e: { event_type: string; title: string; subject: string; event_date: string }) => `- ${e.event_type}: ${e.title} (${e.subject}) - ${e.event_date}`).join("\n")
       : "Nessun evento programmato";
 
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY mancante");
+    const OPENROUTER_KEY = Deno.env.get("ERGA_DEMO_ROUTER");
+    if (!OPENROUTER_KEY) throw new Error("ERGA_DEMO_ROUTER mancante");
 
     const prompt = `Sei un tutor esperto che crea piani di studio personalizzati.
 ${profileInfo}
@@ -69,11 +69,15 @@ ${eventsText}
 Contenuti di studio:
 ${contextSummary}`;
 
-    console.log("Calling Lovable AI Gateway for plan generation");
+    console.log("Calling OpenRouter for plan generation");
 
-    const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const aiResponse = await fetch("https://openrouter.ai/api/v1/chat/completions", {
       method: "POST",
-      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${LOVABLE_API_KEY}` },
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${OPENROUTER_KEY}`,
+        "HTTP-Referer": "https://erga-demo.lovable.app",
+      },
       body: JSON.stringify({
         model: "google/gemini-2.5-flash",
         messages: [{ role: "user", content: prompt }],

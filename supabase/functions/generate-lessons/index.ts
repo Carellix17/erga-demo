@@ -22,12 +22,16 @@ function extractJson(raw: string): unknown {
 }
 
 async function callAI(messages: { role: string; content: string }[], temperature = 0.1, maxTokens = 4000): Promise<string> {
-  const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-  if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY mancante");
+  const OPENROUTER_KEY = Deno.env.get("ERGA_DEMO_ROUTER");
+  if (!OPENROUTER_KEY) throw new Error("ERGA_DEMO_ROUTER mancante");
 
-  const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+  const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
     method: "POST",
-    headers: { "Content-Type": "application/json", "Authorization": `Bearer ${LOVABLE_API_KEY}` },
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${OPENROUTER_KEY}`,
+      "HTTP-Referer": "https://erga-demo.lovable.app",
+    },
     body: JSON.stringify({
       model: "google/gemini-2.5-flash",
       messages,
@@ -38,7 +42,7 @@ async function callAI(messages: { role: string; content: string }[], temperature
 
   if (!response.ok) {
     const errorText = await response.text();
-    console.error("AI Gateway error:", response.status, errorText);
+    console.error("OpenRouter error:", response.status, errorText);
     throw new Error("Errore nella risposta AI");
   }
 
