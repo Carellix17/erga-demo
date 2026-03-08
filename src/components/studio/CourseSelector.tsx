@@ -27,10 +27,10 @@ export function CourseSelector({ courses, activeContextId, onSelectCourse }: Cou
   };
 
   return (
-    <div className="px-4 pt-4 pb-1">
-      <p className="label-medium text-muted-foreground mb-2.5 px-1">I tuoi corsi</p>
-      <div className="flex gap-2.5 overflow-x-auto pb-2 scrollbar-hide">
-        {courses.map((course) => {
+    <div className="px-4 pt-4 pb-1 animate-fade-up">
+      <p className="label-medium text-muted-foreground mb-3 px-1">I tuoi corsi</p>
+      <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
+        {courses.map((course, i) => {
           const isActive = course.id === activeContextId;
           const Icon = getIcon(course.file_name);
 
@@ -39,14 +39,16 @@ export function CourseSelector({ courses, activeContextId, onSelectCourse }: Cou
               key={course.id}
               onClick={() => onSelectCourse(course.id)}
               className={cn(
-                "flex items-center gap-2 px-4 py-2.5 rounded-2xl whitespace-nowrap transition-all duration-300 ease-m3-emphasized flex-shrink-0",
-                "border",
+                "flex items-center gap-2.5 px-5 py-3 rounded-full whitespace-nowrap flex-shrink-0",
+                "transition-all duration-500 ease-m3-emphasized",
+                "active:scale-[0.93]",
+                `animate-fade-up animate-stagger-${Math.min(i + 1, 5)}`,
                 isActive
-                  ? "bg-primary text-primary-foreground border-primary shadow-level-2"
-                  : "bg-surface-container-low text-foreground border-outline-variant hover:bg-surface-container-high hover:shadow-level-1"
+                  ? "bg-primary text-primary-foreground shadow-level-2 scale-[1.02]"
+                  : "bg-surface-container-low text-foreground border border-outline-variant hover:bg-surface-container-high hover:shadow-level-1 hover:scale-[1.04]"
               )}
             >
-              <Icon className="w-4 h-4 flex-shrink-0" />
+              <Icon className={cn("w-4.5 h-4.5 flex-shrink-0", isActive && "animate-wiggle")} />
               <span className="label-large max-w-[140px] truncate">
                 {cleanName(course.file_name)}
               </span>
