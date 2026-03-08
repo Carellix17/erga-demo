@@ -252,8 +252,20 @@ export function StudioView({ hasFiles, onUploadClick, selectedContextId, onClear
   const currentLesson = activeLessonIndex !== null ? lessons[activeLessonIndex] : null;
   const allGenerated = lessons.length > 0 && lessons.every(l => l.is_generated);
 
+  const handleSelectCourse = (contextId: string) => {
+    setActiveContextId(contextId);
+    setActiveLessonIndex(null);
+    setLessons([]);
+    setCurrentLessonIndex(0);
+  };
+
   return (
     <>
+      <CourseSelector
+        courses={allContexts}
+        activeContextId={activeContextId}
+        onSelectCourse={handleSelectCourse}
+      />
       <LessonsList
         lessons={lessons}
         currentIndex={currentLessonIndex}
