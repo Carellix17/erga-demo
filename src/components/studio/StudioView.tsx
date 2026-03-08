@@ -46,6 +46,7 @@ export function StudioView({ hasFiles, onUploadClick, selectedContextId, onClear
   const { currentUser } = useAuth();
   const { toast } = useToast();
   const [contextStatus, setContextStatus] = useState<string | null>(null);
+  const [allContexts, setAllContexts] = useState<{ id: string; file_name: string; processing_status?: string | null }[]>([]);
 
   useEffect(() => {
     if (selectedContextId) setActiveContextId(selectedContextId);
