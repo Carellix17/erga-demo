@@ -129,7 +129,7 @@ const Index = () => {
         )}
       </main>
 
-      <BottomNav activeTab={activeTab} onTabChange={setActiveTab} />
+      {!isFullscreen && <BottomNav activeTab={activeTab} onTabChange={setActiveTab} />}
 
       <UploadSheet
         open={showUpload}
