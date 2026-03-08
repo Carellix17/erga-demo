@@ -1,5 +1,6 @@
 import { BookOpen, Globe, FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { getStableSubjectColor } from "@/lib/subjectColors";
 
 interface Course {
   id: string;
@@ -33,6 +34,7 @@ export function CourseSelector({ courses, activeContextId, onSelectCourse }: Cou
         {courses.map((course, i) => {
           const isActive = course.id === activeContextId;
           const Icon = getIcon(course.file_name);
+          const color = getStableSubjectColor(course.file_name);
 
           return (
             <button
@@ -44,8 +46,8 @@ export function CourseSelector({ courses, activeContextId, onSelectCourse }: Cou
                 "active:scale-[0.93]",
                 `animate-fade-up animate-stagger-${Math.min(i + 1, 5)}`,
                 isActive
-                  ? "bg-primary text-primary-foreground shadow-level-2 scale-[1.02]"
-                  : "bg-surface-container-low text-foreground border border-outline-variant hover:bg-surface-container-high hover:shadow-level-1 hover:scale-[1.04]"
+                  ? `${color.bgActive} ${color.textActive} shadow-level-2 scale-[1.02]`
+                  : `${color.bg} ${color.text} border ${color.border} hover:shadow-level-1 hover:scale-[1.04]`
               )}
             >
               <Icon className={cn("w-4.5 h-4.5 flex-shrink-0", isActive && "animate-wiggle")} />

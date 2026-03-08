@@ -271,6 +271,7 @@ export function StudioView({ hasFiles, onUploadClick, selectedContextId, onClear
       <LessonsList
         lessons={lessons}
         currentIndex={currentLessonIndex}
+        contextFileName={contextFileName}
         onSelectLesson={async (index) => {
           const lesson = lessons[index];
           if (!lesson) return;
