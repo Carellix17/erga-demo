@@ -10,7 +10,6 @@ serve(async (req) => {
     const body = await req.json();
     const { messages } = body;
 
-    // Validate authentication and get userId
     const auth = await validateAuth(req, body);
     const { userId, userEmail, supabase } = auth;
 
@@ -27,10 +26,7 @@ serve(async (req) => {
       .eq("user_id", userId);
     const legacyUserId = userEmail && userEmail !== userId ? userEmail : null;
     const { data: legacyContexts } = legacyUserId
-      ? await supabase
-          .from("study_contexts")
-          .select("content, file_name")
-          .eq("user_id", legacyUserId)
+      ? await supabase.from("study_contexts").select("content, file_name").eq("user_id", legacyUserId)
       : { data: null };
 
     // Fetch study events
@@ -40,7 +36,7 @@ serve(async (req) => {
       .eq("user_id", userId)
       .order("event_date", { ascending: true });
 
-    // Fetch user profile for personalization
+    // Fetch user profile
     const { data: userProfile } = await supabase
       .from("user_profiles")
       .select("institute_type, subject_levels")
@@ -51,26 +47,20 @@ serve(async (req) => {
 
     if (mergedContexts.length === 0) {
       return new Response(
-        JSON.stringify({ 
-          response: "Non ho ancora accesso a nessun materiale di studio. Per poterti aiutare, carica prima dei PDF con i tuoi appunti o dispense usando il pulsante in alto a destra." 
-        }),
+        JSON.stringify({ response: "Non ho ancora accesso a nessun materiale di studio. Per poterti aiutare, carica prima dei PDF con i tuoi appunti o dispense usando il pulsante in alto a destra." }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // --- Prompt size management (Groq has strict TPM/context limits) ---
-    const MAX_STUDY_CHARS = 8000;
+    const MAX_STUDY_CHARS = 12000;
     const MAX_EVENTS_CHARS = 1500;
-    const MAX_MESSAGE_CHARS = 1500;
-    const MAX_HISTORY_MESSAGES = 12;
+    const MAX_MESSAGE_CHARS = 2000;
+    const MAX_HISTORY_MESSAGES = 14;
 
     const trimTo = (s: string, max: number) => (s.length > max ? s.slice(0, max) + "\n…" : s);
 
-    // Build context (trim aggressively to avoid 413 / TPM issues)
     const studyContent = trimTo(
-      mergedContexts
-        .map((c: { file_name: string; content: string }) => `--- ${c.file_name} ---\n${c.content}`)
-        .join("\n\n"),
+      mergedContexts.map((c: { file_name: string; content: string }) => `--- ${c.file_name} ---\n${c.content}`).join("\n\n"),
       MAX_STUDY_CHARS
     );
 
@@ -81,12 +71,9 @@ serve(async (req) => {
       : "Nessun evento programmato nel diario.";
     const eventsText = trimTo(eventsTextRaw, MAX_EVENTS_CHARS);
 
-    // Build profile context
     const instituteMap: Record<string, string> = {
-      liceo_scientifico: "Liceo Scientifico",
-      liceo_classico: "Liceo Classico",
-      liceo_linguistico: "Liceo Linguistico",
-      istituto_tecnico: "Istituto Tecnico",
+      liceo_scientifico: "Liceo Scientifico", liceo_classico: "Liceo Classico",
+      liceo_linguistico: "Liceo Linguistico", istituto_tecnico: "Istituto Tecnico",
     };
     let profileText = "";
     if (userProfile) {
@@ -95,7 +82,7 @@ serve(async (req) => {
         const levels = userProfile.subject_levels as Record<string, number>;
         profileText += "\n- Livelli per materia: " + Object.entries(levels).map(([s, l]) => `${s}: ${l}/10`).join(", ");
       }
-      profileText += "\n\nAdatta il tuo linguaggio e la difficoltà delle spiegazioni in base al tipo di istituto e ai livelli dello studente. Approfondisci di più le materie dove lo studente ha un livello basso.";
+      profileText += "\n\nAdatta il tuo linguaggio e la difficoltà delle spiegazioni in base al tipo di istituto e ai livelli dello studente.";
     }
 
     const systemPrompt = `Sei un tutor di studio personale. Rispondi SOLO basandoti sui contenuti di studio forniti e sul diario dello studente.
@@ -114,14 +101,6 @@ ${studyContent}
 DIARIO DELLO STUDENTE:
 ${eventsText}`;
 
-    // Call Perplexity Sonar API
-    const PERPLEXITY_API_KEY = Deno.env.get("ERGA_DEMO_PERPLEXITY_KEY");
-    if (!PERPLEXITY_API_KEY) {
-      throw new Error("ERGA_DEMO_PERPLEXITY_KEY is not configured");
-    }
-
-    // Build conversation for Perplexity format
-    // Keep only last N messages and trim each message length.
     const trimmedHistory = (Array.isArray(messages) ? messages : [])
       .slice(-MAX_HISTORY_MESSAGES)
       .map((m: { role: string; content: string }) => ({
@@ -129,22 +108,27 @@ ${eventsText}`;
         content: trimTo(String(m.content ?? ""), MAX_MESSAGE_CHARS),
       }));
 
-    const perplexityMessages = [
+    const apiMessages = [
       { role: "system", content: systemPrompt },
       ...trimmedHistory,
     ];
 
-    console.log("Calling Perplexity API with model sonar");
+    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    if (!LOVABLE_API_KEY) {
+      throw new Error("LOVABLE_API_KEY is not configured");
+    }
 
-    const aiResponse = await fetch("https://api.perplexity.ai/chat/completions", {
+    console.log("Calling Lovable AI Gateway with google/gemini-2.5-flash");
+
+    const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${PERPLEXITY_API_KEY}`,
+        "Authorization": `Bearer ${LOVABLE_API_KEY}`,
       },
       body: JSON.stringify({
-        model: "sonar",
-        messages: perplexityMessages,
+        model: "google/gemini-2.5-flash",
+        messages: apiMessages,
         temperature: 0.7,
         max_tokens: 1024,
         stream: true,
@@ -153,18 +137,12 @@ ${eventsText}`;
 
     if (!aiResponse.ok) {
       const errorText = await aiResponse.text();
-      console.error("Perplexity response status:", aiResponse.status);
-      console.error("Perplexity API error:", errorText);
-      if (aiResponse.status === 413) {
-        return errorResponse("Richiesta troppo grande. Prova a fare una domanda più specifica o carica meno materiale alla volta.", 413);
-      }
-      if (aiResponse.status === 429) {
-        return errorResponse("Troppe richieste. Riprova tra qualche secondo.", 429);
-      }
-      throw new Error("Errore nella risposta Perplexity");
+      console.error("AI Gateway response status:", aiResponse.status);
+      console.error("AI Gateway error:", errorText);
+      throw new Error("Errore nella risposta AI");
     }
 
-    // Stream Groq response (already OpenAI-compatible SSE format)
+    // Stream response
     const reader = aiResponse.body?.getReader();
     if (!reader) throw new Error("No response body");
 
@@ -174,7 +152,6 @@ ${eventsText}`;
     const transformStream = new ReadableStream({
       async start(controller) {
         let buffer = "";
-        
         while (true) {
           const { done, value } = await reader.read();
           if (done) {
@@ -182,28 +159,20 @@ ${eventsText}`;
             controller.close();
             break;
           }
-
           buffer += decoder.decode(value, { stream: true });
           const lines = buffer.split("\n");
           buffer = lines.pop() || "";
-
           for (const line of lines) {
             if (line.startsWith("data: ")) {
               const jsonStr = line.slice(6).trim();
               if (!jsonStr || jsonStr === "[DONE]") continue;
-              
               try {
                 const parsed = JSON.parse(jsonStr);
                 const text = parsed.choices?.[0]?.delta?.content;
                 if (text) {
-                  const chunk = {
-                    choices: [{ delta: { content: text } }],
-                  };
-                  controller.enqueue(encoder.encode(`data: ${JSON.stringify(chunk)}\n\n`));
+                  controller.enqueue(encoder.encode(`data: ${JSON.stringify({ choices: [{ delta: { content: text } }] })}\n\n`));
                 }
-              } catch {
-                // Skip malformed JSON
-              }
+              } catch { /* skip */ }
             }
           }
         }

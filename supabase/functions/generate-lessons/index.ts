@@ -3,52 +3,47 @@ import { validateAuth, corsHeaders, errorResponse, successResponse } from "../_s
 
 const MAX_CONTEXT_CHARS = 80000;
 
-/**
- * Robustly extract a JSON object or array from a potentially mixed AI response.
- * Handles markdown code blocks, conversational preamble, trailing commas, and truncation.
- */
 function extractJson(raw: string): unknown {
-  // Strip markdown code fences
-  let cleaned = raw
-    .replace(/```json\s*/gi, "")
-    .replace(/```\s*/g, "")
-    .trim();
-
-  // Try direct parse first
+  let cleaned = raw.replace(/```json\s*/gi, "").replace(/```\s*/g, "").trim();
   try { return JSON.parse(cleaned); } catch { /* continue */ }
-
-  // Try to isolate a JSON object {...}
   const objMatch = cleaned.match(/\{[\s\S]*\}/);
-  if (objMatch) {
-    try { return JSON.parse(objMatch[0]); } catch { /* continue */ }
-  }
-
-  // Try to isolate a JSON array [...]
+  if (objMatch) { try { return JSON.parse(objMatch[0]); } catch { /* continue */ } }
   const arrMatch = cleaned.match(/\[[\s\S]*\]/);
-  if (arrMatch) {
-    try { return JSON.parse(arrMatch[0]); } catch { /* continue */ }
-  }
-
-  // Repair attempt: fix trailing commas, control chars, unbalanced braces
+  if (arrMatch) { try { return JSON.parse(arrMatch[0]); } catch { /* continue */ } }
   const candidate = (objMatch?.[0] || arrMatch?.[0] || cleaned)
-    .replace(/,\s*}/g, "}")
-    .replace(/,\s*]/g, "]")
-    .replace(/[\x00-\x1F\x7F]/g, "");
-
+    .replace(/,\s*}/g, "}").replace(/,\s*]/g, "]").replace(/[\x00-\x1F\x7F]/g, "");
   let braces = 0, brackets = 0;
   let repaired = candidate;
-  for (const ch of repaired) {
-    if (ch === "{") braces++;
-    if (ch === "}") braces--;
-    if (ch === "[") brackets++;
-    if (ch === "]") brackets--;
-  }
+  for (const ch of repaired) { if (ch === "{") braces++; if (ch === "}") braces--; if (ch === "[") brackets++; if (ch === "]") brackets--; }
   while (brackets > 0) { repaired += "]"; brackets--; }
   while (braces > 0) { repaired += "}"; braces--; }
-
   try { return JSON.parse(repaired); } catch { /* continue */ }
-
   throw new Error("Impossibile estrarre JSON dalla risposta AI. Riprova.");
+}
+
+async function callAI(messages: { role: string; content: string }[], temperature = 0.1, maxTokens = 4000): Promise<string> {
+  const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+  if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY mancante");
+
+  const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "Authorization": `Bearer ${LOVABLE_API_KEY}` },
+    body: JSON.stringify({
+      model: "google/gemini-2.5-flash",
+      messages,
+      temperature,
+      max_tokens: maxTokens,
+    }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error("AI Gateway error:", response.status, errorText);
+    throw new Error("Errore nella risposta AI");
+  }
+
+  const data = await response.json();
+  return data.choices?.[0]?.message?.content || "";
 }
 
 serve(async (req) => {
@@ -63,9 +58,6 @@ serve(async (req) => {
     const auth = await validateAuth(req, body);
     const { userId, supabase } = auth;
 
-    const PERPLEXITY_API_KEY = Deno.env.get("ERGA_DEMO_PERPLEXITY_KEY");
-    if (!PERPLEXITY_API_KEY) throw new Error("API Key mancante");
-
     // Fetch user profile for personalization
     const { data: userProfile } = await supabase
       .from("user_profiles")
@@ -74,10 +66,8 @@ serve(async (req) => {
       .maybeSingle();
 
     const instituteMap: Record<string, string> = {
-      liceo_scientifico: "Liceo Scientifico",
-      liceo_classico: "Liceo Classico",
-      liceo_linguistico: "Liceo Linguistico",
-      istituto_tecnico: "Istituto Tecnico",
+      liceo_scientifico: "Liceo Scientifico", liceo_classico: "Liceo Classico",
+      liceo_linguistico: "Liceo Linguistico", istituto_tecnico: "Istituto Tecnico",
     };
     let profileContext = "";
     if (userProfile) {
@@ -91,9 +81,7 @@ serve(async (req) => {
 
     console.log(`Generate lessons for user: ${userId} (authenticated: ${auth.isAuthenticated})`);
 
-    // -----------------------------------------------------------------------
-    // ACTION 1: GENERATE A SINGLE LESSON'S CONTENT
-    // -----------------------------------------------------------------------
+    // ── GENERATE A SINGLE LESSON ──
     if (action === "generateLesson" && lessonIndex !== undefined) {
       let lessonsQuery = supabase.from("mini_lessons").select("*").eq("user_id", userId).eq("lesson_order", lessonIndex);
       if (contextId) lessonsQuery = lessonsQuery.eq("context_id", contextId);
@@ -102,83 +90,54 @@ serve(async (req) => {
       if (!lessons) throw new Error("Lezione non trovata");
       if (lessons.is_generated) return successResponse({ success: true, lesson: lessons });
 
-      // Fetch study content
       let studyContent = "";
       if (lessons.context_id) {
-        const { data: context } = await supabase
-          .from("study_contexts")
-          .select("content, file_name, processing_status")
-          .eq("id", lessons.context_id)
-          .eq("user_id", userId)
-          .single();
-        if (context?.processing_status !== "completed") {
-          throw new Error("Il PDF è ancora in elaborazione. Riprova tra qualche secondo.");
-        }
-        if (context?.content) {
-          studyContent = `FILE: ${context.file_name}\n${context.content}`.substring(0, MAX_CONTEXT_CHARS);
-        }
+        const { data: context } = await supabase.from("study_contexts").select("content, file_name, processing_status").eq("id", lessons.context_id).eq("user_id", userId).single();
+        if (context?.processing_status !== "completed") throw new Error("Il PDF è ancora in elaborazione. Riprova tra qualche secondo.");
+        if (context?.content) studyContent = `FILE: ${context.file_name}\n${context.content}`.substring(0, MAX_CONTEXT_CHARS);
       } else {
         const { data: contexts } = await supabase.from("study_contexts").select("content, file_name").eq("user_id", userId);
         if (contexts) studyContent = contexts.map((c: { file_name: string; content: string }) => `FILE: ${c.file_name}\n${c.content}`).join("\n\n").substring(0, MAX_CONTEXT_CHARS);
       }
-
       if (!studyContent) throw new Error("Contenuto vuoto. Caricamento fallito?");
 
       const prompt = `Sei un tutor universitario esperto. Crea una lezione basata ESCLUSIVAMENTE sul materiale fornito.
 ${profileContext}
 
-IMPORTANTE: Rispondi SOLO con un oggetto JSON valido. NON aggiungere testo prima o dopo il JSON. NON usare markdown. SOLO JSON puro.
+IMPORTANTE: Rispondi SOLO con un oggetto JSON valido. NON aggiungere testo prima o dopo il JSON. SOLO JSON puro.
 
-OBIETTIVO: Creare una mini-lezione breve, divisa in micro-step stile Duolingo/Mimo.
-Lunghezza massima totale: 120-150 parole.
+OBIETTIVO: Creare una mini-lezione breve stile Duolingo. Lunghezza massima: 120-150 parole.
 
 TITOLO LEZIONE: "${lessons.title}"
 
-ISTRUZIONI SPECIFICHE:
+ISTRUZIONI:
 1. Concept: 1-2 frasi massimo.
-2. Explanation: suddividi in 2-4 micro-step separati da "•" (bullet), ogni bullet 1 frase corta.
-   - Ogni bullet deve trattare un SOLO concetto.
-   - Evita blocchi lunghi o discorsi unici.
+2. Explanation: 2-4 micro-step separati da "•", ogni bullet 1 frase corta.
 3. Example: 1 esempio molto breve (1-2 frasi).
-4. Exercises:
-   - Massimo 2 esercizi.
-   - Domande brevi, concrete.
-   - Per "short_answer", fornisci ALMENO 6 parole chiave/sinonimi.
+4. Exercises: Massimo 2 esercizi brevi. Per "short_answer", almeno 6 keywords.
 
-Formato JSON richiesto (SOLO QUESTO, nient'altro):
+JSON richiesto:
 {
   "concept": "...",
   "explanation": "• Step 1...\\n• Step 2...\\n• Step 3...",
   "example": "...",
   "exercises": [
      { "type": "multiple_choice", "question": "...", "options": ["..."], "correct_index": 0 },
-     { "type": "short_answer", "question": "...", "expected_keywords": ["keyword1", "keyword2", "sinonimo"] }
+     { "type": "short_answer", "question": "...", "expected_keywords": ["k1","k2","k3","k4","k5","k6"] }
   ]
 }
 
 MATERIALE DI STUDIO:
 ${studyContent}`;
 
-      const aiResponse = await fetch("https://api.perplexity.ai/chat/completions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${PERPLEXITY_API_KEY}` },
-        body: JSON.stringify({
-          model: "sonar",
-          messages: [
-            { role: "system", content: "Rispondi ESCLUSIVAMENTE con JSON valido. Nessun testo aggiuntivo, nessuna spiegazione, nessun commento. Solo l'oggetto JSON richiesto." },
-            { role: "user", content: prompt }
-          ],
-          temperature: 0.1
-        }),
-      });
+      const content = await callAI([
+        { role: "system", content: "Rispondi ESCLUSIVAMENTE con JSON valido. Nessun testo aggiuntivo. Solo l'oggetto JSON richiesto." },
+        { role: "user", content: prompt }
+      ], 0.1);
 
-      const aiData = await aiResponse.json();
-      const content = aiData.choices?.[0]?.message?.content || "{}";
       console.log("AI lesson response (first 300 chars):", content.substring(0, 300));
-
       const lessonData = extractJson(content) as Record<string, unknown>;
 
-      // Save
       await supabase.from("mini_lessons").update({
         concept: lessonData.concept || "",
         explanation: lessonData.explanation || "",
@@ -191,11 +150,8 @@ ${studyContent}`;
       return successResponse({ success: true, lesson: updated });
     }
 
-    // -----------------------------------------------------------------------
-    // ACTION: GENERATE FINAL TEST
-    // -----------------------------------------------------------------------
+    // ── GENERATE FINAL TEST ──
     if (action === "generateFinalTest") {
-      // Fetch all generated lessons for this context
       let lessonsQuery = supabase.from("mini_lessons").select("title, concept").eq("user_id", userId).eq("is_generated", true).order("lesson_order");
       if (contextId) lessonsQuery = lessonsQuery.eq("context_id", contextId);
 
@@ -204,7 +160,6 @@ ${studyContent}`;
 
       const topicsSummary = allLessons.map((l: { title: string; concept: string }, i: number) => `${i + 1}. ${l.title}: ${l.concept}`).join("\n");
 
-      // Fetch study content for richer questions
       let studyContent = "";
       if (contextId) {
         const { data: ctx } = await supabase.from("study_contexts").select("content, file_name").eq("id", contextId).eq("user_id", userId).single();
@@ -214,23 +169,22 @@ ${studyContent}`;
         if (ctxs) studyContent = ctxs.map((c: { file_name: string; content: string }) => `FILE: ${c.file_name}\n${c.content}`).join("\n\n").substring(0, MAX_CONTEXT_CHARS);
       }
 
-      const finalTestPrompt = `Sei un tutor universitario esperto. Crea un TEST FINALE che valuti la comprensione di TUTTI gli argomenti del percorso di studio.
+      const finalTestPrompt = `Sei un tutor universitario esperto. Crea un TEST FINALE che valuti la comprensione di TUTTI gli argomenti.
 ${profileContext}
 
-IMPORTANTE: Rispondi SOLO con un array JSON valido. NON aggiungere testo prima o dopo il JSON. SOLO JSON puro.
+IMPORTANTE: Rispondi SOLO con un array JSON valido. SOLO JSON puro.
 
-ARGOMENTI TRATTATI NEL PERCORSO:
+ARGOMENTI:
 ${topicsSummary}
 
 REGOLE:
-1. Crea esattamente ${Math.min(allLessons.length * 2, 10)} domande.
-2. Copri TUTTI gli argomenti in modo equilibrato.
-3. Le domande devono essere DIVERSE da quelle già fatte durante le lezioni (non ripetere!).
-4. Mescola i tipi: multiple_choice, true_false, fill_blank, short_answer.
-5. Difficoltà media-alta: lo studente deve dimostrare comprensione, non solo memoria.
-6. Per "short_answer", fornisci ALMENO 6 parole chiave/sinonimi.
+1. Esattamente ${Math.min(allLessons.length * 2, 10)} domande.
+2. Copri TUTTI gli argomenti.
+3. Domande DIVERSE da quelle delle lezioni.
+4. Mescola: multiple_choice, true_false, fill_blank, short_answer.
+5. Per "short_answer", almeno 6 keywords.
 
-Formato JSON richiesto (SOLO QUESTO):
+JSON richiesto:
 [
   { "type": "multiple_choice", "question": "...", "options": ["A","B","C","D"], "correct_index": 0 },
   { "type": "true_false", "statement": "...", "correct": true },
@@ -238,149 +192,84 @@ Formato JSON richiesto (SOLO QUESTO):
   { "type": "short_answer", "question": "...", "expected_keywords": ["k1","k2","k3","k4","k5","k6"] }
 ]
 
-MATERIALE DI STUDIO:
+MATERIALE:
 ${studyContent}`;
 
-      const aiResp = await fetch("https://api.perplexity.ai/chat/completions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${PERPLEXITY_API_KEY}` },
-        body: JSON.stringify({
-          model: "sonar",
-          messages: [
-            { role: "system", content: "Rispondi ESCLUSIVAMENTE con JSON valido. Nessun testo aggiuntivo. Solo l'array JSON richiesto." },
-            { role: "user", content: finalTestPrompt }
-          ],
-          temperature: 0.2,
-          max_tokens: 4000,
-        }),
-      });
+      const raw = await callAI([
+        { role: "system", content: "Rispondi ESCLUSIVAMENTE con JSON valido. Solo l'array JSON richiesto." },
+        { role: "user", content: finalTestPrompt }
+      ], 0.2);
 
-      const aiD = await aiResp.json();
-      const raw = aiD.choices?.[0]?.message?.content || "[]";
       console.log("AI final test response (first 300 chars):", raw.substring(0, 300));
-
       const exercises = extractJson(raw);
       if (!Array.isArray(exercises)) throw new Error("Formato test finale non valido");
-
       return successResponse({ success: true, exercises });
     }
 
-    // -----------------------------------------------------------------------
-    // ACTION 2: GENERATE LESSON TITLES (STUDY PLAN)
-    // -----------------------------------------------------------------------
-
+    // ── GENERATE LESSON TITLES (STUDY PLAN) ──
     let combinedContent = "";
     if (contextId) {
-      const { data: ctx } = await supabase
-        .from("study_contexts")
-        .select("content, file_name, processing_status")
-        .eq("id", contextId)
-        .eq("user_id", userId)
-        .single();
+      const { data: ctx } = await supabase.from("study_contexts").select("content, file_name, processing_status").eq("id", contextId).eq("user_id", userId).single();
       if (!ctx) throw new Error("Contesto non trovato");
-      if (ctx.processing_status !== "completed") {
-        throw new Error("Il PDF è ancora in elaborazione. Riprova tra qualche secondo.");
-      }
-      if (!ctx.content) {
-        throw new Error("Nessun contenuto disponibile per questo PDF.");
-      }
+      if (ctx.processing_status !== "completed") throw new Error("Il PDF è ancora in elaborazione. Riprova tra qualche secondo.");
+      if (!ctx.content) throw new Error("Nessun contenuto disponibile per questo PDF.");
       combinedContent = `FILE: ${ctx.file_name}\n${ctx.content}`;
     } else {
       const { data: ctxs } = await supabase.from("study_contexts").select("content, file_name").eq("user_id", userId);
       if (ctxs) combinedContent = ctxs.map((c: { file_name: string; content: string }) => `FILE: ${c.file_name}\n${c.content}`).join("\n\n");
     }
-
     combinedContent = combinedContent.substring(0, MAX_CONTEXT_CHARS);
 
     const titlesPrompt = `Analizza il testo fornito e crea un piano di studi strutturato.
 
-IMPORTANTE: Rispondi SOLO con un array JSON valido. NON aggiungere testo prima o dopo il JSON. NON usare markdown. SOLO JSON puro.
+IMPORTANTE: Rispondi SOLO con un array JSON valido. SOLO JSON puro.
 
 REGOLE:
 1. NON creare una lezione per ogni piccola definizione. RAGGRUPPA i concetti correlati.
-2. Ogni lezione deve coprire un argomento sostanzioso (es. un intero paragrafo o sottocapitolo).
-3. Segui l'ordine logico del documento (dall'inizio alla fine).
+2. Ogni lezione deve coprire un argomento sostanzioso.
+3. Segui l'ordine logico del documento.
 4. Ignora indici, bibliografie o note a piè di pagina.
 
-Output richiesto (SOLO QUESTO, nient'altro):
-[{"title": "Introduzione e contesto storico"}, {"title": "I principi fondamentali della dinamica"}]
+Output richiesto:
+[{"title": "Introduzione e contesto storico"}, {"title": "I principi fondamentali"}]
 
 TESTO DA ANALIZZARE:
 ${combinedContent}`;
 
-    const aiResponse = await fetch("https://api.perplexity.ai/chat/completions", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${PERPLEXITY_API_KEY}` },
-      body: JSON.stringify({
-        model: "sonar",
-        messages: [
-          { role: "system", content: "Rispondi ESCLUSIVAMENTE con JSON valido. Nessun testo aggiuntivo, nessuna spiegazione, nessun commento. Solo l'array JSON richiesto." },
-          { role: "user", content: titlesPrompt }
-        ],
-        temperature: 0.1,
-        max_tokens: 3000,
-      }),
-    });
+    const content = await callAI([
+      { role: "system", content: "Rispondi ESCLUSIVAMENTE con JSON valido. Solo l'array JSON richiesto." },
+      { role: "user", content: titlesPrompt }
+    ], 0.1, 3000);
 
-    const aiData = await aiResponse.json();
-    const content = aiData.choices?.[0]?.message?.content || "[]";
     console.log("AI titles response (first 300 chars):", content.substring(0, 300));
-
     const parsedTitles = extractJson(content);
-
     if (!Array.isArray(parsedTitles)) throw new Error("Formato titoli non valido");
 
-    // Normalize: allow either [{title: string}] OR ["..."]
     const titles = parsedTitles
       .map((t) => {
         if (typeof t === "string") return { title: t };
-        if (t && typeof t === "object" && "title" in t && typeof (t as { title?: unknown }).title === "string") {
-          return { title: (t as { title: string }).title };
-        }
+        if (t && typeof t === "object" && "title" in t && typeof (t as { title?: unknown }).title === "string") return { title: (t as { title: string }).title };
         return null;
       })
       .filter((t): t is { title: string } => !!t && !!t.title);
 
-    if (titles.length === 0) {
-      console.error("No valid titles produced by AI. Raw:", content.substring(0, 500));
-      throw new Error("Non sono riuscito a creare un indice valido. Riprova.");
-    }
+    if (titles.length === 0) throw new Error("Non sono riuscito a creare un indice valido. Riprova.");
 
     // Delete old lessons for same context
     let deleteQuery = supabase.from("mini_lessons").delete().eq("user_id", userId);
-    if (contextId) {
-      deleteQuery = deleteQuery.eq("context_id", contextId);
-    } else {
-      deleteQuery = deleteQuery.is("context_id", null);
-    }
+    if (contextId) { deleteQuery = deleteQuery.eq("context_id", contextId); } else { deleteQuery = deleteQuery.is("context_id", null); }
     const { error: deleteError } = await deleteQuery;
-    if (deleteError) {
-      console.error("Delete old lessons error:", deleteError);
-      throw new Error("Errore durante la pulizia delle vecchie lezioni");
-    }
+    if (deleteError) throw new Error("Errore durante la pulizia delle vecchie lezioni");
 
-    // Insert new titles
     const lessonsToInsert = titles.map((t: { title: string }, i: number) => ({
-      user_id: userId,
-      context_id: contextId ?? null,
-      title: t.title,
-      lesson_order: i,
-      is_generated: false,
-      concept: "",
-      explanation: ""
+      user_id: userId, context_id: contextId ?? null, title: t.title,
+      lesson_order: i, is_generated: false, concept: "", explanation: ""
     }));
 
     const { error: insertError } = await supabase.from("mini_lessons").insert(lessonsToInsert);
-    if (insertError) {
-      console.error("Insert lessons error:", insertError);
-      throw new Error("Errore durante il salvataggio delle lezioni");
-    }
+    if (insertError) throw new Error("Errore durante il salvataggio delle lezioni");
 
-    return successResponse({
-      success: true,
-      lessonsCount: titles.length,
-      titles: titles.map((t: { title: string }) => t.title),
-    });
+    return successResponse({ success: true, lessonsCount: titles.length, titles: titles.map((t: { title: string }) => t.title) });
 
   } catch (error) {
     console.error("Error:", error);
