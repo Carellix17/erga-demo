@@ -79,14 +79,26 @@ serve(async (req) => {
       profileContext += "\nAdatta la difficoltà e gli esempi al livello dello studente.";
     }
 
-    console.log(`Generate lessons for user: ${userId} (authenticated: ${auth.isAuthenticated})`);
+    const { userEmail } = auth;
+    const legacyUserId = userEmail && userEmail !== userId ? userEmail : null;
+
+    console.log(`Generate lessons for user: ${userId} (legacy: ${legacyUserId}) (authenticated: ${auth.isAuthenticated})`);
 
     // ── GENERATE A SINGLE LESSON ──
     if (action === "generateLesson" && lessonIndex !== undefined) {
       let lessonsQuery = supabase.from("mini_lessons").select("*").eq("user_id", userId).eq("lesson_order", lessonIndex);
       if (contextId) lessonsQuery = lessonsQuery.eq("context_id", contextId);
 
-      const { data: lessons } = await lessonsQuery.maybeSingle();
+      let { data: lessons } = await lessonsQuery.maybeSingle();
+
+      // Fallback: try legacy user_id (email)
+      if (!lessons && legacyUserId) {
+        let legacyQuery = supabase.from("mini_lessons").select("*").eq("user_id", legacyUserId).eq("lesson_order", lessonIndex);
+        if (contextId) legacyQuery = legacyQuery.eq("context_id", contextId);
+        const { data: legacyLesson } = await legacyQuery.maybeSingle();
+        lessons = legacyLesson;
+      }
+
       if (!lessons) throw new Error("Lezione non trovata");
       if (lessons.is_generated) return successResponse({ success: true, lesson: lessons });
 
