@@ -1,6 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { validateAuth, corsHeaders, errorResponse, successResponse } from "../_shared/auth.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -20,56 +19,52 @@ serve(async (req) => {
 
     console.log(`Web search for user: ${userId}, topic: "${topic}"`);
 
-    const PERPLEXITY_KEY = Deno.env.get("ERGA_DEMO_PERPLEXITY_KEY");
-    if (!PERPLEXITY_KEY) throw new Error("ERGA_DEMO_PERPLEXITY_KEY mancante");
+    const OPENROUTER_KEY = Deno.env.get("ERGA_DEMO_ROUTER");
+    if (!OPENROUTER_KEY) throw new Error("ERGA_DEMO_ROUTER mancante");
 
-    // Search with Perplexity for comprehensive content
+    // Use Gemini via OpenRouter to generate comprehensive study content
     const searchPrompt = `Fornisci una spiegazione completa e dettagliata sull'argomento: "${topic}".
     
 Includi:
 - Definizioni e concetti fondamentali
 - Spiegazioni approfondite dei principi chiave
 - Esempi pratici e applicazioni
+- Date, nomi e fatti importanti
 - Connessioni con altri argomenti correlati
 
 Scrivi in italiano. Sii esaustivo ma chiaro, come un manuale di studio universitario.
-Obiettivo: il testo deve essere sufficientemente ricco da poterci generare 8-15 mini-lezioni.`;
+Obiettivo: il testo deve essere sufficientemente ricco da poterci generare 8-15 mini-lezioni.
+Scrivi almeno 3000 parole.`;
 
-    const perplexityResponse = await fetch("https://api.perplexity.ai/chat/completions", {
+    const aiResponse = await fetch("https://openrouter.ai/api/v1/chat/completions", {
       method: "POST",
       headers: {
-        "Authorization": `Bearer ${PERPLEXITY_KEY}`,
+        "Authorization": `Bearer ${OPENROUTER_KEY}`,
         "Content-Type": "application/json",
+        "HTTP-Referer": "https://erga-demo.lovable.app",
       },
       body: JSON.stringify({
-        model: "sonar-pro",
+        model: "google/gemini-2.5-flash",
         messages: [
-          { role: "system", content: "Sei un esperto accademico. Fornisci contenuti dettagliati e strutturati per lo studio. Rispondi sempre in italiano." },
+          { role: "system", content: "Sei un esperto accademico e docente universitario. Fornisci contenuti dettagliati, accurati e ben strutturati per lo studio. Rispondi sempre in italiano. Usa titoli, sottotitoli e punti elenco per organizzare il contenuto." },
           { role: "user", content: searchPrompt },
         ],
-        temperature: 0.3,
+        temperature: 0.4,
+        max_tokens: 8000,
       }),
     });
 
-    if (!perplexityResponse.ok) {
-      const errText = await perplexityResponse.text();
-      console.error("Perplexity error:", perplexityResponse.status, errText);
-      if (perplexityResponse.status === 402) {
-        throw new Error("Crediti di ricerca esauriti. Riprova più tardi.");
-      }
-      throw new Error("Errore nella ricerca web");
+    if (!aiResponse.ok) {
+      const errText = await aiResponse.text();
+      console.error("OpenRouter error:", aiResponse.status, errText);
+      throw new Error("Errore nella generazione dei contenuti");
     }
 
-    const perplexityData = await perplexityResponse.json();
-    const content = perplexityData.choices?.[0]?.message?.content;
-    if (!content) throw new Error("Nessun risultato trovato per questo argomento.");
+    const aiData = await aiResponse.json();
+    const content = aiData.choices?.[0]?.message?.content;
+    if (!content) throw new Error("Nessun contenuto generato per questo argomento.");
 
-    const citations = perplexityData.citations || [];
-    const sourcesNote = citations.length > 0
-      ? `\n\nFonti: ${citations.slice(0, 5).join(", ")}`
-      : "";
-
-    const fullContent = content + sourcesNote;
+    console.log(`Generated content length: ${content.length} chars`);
 
     // Save as a study context
     const { data: context, error: insertError } = await supabase
@@ -77,7 +72,7 @@ Obiettivo: il testo deve essere sufficientemente ricco da poterci generare 8-15 
       .insert({
         user_id: userId,
         file_name: `🌐 ${topic}`,
-        content: fullContent,
+        content: content,
         processing_status: "completed",
       })
       .select("id")
@@ -88,12 +83,12 @@ Obiettivo: il testo deve essere sufficientemente ricco da poterci generare 8-15 
       throw new Error("Errore nel salvataggio del contenuto.");
     }
 
-    console.log(`Web search content saved as context ${context.id}, length: ${fullContent.length}`);
+    console.log(`Web search content saved as context ${context.id}`);
 
     return successResponse({
       success: true,
       contextId: context.id,
-      contentLength: fullContent.length,
+      contentLength: content.length,
       topic,
     });
 
