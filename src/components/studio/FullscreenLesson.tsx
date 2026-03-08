@@ -1,9 +1,10 @@
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useEffect } from "react";
 import { X, ChevronRight, Lightbulb, BookOpen, Dumbbell, Trophy, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ExerciseRenderer, Exercise } from "./exercises/ExerciseRenderer";
 import { cn } from "@/lib/utils";
 import ReactMarkdown from "react-markdown";
+import { fireCelebration, fireStarBurst } from "@/lib/confetti";
 
 interface ExplanationPart {
   part_title: string;
