@@ -31,7 +31,7 @@ interface Lesson {
   context_id?: string;
 }
 
-export function StudioView({ hasFiles, onUploadClick, selectedContextId, onClearContext }: StudioViewProps) {
+export function StudioView({ hasFiles, onUploadClick, selectedContextId, onClearContext, onFullscreenChange }: StudioViewProps) {
   const [lessons, setLessons] = useState<Lesson[]>([]);
   const [currentLessonIndex, setCurrentLessonIndex] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
