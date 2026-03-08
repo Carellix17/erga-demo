@@ -106,14 +106,14 @@
     --state-dragged: 0.16;
 
     /* Sidebar */
-    --sidebar-background: 180 8% 96%;
-    --sidebar-foreground: 200 15% 10%;
-    --sidebar-primary: 170 65% 36%;
+    --sidebar-background: 245 18% 96%;
+    --sidebar-foreground: 240 15% 12%;
+    --sidebar-primary: 252 85% 60%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 180 8% 92%;
-    --sidebar-accent-foreground: 200 15% 10%;
-    --sidebar-border: 200 10% 82%;
-    --sidebar-ring: 170 65% 36%;
+    --sidebar-accent: 245 14% 92%;
+    --sidebar-accent-foreground: 240 15% 12%;
+    --sidebar-border: 245 15% 84%;
+    --sidebar-ring: 252 85% 60%;
   }
 
   .dark {
