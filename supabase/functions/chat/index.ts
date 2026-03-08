@@ -39,7 +39,7 @@ serve(async (req) => {
     // Fetch user profile
     const { data: userProfile } = await supabase
       .from("user_profiles")
-      .select("institute_type, subject_levels")
+      .select("institute_type, subject_levels, nickname, first_name")
       .eq("user_id", userId)
       .maybeSingle();
 
