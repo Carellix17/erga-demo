@@ -5,20 +5,20 @@ interface QuickActionsProps {
 }
 
 const quickActions = [
-  { label: "Spiegami meglio", emoji: "💡" },
-  { label: "Fammi un esempio", emoji: "📝" },
-  { label: "Riassumi", emoji: "📋" },
-  { label: "Quiz veloce", emoji: "⚡" },
+  { label: "Spiegami meglio", emoji: "💡", cls: "bg-primary-container text-primary border-primary/20" },
+  { label: "Fammi un esempio", emoji: "📝", cls: "bg-secondary-container text-secondary border-secondary/20" },
+  { label: "Riassumi", emoji: "📋", cls: "bg-tertiary-container text-tertiary border-tertiary/20" },
+  { label: "Quiz veloce", emoji: "⚡", cls: "bg-warning/10 text-warning border-warning/20" },
 ];
 
 export function QuickActions({ onAction }: QuickActionsProps) {
   return (
-    <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+    <div className="flex gap-2.5 overflow-x-auto pb-1 scrollbar-hide">
       {quickActions.map((action) => (
         <button
           key={action.label}
           onClick={() => onAction(action.label)}
-          className="whitespace-nowrap flex-shrink-0 inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-surface-container-low border border-outline-variant/60 text-foreground label-large hover:bg-surface-container-high hover:shadow-level-1 transition-all duration-300 ease-m3-standard active:scale-95"
+          className={`whitespace-nowrap flex-shrink-0 inline-flex items-center gap-2 px-4 py-2.5 rounded-full border label-large hover:shadow-level-1 hover:scale-[1.04] active:scale-95 transition-all duration-400 ease-m3-emphasized ${action.cls}`}
         >
           <span>{action.emoji}</span>
           {action.label}

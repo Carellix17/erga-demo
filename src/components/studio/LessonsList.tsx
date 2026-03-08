@@ -41,6 +41,8 @@ export function LessonsList({
   onStartFinalTest,
   isLoadingFinalTest,
 }: LessonsListProps) {
+  const progress = Math.round((lessons.filter(l => l.is_generated).length / lessons.length) * 100);
+
   return (
     <div className="p-4 pb-24 animate-fade-up">
       {/* Header */}
@@ -72,24 +74,26 @@ export function LessonsList({
         )}
       </div>
 
-      {/* Progress overview */}
-      <div className="m3-card-elevated rounded-3xl p-5 mb-5">
-        <div className="flex items-center gap-3 mb-3">
-          <div className="w-11 h-11 rounded-2xl bg-primary flex items-center justify-center shadow-level-1">
-            <Sparkles className="w-5 h-5 text-primary-foreground" />
+      {/* Progress overview — colorful gradient card */}
+      <div className="rounded-3xl p-5 mb-5 shadow-level-2 gradient-cool text-white relative overflow-hidden">
+        <div className="absolute inset-0 bg-black/5" />
+        <div className="relative z-10">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="w-11 h-11 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
+              <Sparkles className="w-5 h-5 text-white" />
+            </div>
+            <div className="flex-1">
+              <p className="title-small text-white">Progresso totale</p>
+              <p className="body-small text-white/75">{progress}% completato</p>
+            </div>
+            <span className="text-2xl font-display font-bold text-white/90">{progress}%</span>
           </div>
-          <div className="flex-1">
-            <p className="title-small">Progresso totale</p>
-            <p className="body-small text-muted-foreground">
-              {Math.round((lessons.filter(l => l.is_generated).length / lessons.length) * 100)}% completato
-            </p>
+          <div className="h-1.5 bg-white/20 rounded-full overflow-hidden">
+            <div 
+              className="h-full bg-white rounded-full transition-all duration-500 ease-m3-emphasized"
+              style={{ width: `${progress}%` }}
+            />
           </div>
-        </div>
-        <div className="h-1 m3-progress-track">
-          <div 
-            className="h-full m3-progress-indicator"
-            style={{ width: `${(lessons.filter(l => l.is_generated).length / lessons.length) * 100}%` }}
-          />
         </div>
       </div>
 
@@ -118,18 +122,16 @@ export function LessonsList({
               {/* Status Icon */}
               <div className={cn(
                 "w-11 h-11 rounded-2xl flex items-center justify-center flex-shrink-0 transition-all duration-400 ease-m3-emphasized",
-                isCompleted && "bg-success-container",
-                isCurrent && "bg-primary",
+                isCompleted && "bg-success text-white",
+                isCurrent && "gradient-primary text-white",
                 !isCurrent && !isCompleted && "bg-surface-container-highest"
               )}>
                 {isGenerating && isCurrent ? (
-                  <Loader2 className="w-4 h-4 text-primary-foreground animate-spin" />
+                  <Loader2 className="w-4 h-4 animate-spin" />
                 ) : isCompleted ? (
-                  <CheckCircle2 className="w-5 h-5 text-success" />
+                  <CheckCircle2 className="w-5 h-5" />
                 ) : isCurrent ? (
-                  <span className="label-large text-primary-foreground">
-                    {index + 1}
-                  </span>
+                  <span className="label-large">{index + 1}</span>
                 ) : isLocked ? (
                   <Lock className="w-4 h-4 text-muted-foreground" />
                 ) : (
@@ -141,7 +143,7 @@ export function LessonsList({
               <div className="flex-1 min-w-0">
                 <p className={cn(
                   "title-small truncate",
-                  isCurrent && "text-primary",
+                  isCurrent && "text-primary font-semibold",
                   isCompleted && "text-foreground",
                   isLocked && "text-muted-foreground"
                 )}>
@@ -156,8 +158,8 @@ export function LessonsList({
 
               {/* Generated badge */}
               {lesson.is_generated && (
-                <span className="label-small px-3 py-1 rounded-full bg-success-container text-success">
-                  Pronta
+                <span className="label-small px-3 py-1.5 rounded-full bg-success/10 text-success font-semibold">
+                  ✓ Pronta
                 </span>
               )}
             </button>
@@ -165,29 +167,29 @@ export function LessonsList({
         })}
       </div>
 
-      {/* Final Test Button */}
+      {/* Final Test Button — warm gradient */}
       {showFinalTest && onStartFinalTest && (
         <div className="mt-6">
           <button
             onClick={onStartFinalTest}
             disabled={isLoadingFinalTest}
-            className="w-full p-4 rounded-3xl text-left transition-all duration-400 ease-m3-emphasized flex items-center gap-3.5 bg-tertiary-container shadow-level-1 hover:shadow-level-2 hover:scale-[1.01] active:scale-[0.97] state-layer"
+            className="w-full p-4 rounded-3xl text-left transition-all duration-400 ease-m3-emphasized flex items-center gap-3.5 gradient-warm text-white shadow-level-2 hover:shadow-level-3 hover:scale-[1.01] active:scale-[0.97] relative overflow-hidden"
           >
-            <div className="w-11 h-11 rounded-2xl bg-tertiary flex items-center justify-center flex-shrink-0">
+            <div className="w-11 h-11 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center flex-shrink-0">
               {isLoadingFinalTest ? (
-                <Loader2 className="w-5 h-5 text-tertiary-foreground animate-spin" />
+                <Loader2 className="w-5 h-5 text-white animate-spin" />
               ) : (
-                <Target className="w-5 h-5 text-tertiary-foreground" />
+                <Target className="w-5 h-5 text-white" />
               )}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="title-small text-foreground">Test Finale</p>
-              <p className="body-small text-muted-foreground">
+              <p className="title-small text-white font-semibold">Test Finale</p>
+              <p className="body-small text-white/75">
                 {isLoadingFinalTest ? "Generazione in corso..." : "Metti alla prova le tue conoscenze"}
               </p>
             </div>
-            <span className="label-small px-3 py-1 rounded-full bg-tertiary text-tertiary-foreground">
-              Quiz
+            <span className="label-small px-3 py-1.5 rounded-full bg-white/20 text-white font-semibold">
+              🎯 Quiz
             </span>
           </button>
         </div>
