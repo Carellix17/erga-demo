@@ -2,6 +2,7 @@ import { ChevronLeft, CheckCircle2, Circle, Lock, Loader2, Sparkles, RefreshCw, 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Exercise } from "./exercises/ExerciseRenderer";
+import { getStableSubjectColor, type SubjectColor } from "@/lib/subjectColors";
 
 interface Lesson {
   id: string;
@@ -26,6 +27,7 @@ interface LessonsListProps {
   showFinalTest?: boolean;
   onStartFinalTest?: () => void;
   isLoadingFinalTest?: boolean;
+  contextFileName?: string | null;
 }
 
 export function LessonsList({
@@ -40,8 +42,10 @@ export function LessonsList({
   showFinalTest,
   onStartFinalTest,
   isLoadingFinalTest,
+  contextFileName,
 }: LessonsListProps) {
   const progress = Math.round((lessons.filter(l => l.is_generated).length / lessons.length) * 100);
+  const color = getStableSubjectColor(contextFileName || "");
 
   return (
     <div className="p-4 pb-24 animate-fade-up">
@@ -74,8 +78,11 @@ export function LessonsList({
         )}
       </div>
 
-      {/* Progress overview — colorful gradient card */}
-      <div className="rounded-3xl p-5 mb-5 shadow-level-2 gradient-cool text-white relative overflow-hidden">
+      {/* Progress overview — subject-colored gradient card */}
+      <div className={cn(
+        "rounded-3xl p-5 mb-5 shadow-level-2 text-white relative overflow-hidden bg-gradient-to-r",
+        color.gradient
+      )}>
         <div className="absolute inset-0 bg-black/5" />
         <div className="relative z-10">
           <div className="flex items-center gap-3 mb-3">
@@ -112,7 +119,7 @@ export function LessonsList({
               className={cn(
                 "w-full p-4 rounded-3xl text-left transition-all duration-400 ease-m3-emphasized",
                 "flex items-center gap-3.5 state-layer active:scale-[0.97]",
-                isCurrent && "bg-primary-container shadow-level-1",
+                isCurrent && `${color.bg} shadow-level-1 border ${color.border}`,
                 isCompleted && !isCurrent && "bg-surface-container-low",
                 !isCurrent && !isCompleted && "bg-surface-container-low",
                 isLocked && "opacity-38",
@@ -123,7 +130,7 @@ export function LessonsList({
               <div className={cn(
                 "w-11 h-11 rounded-2xl flex items-center justify-center flex-shrink-0 transition-all duration-400 ease-m3-emphasized",
                 isCompleted && "bg-success text-white",
-                isCurrent && "gradient-primary text-white",
+                isCurrent && `${color.bgActive} ${color.textActive}`,
                 !isCurrent && !isCompleted && "bg-surface-container-highest"
               )}>
                 {isGenerating && isCurrent ? (
@@ -143,7 +150,7 @@ export function LessonsList({
               <div className="flex-1 min-w-0">
                 <p className={cn(
                   "title-small truncate",
-                  isCurrent && "text-primary font-semibold",
+                  isCurrent && `${color.text} font-semibold`,
                   isCompleted && "text-foreground",
                   isLocked && "text-muted-foreground"
                 )}>
@@ -158,7 +165,10 @@ export function LessonsList({
 
               {/* Generated badge */}
               {lesson.is_generated && (
-                <span className="label-small px-3 py-1.5 rounded-full bg-success/10 text-success font-semibold">
+                <span className={cn(
+                  "label-small px-3 py-1.5 rounded-full font-semibold",
+                  color.badge, color.badgeText
+                )}>
                   ✓ Pronta
                 </span>
               )}
@@ -167,13 +177,18 @@ export function LessonsList({
         })}
       </div>
 
-      {/* Final Test Button — warm gradient */}
+      {/* Final Test Button — subject-colored */}
       {showFinalTest && onStartFinalTest && (
         <div className="mt-6">
           <button
             onClick={onStartFinalTest}
             disabled={isLoadingFinalTest}
-            className="w-full p-4 rounded-3xl text-left transition-all duration-400 ease-m3-emphasized flex items-center gap-3.5 gradient-warm text-white shadow-level-2 hover:shadow-level-3 hover:scale-[1.01] active:scale-[0.97] relative overflow-hidden"
+            className={cn(
+              "w-full p-4 rounded-3xl text-left transition-all duration-400 ease-m3-emphasized",
+              "flex items-center gap-3.5 text-white shadow-level-2 hover:shadow-level-3 hover:scale-[1.01] active:scale-[0.97]",
+              "relative overflow-hidden bg-gradient-to-r",
+              color.gradient
+            )}
           >
             <div className="w-11 h-11 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center flex-shrink-0">
               {isLoadingFinalTest ? (
