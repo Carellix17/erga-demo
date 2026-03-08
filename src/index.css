@@ -438,17 +438,18 @@
   .m3-fab-secondary { background-color: hsl(var(--secondary-container)); color: hsl(var(--on-secondary-container)); }
   .m3-fab-tertiary { background-color: hsl(var(--tertiary-container)); color: hsl(var(--on-tertiary-container)); }
 
-  /* ═══════ M3 NAVIGATION BAR ═══════ */
+  /* ═══════ M3 NAVIGATION BAR — Expressive ═══════ */
   .m3-nav-bar {
     background-color: hsl(var(--surface-container));
     box-shadow: var(--shadow-level-2);
+    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
   }
   .m3-nav-indicator {
     background-color: hsl(var(--secondary-container));
     border-radius: var(--radius-full);
     width: 4rem;
     height: 2rem;
-    transition: all 500ms cubic-bezier(0.34, 1.56, 0.64, 1);
+    transition: all 600ms cubic-bezier(0.34, 1.56, 0.64, 1);
   }
 
   /* ═══════ M3 TOP APP BAR ═══════ */
