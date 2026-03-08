@@ -73,9 +73,9 @@ export function LessonsList({
       </div>
 
       {/* Progress overview */}
-      <div className="m3-card-elevated rounded-xl p-4 mb-5">
+      <div className="m3-card-elevated rounded-3xl p-5 mb-5">
         <div className="flex items-center gap-3 mb-3">
-          <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center">
+          <div className="w-11 h-11 rounded-2xl bg-primary flex items-center justify-center shadow-level-1">
             <Sparkles className="w-5 h-5 text-primary-foreground" />
           </div>
           <div className="flex-1">
@@ -94,7 +94,7 @@ export function LessonsList({
       </div>
 
       {/* Lessons List */}
-      <div className="space-y-2">
+      <div className="space-y-2.5">
         {lessons.map((lesson, index) => {
           const isCompleted = index < currentIndex;
           const isCurrent = index === currentIndex;
@@ -106,18 +106,18 @@ export function LessonsList({
               onClick={() => !isGenerating && onSelectLesson(index)}
               disabled={isGenerating}
               className={cn(
-                "w-full p-4 rounded-xl text-left transition-all duration-300 ease-m3-emphasized",
-                "flex items-center gap-3 state-layer",
-                isCurrent && "bg-primary-container",
+                "w-full p-4 rounded-3xl text-left transition-all duration-400 ease-m3-emphasized",
+                "flex items-center gap-3.5 state-layer active:scale-[0.97]",
+                isCurrent && "bg-primary-container shadow-level-1",
                 isCompleted && !isCurrent && "bg-surface-container-low",
                 !isCurrent && !isCompleted && "bg-surface-container-low",
                 isLocked && "opacity-38",
-                !isGenerating && "hover:shadow-level-1"
+                !isGenerating && "hover:shadow-level-1 hover:scale-[1.01]"
               )}
             >
               {/* Status Icon */}
               <div className={cn(
-                "w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 transition-all duration-300",
+                "w-11 h-11 rounded-2xl flex items-center justify-center flex-shrink-0 transition-all duration-400 ease-m3-emphasized",
                 isCompleted && "bg-success-container",
                 isCurrent && "bg-primary",
                 !isCurrent && !isCompleted && "bg-surface-container-highest"
@@ -171,9 +171,9 @@ export function LessonsList({
           <button
             onClick={onStartFinalTest}
             disabled={isLoadingFinalTest}
-            className="w-full p-4 rounded-xl text-left transition-all duration-300 ease-m3-emphasized flex items-center gap-3 bg-tertiary-container shadow-level-1 hover:shadow-level-2 state-layer"
+            className="w-full p-4 rounded-3xl text-left transition-all duration-400 ease-m3-emphasized flex items-center gap-3.5 bg-tertiary-container shadow-level-1 hover:shadow-level-2 hover:scale-[1.01] active:scale-[0.97] state-layer"
           >
-            <div className="w-10 h-10 rounded-full bg-tertiary flex items-center justify-center flex-shrink-0">
+            <div className="w-11 h-11 rounded-2xl bg-tertiary flex items-center justify-center flex-shrink-0">
               {isLoadingFinalTest ? (
                 <Loader2 className="w-5 h-5 text-tertiary-foreground animate-spin" />
               ) : (
