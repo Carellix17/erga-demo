@@ -108,12 +108,19 @@ serve(async (req) => {
 
       let studyContent = "";
       if (lessons.context_id) {
-        const { data: context } = await supabase.from("study_contexts").select("content, file_name, processing_status").eq("id", lessons.context_id).eq("user_id", userId).single();
+        // Try with UUID first, then legacy email
+        let { data: context } = await supabase.from("study_contexts").select("content, file_name, processing_status").eq("id", lessons.context_id).eq("user_id", userId).single();
+        if (!context && legacyUserId) {
+          const { data: legacyCtx } = await supabase.from("study_contexts").select("content, file_name, processing_status").eq("id", lessons.context_id).eq("user_id", legacyUserId).single();
+          context = legacyCtx;
+        }
         if (context?.processing_status !== "completed") throw new Error("Il PDF è ancora in elaborazione. Riprova tra qualche secondo.");
         if (context?.content) studyContent = `FILE: ${context.file_name}\n${context.content}`.substring(0, MAX_CONTEXT_CHARS);
       } else {
         const { data: contexts } = await supabase.from("study_contexts").select("content, file_name").eq("user_id", userId);
-        if (contexts) studyContent = contexts.map((c: { file_name: string; content: string }) => `FILE: ${c.file_name}\n${c.content}`).join("\n\n").substring(0, MAX_CONTEXT_CHARS);
+        const { data: legacyCtxs } = legacyUserId ? await supabase.from("study_contexts").select("content, file_name").eq("user_id", legacyUserId) : { data: null };
+        const allCtxs = [...(contexts || []), ...(legacyCtxs || [])];
+        if (allCtxs.length) studyContent = allCtxs.map((c: { file_name: string; content: string }) => `FILE: ${c.file_name}\n${c.content}`).join("\n\n").substring(0, MAX_CONTEXT_CHARS);
       }
       if (!studyContent) throw new Error("Contenuto vuoto. Caricamento fallito?");
 
