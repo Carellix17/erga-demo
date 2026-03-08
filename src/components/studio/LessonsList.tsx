@@ -117,7 +117,7 @@ export function LessonsList({
             >
               {/* Status Icon */}
               <div className={cn(
-                "w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 transition-all duration-300",
+                "w-11 h-11 rounded-2xl flex items-center justify-center flex-shrink-0 transition-all duration-400 ease-m3-emphasized",
                 isCompleted && "bg-success-container",
                 isCurrent && "bg-primary",
                 !isCurrent && !isCompleted && "bg-surface-container-highest"
