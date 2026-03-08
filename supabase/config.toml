@@ -29,3 +29,6 @@ verify_jwt = false
 
 [functions.web-search]
 verify_jwt = false
+
+[functions.user-data]
+verify_jwt = false
