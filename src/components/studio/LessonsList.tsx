@@ -106,13 +106,13 @@ export function LessonsList({
               onClick={() => !isGenerating && onSelectLesson(index)}
               disabled={isGenerating}
               className={cn(
-                "w-full p-4 rounded-xl text-left transition-all duration-300 ease-m3-emphasized",
-                "flex items-center gap-3 state-layer",
-                isCurrent && "bg-primary-container",
+                "w-full p-4 rounded-3xl text-left transition-all duration-400 ease-m3-emphasized",
+                "flex items-center gap-3.5 state-layer active:scale-[0.97]",
+                isCurrent && "bg-primary-container shadow-level-1",
                 isCompleted && !isCurrent && "bg-surface-container-low",
                 !isCurrent && !isCompleted && "bg-surface-container-low",
                 isLocked && "opacity-38",
-                !isGenerating && "hover:shadow-level-1"
+                !isGenerating && "hover:shadow-level-1 hover:scale-[1.01]"
               )}
             >
               {/* Status Icon */}
