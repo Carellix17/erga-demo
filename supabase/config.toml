@@ -26,3 +26,6 @@ verify_jwt = false
 
 [functions.user-profile]
 verify_jwt = false
+
+[functions.web-search]
+verify_jwt = false
