@@ -24,6 +24,7 @@ const Index = () => {
   const [hasCloudContent, setHasCloudContent] = useState(false);
   const [selectedContextId, setSelectedContextId] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const { currentUser } = useAuth();
   
   const { data: uploadedFiles, updateData: setUploadedFiles } = useUserData<UploadedFile[]>(
