@@ -94,7 +94,7 @@ export function LessonsList({
       </div>
 
       {/* Lessons List */}
-      <div className="space-y-2">
+      <div className="space-y-2.5">
         {lessons.map((lesson, index) => {
           const isCompleted = index < currentIndex;
           const isCurrent = index === currentIndex;
