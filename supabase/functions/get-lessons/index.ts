@@ -30,12 +30,18 @@ serve(async (req) => {
       }
 
       const { data: lessons, error: lessonsError } = await lessonsQuery;
-      const { data: legacyLessons } = legacyUserId
-        ? await supabase
+      let legacyLessonsQuery = legacyUserId
+        ? supabase
             .from("mini_lessons")
             .select("*")
             .eq("user_id", legacyUserId)
             .order("lesson_order", { ascending: true })
+        : null;
+      if (legacyLessonsQuery && contextId) {
+        legacyLessonsQuery = legacyLessonsQuery.eq("context_id", contextId);
+      }
+      const { data: legacyLessons } = legacyLessonsQuery
+        ? await legacyLessonsQuery
         : { data: null };
 
       // Get progress
