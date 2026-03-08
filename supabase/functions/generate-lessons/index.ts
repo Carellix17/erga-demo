@@ -159,9 +159,15 @@ ${studyContent}`;
       console.log("AI lesson response (first 300 chars):", content.substring(0, 300));
       const lessonData = extractJson(content) as Record<string, unknown>;
 
+      // Build explanation from parts if available, fallback to legacy
+      let explanation = lessonData.explanation || "";
+      if (Array.isArray(lessonData.explanation_parts) && lessonData.explanation_parts.length > 0) {
+        explanation = JSON.stringify(lessonData.explanation_parts);
+      }
+
       await supabase.from("mini_lessons").update({
         concept: lessonData.concept || "",
-        explanation: lessonData.explanation || "",
+        explanation,
         example: lessonData.example || "",
         exercises: lessonData.exercises || [],
         is_generated: true,
