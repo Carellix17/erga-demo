@@ -24,11 +24,11 @@ const buttonVariants = cva(
         tonal:
           "bg-secondary-container text-secondary-foreground hover:shadow-level-1 hover:scale-[1.03] rounded-full state-layer",
         fab:
-          "bg-primary-container text-primary shadow-level-3 hover:shadow-level-4 rounded-lg state-layer",
+          "bg-primary-container text-primary shadow-level-3 hover:shadow-level-4 hover:scale-[1.06] rounded-2xl state-layer",
         "fab-secondary":
-          "bg-secondary-container text-secondary shadow-level-3 hover:shadow-level-4 rounded-lg state-layer",
+          "bg-secondary-container text-secondary shadow-level-3 hover:shadow-level-4 hover:scale-[1.06] rounded-2xl state-layer",
         "fab-tertiary":
-          "bg-tertiary-container text-tertiary shadow-level-3 hover:shadow-level-4 rounded-lg state-layer",
+          "bg-tertiary-container text-tertiary shadow-level-3 hover:shadow-level-4 hover:scale-[1.06] rounded-2xl state-layer",
         elevated:
           "bg-surface-container-low text-primary shadow-level-1 hover:shadow-level-2 rounded-full state-layer",
       },
