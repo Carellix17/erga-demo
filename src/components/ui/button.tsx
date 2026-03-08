@@ -22,7 +22,7 @@ const buttonVariants = cva(
         link:
           "text-primary underline-offset-4 hover:underline",
         tonal:
-          "bg-secondary-container text-secondary-foreground hover:shadow-level-1 rounded-full state-layer",
+          "bg-secondary-container text-secondary-foreground hover:shadow-level-1 hover:scale-[1.03] rounded-full state-layer",
         fab:
           "bg-primary-container text-primary shadow-level-3 hover:shadow-level-4 rounded-lg state-layer",
         "fab-secondary":
