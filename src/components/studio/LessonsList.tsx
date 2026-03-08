@@ -73,7 +73,7 @@ export function LessonsList({
       </div>
 
       {/* Progress overview */}
-      <div className="m3-card-elevated rounded-xl p-4 mb-5">
+      <div className="m3-card-elevated rounded-3xl p-5 mb-5">
         <div className="flex items-center gap-3 mb-3">
           <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center">
             <Sparkles className="w-5 h-5 text-primary-foreground" />
