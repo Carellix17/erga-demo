@@ -1,7 +1,7 @@
-import { BookOpen, CalendarDays, MessageCircle, User } from "lucide-react";
+import { BookOpen, CalendarDays, GraduationCap, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-type Tab = "studio" | "piano" | "chat" | "profilo";
+type Tab = "studio" | "piano" | "pratica" | "profilo";
 
 interface BottomNavProps {
   activeTab: Tab;
@@ -11,7 +11,7 @@ interface BottomNavProps {
 const tabs = [
   { id: "studio" as Tab, label: "Studio", icon: BookOpen, color: "bg-primary-container text-primary" },
   { id: "piano" as Tab, label: "Piano", icon: CalendarDays, color: "bg-secondary-container text-secondary" },
-  { id: "chat" as Tab, label: "Chat", icon: MessageCircle, color: "bg-tertiary-container text-tertiary" },
+  { id: "pratica" as Tab, label: "Pratica", icon: GraduationCap, color: "bg-tertiary-container text-tertiary" },
   { id: "profilo" as Tab, label: "Profilo", icon: User, color: "bg-surface-container-highest text-foreground" },
 ];
 

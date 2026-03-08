@@ -118,8 +118,8 @@ const Index = () => {
             onUploadClick={() => setShowUpload(true)}
           />
         )}
-        {activeTab === "chat" && (
-          <ChatView
+        {activeTab === "pratica" && (
+          <PraticaView
             hasFiles={hasFiles}
             onUploadClick={() => setShowUpload(true)}
           />
