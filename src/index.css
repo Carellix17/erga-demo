@@ -421,18 +421,18 @@
     color: hsl(var(--foreground));
   }
 
-  /* ═══════ M3 FAB ═══════ */
+  /* ═══════ M3 FAB — Expressive ═══════ */
   .m3-fab {
-    border-radius: var(--radius-lg);
+    border-radius: var(--radius-xl);
     box-shadow: var(--shadow-level-3);
-    transition: box-shadow 280ms cubic-bezier(0.2, 0, 0, 1), transform 400ms cubic-bezier(0.34, 1.56, 0.64, 1);
+    transition: box-shadow 280ms cubic-bezier(0.2, 0, 0, 1), transform 500ms cubic-bezier(0.34, 1.56, 0.64, 1);
   }
   .m3-fab:hover {
     box-shadow: var(--shadow-level-4);
-    transform: scale(1.05);
+    transform: scale(1.08);
   }
   .m3-fab:active {
-    transform: scale(0.95);
+    transform: scale(0.92);
   }
   .m3-fab-primary { background-color: hsl(var(--primary-container)); color: hsl(var(--on-primary-container)); }
   .m3-fab-secondary { background-color: hsl(var(--secondary-container)); color: hsl(var(--on-secondary-container)); }
