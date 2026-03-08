@@ -11,40 +11,40 @@
 
 @layer base {
   :root {
-    /* ─── M3 Color System ─── Light Scheme ─── VIBRANT ─── */
+    /* ─── M3 Color System ─── Light Scheme ─── PUNCHY & YOUTHFUL ─── */
 
-    /* Primary — Bold Teal */
-    --primary: 170 65% 36%;
+    /* Primary — Electric Indigo */
+    --primary: 252 85% 60%;
     --primary-foreground: 0 0% 100%;
-    --primary-container: 168 70% 88%;
-    --on-primary-container: 170 80% 10%;
+    --primary-container: 250 100% 93%;
+    --on-primary-container: 252 90% 22%;
 
-    /* Secondary — Warm Coral */
-    --secondary: 12 70% 55%;
+    /* Secondary — Hot Pink */
+    --secondary: 340 82% 58%;
     --secondary-foreground: 0 0% 100%;
-    --secondary-container: 14 85% 92%;
-    --on-secondary-container: 12 60% 14%;
+    --secondary-container: 340 100% 93%;
+    --on-secondary-container: 340 70% 18%;
 
-    /* Tertiary — Vivid Violet */
-    --tertiary: 270 55% 55%;
+    /* Tertiary — Vivid Cyan */
+    --tertiary: 185 90% 42%;
     --tertiary-foreground: 0 0% 100%;
-    --tertiary-container: 272 70% 93%;
-    --on-tertiary-container: 270 50% 16%;
+    --tertiary-container: 185 80% 90%;
+    --on-tertiary-container: 185 85% 12%;
 
     /* Error */
-    --destructive: 0 72% 51%;
+    --destructive: 4 80% 56%;
     --destructive-foreground: 0 0% 100%;
-    --error-container: 0 80% 93%;
-    --on-error-container: 0 55% 14%;
+    --error-container: 4 90% 94%;
+    --on-error-container: 4 60% 16%;
 
-    /* Success — Lively Green */
-    --success: 152 60% 38%;
+    /* Success — Emerald */
+    --success: 160 70% 40%;
     --success-foreground: 0 0% 100%;
-    --success-container: 150 55% 90%;
+    --success-container: 158 65% 90%;
 
-    /* Warning — Bright Amber */
-    --warning: 38 92% 50%;
-    --warning-foreground: 38 100% 10%;
+    /* Warning — Sunny Orange */
+    --warning: 32 95% 52%;
+    --warning-foreground: 32 100% 10%;
 
     /* Surface / Background */
     --background: 180 8% 98%;
