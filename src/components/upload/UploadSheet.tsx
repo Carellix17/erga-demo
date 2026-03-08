@@ -180,7 +180,7 @@ export function UploadSheet({ open, onOpenChange, onUpload, uploadedFiles, onSel
   };
 
   if (generationStep !== "idle") {
-    const isWebFlow = generationStep === "searching" || (isSearching && generationStep !== "idle");
+    const isWebFlow = generationStep === "searching" || isSearching;
     const progressSteps = isWebFlow
       ? [
           { step: "searching", label: "Ricerca", icon: Globe },
