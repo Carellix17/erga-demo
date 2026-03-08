@@ -81,14 +81,15 @@
     --inverse-on-surface: 180 8% 92%;
     --inverse-primary: 168 55% 75%;
 
-    /* ─── M3 Shape Scale ─── */
-    --radius-xs: 0.25rem;
-    --radius-sm: 0.5rem;
-    --radius-md: 0.75rem;
-    --radius-lg: 1rem;
-    --radius-xl: 1.75rem;
+    /* ─── M3 Expressive Shape Scale ─── */
+    --radius-xs: 0.5rem;
+    --radius-sm: 0.75rem;
+    --radius-md: 1rem;
+    --radius-lg: 1.5rem;
+    --radius-xl: 2rem;
+    --radius-2xl: 1.75rem;
     --radius-full: 9999px;
-    --radius: 0.75rem;
+    --radius: 1rem;
 
     /* ─── M3 Elevation Shadows ─── */
     --shadow-level-0: none;
