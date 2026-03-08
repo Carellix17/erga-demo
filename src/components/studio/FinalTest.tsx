@@ -27,6 +27,7 @@ export function FinalTest({ exercises, onClose, onComplete }: FinalTestProps) {
 
   const handleContinue = useCallback(() => {
     if (showResults) {
+      fireCelebration();
       onComplete();
       return;
     }
@@ -35,6 +36,7 @@ export function FinalTest({ exercises, onClose, onComplete }: FinalTestProps) {
       setAnswered(false);
     } else {
       setShowResults(true);
+      fireCelebration();
     }
   }, [currentIndex, total, showResults, onComplete]);
 
