@@ -3,7 +3,7 @@ import { AppHeader } from "@/components/layout/AppHeader";
 import { BottomNav } from "@/components/layout/BottomNav";
 import { StudioView } from "@/components/studio/StudioView";
 import { PianoView } from "@/components/piano/PianoView";
-import { ChatView } from "@/components/chat/ChatView";
+import { PraticaView } from "@/components/pratica/PraticaView";
 import { ProfileView } from "@/components/profile/ProfileView";
 import { UploadSheet } from "@/components/upload/UploadSheet";
 import { useUserData } from "@/hooks/useUserData";
