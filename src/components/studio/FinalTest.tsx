@@ -3,6 +3,7 @@ import { X, ChevronRight, Trophy, Target, Award } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ExerciseRenderer, Exercise } from "./exercises/ExerciseRenderer";
 import { cn } from "@/lib/utils";
+import { fireCelebration } from "@/lib/confetti";
 
 interface FinalTestProps {
   exercises: Exercise[];
