@@ -64,7 +64,8 @@ export function StudioView({ hasFiles, onUploadClick, selectedContextId, onClear
           body: JSON.stringify({ userId: currentUser, action: "listContexts" }) }
       );
       const contextsData = await contextsResponse.json();
-      const contexts = (contextsData.contexts || []) as { id: string; file_name?: string; processing_status?: string | null }[];
+      const contexts = (contextsData.contexts || []) as { id: string; file_name: string; processing_status?: string | null }[];
+      setAllContexts(contexts);
       const availableContextIds = new Set(contexts.map((c) => c.id));
       const latestContext = contexts[0] || null;
       let effectiveContextId = selectedContextId && availableContextIds.has(selectedContextId) ? selectedContextId : null;
