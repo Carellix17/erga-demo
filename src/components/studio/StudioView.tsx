@@ -16,6 +16,7 @@ interface StudioViewProps {
   onUploadClick: () => void;
   selectedContextId?: string | null;
   onClearContext?: () => void;
+  onFullscreenChange?: (isFullscreen: boolean) => void;
 }
 
 interface Lesson {
