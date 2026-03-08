@@ -16,7 +16,7 @@ const buttonVariants = cva(
         outline:
           "border border-outline bg-transparent text-primary hover:bg-primary/[0.08] rounded-full",
         secondary:
-          "bg-secondary-container text-secondary-foreground shadow-level-0 hover:shadow-level-1 rounded-full state-layer",
+          "bg-secondary-container text-secondary-foreground shadow-level-0 hover:shadow-level-1 hover:scale-[1.03] rounded-full state-layer",
         ghost:
           "text-foreground hover:bg-foreground/[0.08] rounded-full",
         link:
