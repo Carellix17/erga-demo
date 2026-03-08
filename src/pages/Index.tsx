@@ -109,6 +109,7 @@ const Index = () => {
             onUploadClick={() => setShowUpload(true)}
             selectedContextId={selectedContextId}
             onClearContext={() => setSelectedContextId(null)}
+            onFullscreenChange={setIsFullscreen}
           />
         )}
         {activeTab === "piano" && (
