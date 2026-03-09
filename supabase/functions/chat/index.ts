@@ -136,9 +136,9 @@ ${eventsText}`;
       ...trimmedHistory,
     ];
 
-    const OPENROUTER_KEY = Deno.env.get("ERGA_DEMO_ROUTER");
-    if (!OPENROUTER_KEY) {
-      throw new Error("ERGA_DEMO_ROUTER is not configured");
+    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    if (!LOVABLE_API_KEY) {
+      throw new Error("LOVABLE_API_KEY is not configured");
     }
 
     // Check if any message has image content - use vision model
@@ -146,15 +146,14 @@ ${eventsText}`;
       Array.isArray(m.content) && m.content.some((p: any) => p.type === "image_url")
     );
 
-    const model = hasImages ? "google/gemini-2.5-flash" : "google/gemini-2.5-flash";
-    console.log(`Calling OpenRouter with ${model}${hasImages ? " (vision mode)" : ""}`);
+    const model = "google/gemini-2.5-flash";
+    console.log(`Calling Lovable AI with ${model}${hasImages ? " (vision mode)" : ""}`);
 
-    const aiResponse = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+    const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${OPENROUTER_KEY}`,
-        "HTTP-Referer": "https://erga-demo.lovable.app",
+        "Authorization": `Bearer ${LOVABLE_API_KEY}`,
       },
       body: JSON.stringify({
         model,

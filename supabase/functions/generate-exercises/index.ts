@@ -40,8 +40,8 @@ serve(async (req) => {
 
     const trimmed = studyContent.slice(0, 15000);
 
-    const OPENROUTER_KEY = Deno.env.get("ERGA_DEMO_ROUTER");
-    if (!OPENROUTER_KEY) throw new Error("ERGA_DEMO_ROUTER not configured");
+    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
 
     const prompt = `Genera 8 esercizi variegati basati ESCLUSIVAMENTE su questi materiali di studio. Usa TUTTI questi tipi di esercizio (almeno uno per tipo):
 
@@ -93,12 +93,11 @@ Rispondi SOLO con un array JSON valido. Ogni esercizio ha questa struttura:
   }
 ]`;
 
-    const resp = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+    const resp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${OPENROUTER_KEY}`,
-        "HTTP-Referer": "https://erga-demo.lovable.app",
+        Authorization: `Bearer ${LOVABLE_API_KEY}`,
       },
       body: JSON.stringify({
         model: "google/gemini-2.5-flash",

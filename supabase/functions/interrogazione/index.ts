@@ -44,16 +44,15 @@ serve(async (req) => {
       return errorResponse("Nessun contenuto di studio trovato", 400);
     }
 
-    const OPENROUTER_KEY = Deno.env.get("ERGA_DEMO_ROUTER");
-    if (!OPENROUTER_KEY) throw new Error("ERGA_DEMO_ROUTER not configured");
+    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
 
     const callAI = async (messages: any[], temperature = 0.7) => {
-      const resp = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+      const resp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${OPENROUTER_KEY}`,
-          "HTTP-Referer": "https://erga-demo.lovable.app",
+          Authorization: `Bearer ${LOVABLE_API_KEY}`,
         },
         body: JSON.stringify({
           model: "google/gemini-2.5-flash",

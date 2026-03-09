@@ -19,12 +19,11 @@ serve(async (req) => {
 
     console.log(`Web search for user: ${userId}, topic: "${topic}"`);
 
-    const OPENROUTER_KEY = Deno.env.get("ERGA_DEMO_ROUTER");
-    if (!OPENROUTER_KEY) throw new Error("ERGA_DEMO_ROUTER mancante");
+    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY mancante");
 
-    // Use Gemini via OpenRouter to generate comprehensive study content
     const searchPrompt = `Fornisci una spiegazione completa e dettagliata sull'argomento: "${topic}".
-    
+     
 Includi:
 - Definizioni e concetti fondamentali
 - Spiegazioni approfondite dei principi chiave
@@ -36,12 +35,11 @@ Scrivi in italiano. Sii esaustivo ma chiaro, come un manuale di studio universit
 Obiettivo: il testo deve essere sufficientemente ricco da poterci generare 8-15 mini-lezioni.
 Scrivi almeno 3000 parole.`;
 
-    const aiResponse = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+    const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
-        "Authorization": `Bearer ${OPENROUTER_KEY}`,
+        "Authorization": `Bearer ${LOVABLE_API_KEY}`,
         "Content-Type": "application/json",
-        "HTTP-Referer": "https://erga-demo.lovable.app",
       },
       body: JSON.stringify({
         model: "google/gemini-2.5-flash",
