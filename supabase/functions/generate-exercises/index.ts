@@ -19,6 +19,7 @@ serve(async (req) => {
       .from("study_contexts")
       .select("content, file_name")
       .eq("id", contextId)
+      .eq("user_id", userId)
       .single();
 
     let studyContent = ctx?.content;
@@ -29,6 +30,7 @@ serve(async (req) => {
           .from("study_contexts")
           .select("content, file_name")
           .eq("id", contextId)
+          .eq("user_id", legacyUserId)
           .single();
         studyContent = legacyCtx?.content;
       }

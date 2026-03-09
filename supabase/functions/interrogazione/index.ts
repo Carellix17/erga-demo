@@ -21,6 +21,7 @@ serve(async (req) => {
         .from("study_contexts")
         .select("content, file_name")
         .eq("id", contextId)
+        .eq("user_id", userId)
         .single();
       if (ctx) {
         studyContent = ctx.content.slice(0, 12000);
@@ -32,6 +33,7 @@ serve(async (req) => {
             .from("study_contexts")
             .select("content, file_name")
             .eq("id", contextId)
+            .eq("user_id", legacyUserId)
             .single();
           if (legacyCtx) studyContent = legacyCtx.content.slice(0, 12000);
         }
