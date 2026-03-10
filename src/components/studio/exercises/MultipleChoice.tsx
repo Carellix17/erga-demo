@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
 import { CheckCircle2, XCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -12,11 +11,7 @@ interface MultipleChoiceProps {
 }
 
 export function MultipleChoice({
-  question,
-  options,
-  correctIndex,
-  onComplete,
-  isCompleted,
+  question, options, correctIndex, onComplete, isCompleted,
 }: MultipleChoiceProps) {
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const [showResult, setShowResult] = useState(false);
@@ -24,69 +19,79 @@ export function MultipleChoice({
   const handleSelect = (index: number) => {
     if (showResult) return;
     setSelectedIndex(index);
-  };
-
-  const handleSubmit = () => {
-    if (selectedIndex === null) return;
-    setShowResult(true);
-    onComplete(selectedIndex === correctIndex);
+    // Auto-submit on tap like Duolingo
+    setTimeout(() => {
+      setShowResult(true);
+      onComplete(index === correctIndex);
+    }, 300);
   };
 
   const isCorrect = selectedIndex === correctIndex;
 
   return (
-    <div className="space-y-4">
-      <p className="font-medium text-foreground">{question}</p>
+    <div className="space-y-5">
+      <p className="title-medium text-foreground">{question}</p>
       
-      <div className="space-y-2">
-        {options.map((option, index) => (
-          <button
-            key={index}
-            onClick={() => handleSelect(index)}
-            disabled={showResult}
-            className={cn(
-              "w-full p-3 text-left rounded-xl border-2 transition-all",
-              selectedIndex === index && !showResult && "border-primary bg-primary/10",
-              selectedIndex !== index && !showResult && "border-border hover:border-primary/50",
-              showResult && index === correctIndex && "border-green-500 bg-green-50 dark:bg-green-900/20",
-              showResult && selectedIndex === index && index !== correctIndex && "border-red-500 bg-red-50 dark:bg-red-900/20",
-              showResult && selectedIndex !== index && index !== correctIndex && "border-border opacity-50"
-            )}
-          >
-            <div className="flex items-center justify-between">
-              <span className={cn(
-                showResult && index === correctIndex && "text-green-700 dark:text-green-400",
-                showResult && selectedIndex === index && index !== correctIndex && "text-red-700 dark:text-red-400"
-              )}>
-                {option}
-              </span>
-              {showResult && index === correctIndex && (
-                <CheckCircle2 className="w-5 h-5 text-green-500" />
+      <div className="space-y-2.5">
+        {options.map((option, index) => {
+          const isSelected = selectedIndex === index;
+          const isCorrectOption = index === correctIndex;
+          
+          return (
+            <button
+              key={index}
+              onClick={() => handleSelect(index)}
+              disabled={showResult}
+              className={cn(
+                "w-full p-4 text-left rounded-2xl border-2 transition-all duration-300 ease-m3-emphasized animate-option-pop",
+                // Default
+                !showResult && !isSelected && "border-outline-variant bg-surface-container-lowest hover:border-primary/50 hover:bg-primary/5 active:scale-[0.97]",
+                // Selected pre-submit
+                !showResult && isSelected && "border-primary bg-primary/10 scale-[1.02] shadow-level-1",
+                // Correct answer revealed
+                showResult && isCorrectOption && "border-success bg-success-container animate-feedback-correct",
+                // Wrong answer selected
+                showResult && isSelected && !isCorrectOption && "border-destructive bg-destructive/10 animate-feedback-wrong",
+                // Other options after submit
+                showResult && !isSelected && !isCorrectOption && "border-outline-variant opacity-40"
               )}
-              {showResult && selectedIndex === index && index !== correctIndex && (
-                <XCircle className="w-5 h-5 text-red-500" />
-              )}
-            </div>
-          </button>
-        ))}
+              style={{ animationDelay: `${index * 60}ms` }}
+            >
+              <div className="flex items-center gap-3">
+                <div className={cn(
+                  "w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold shrink-0 transition-all",
+                  !showResult && !isSelected && "bg-surface-container-highest text-muted-foreground",
+                  !showResult && isSelected && "bg-primary text-primary-foreground",
+                  showResult && isCorrectOption && "bg-success text-white",
+                  showResult && isSelected && !isCorrectOption && "bg-destructive text-white",
+                )}>
+                  {showResult && isCorrectOption ? (
+                    <CheckCircle2 className="w-5 h-5" />
+                  ) : showResult && isSelected && !isCorrectOption ? (
+                    <XCircle className="w-5 h-5" />
+                  ) : (
+                    String.fromCharCode(65 + index)
+                  )}
+                </div>
+                <span className={cn(
+                  "body-large flex-1",
+                  showResult && isCorrectOption && "text-success font-medium",
+                  showResult && isSelected && !isCorrectOption && "text-destructive",
+                )}>
+                  {option}
+                </span>
+              </div>
+            </button>
+          );
+        })}
       </div>
-
-      {!showResult && (
-        <Button 
-          onClick={handleSubmit} 
-          disabled={selectedIndex === null}
-          className="w-full"
-        >
-          Verifica
-        </Button>
-      )}
 
       {showResult && (
         <div className={cn(
-          "p-3 rounded-xl text-center font-medium",
-          isCorrect ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
+          "p-4 rounded-2xl text-center font-medium flex items-center justify-center gap-2 animate-fade-up",
+          isCorrect ? "bg-success-container text-success" : "bg-destructive/10 text-destructive"
         )}>
-          {isCorrect ? "Corretto! 🎉" : "Non esatto. La risposta corretta è evidenziata."}
+          {isCorrect ? "Perfetto! 🎉" : "La risposta corretta è evidenziata sopra."}
         </div>
       )}
     </div>

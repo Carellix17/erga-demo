@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { CheckCircle2, XCircle } from "lucide-react";
+import { CheckCircle2, XCircle, Send } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface FillBlankProps {
@@ -12,10 +12,7 @@ interface FillBlankProps {
 }
 
 export function FillBlank({
-  sentenceWithBlank,
-  correctAnswer,
-  onComplete,
-  isCompleted,
+  sentenceWithBlank, correctAnswer, onComplete, isCompleted,
 }: FillBlankProps) {
   const [answer, setAnswer] = useState("");
   const [showResult, setShowResult] = useState(false);
@@ -23,39 +20,38 @@ export function FillBlank({
   const handleSubmit = () => {
     if (!answer.trim()) return;
     setShowResult(true);
-    const isCorrect = answer.toLowerCase().trim() === correctAnswer.toLowerCase().trim();
-    onComplete(isCorrect);
+    onComplete(answer.toLowerCase().trim() === correctAnswer.toLowerCase().trim());
   };
 
   const isCorrect = answer.toLowerCase().trim() === correctAnswer.toLowerCase().trim();
-
-  // Split sentence by ___ to show input inline
   const parts = sentenceWithBlank.split("___");
 
   return (
-    <div className="space-y-4">
-      <div className="font-medium text-foreground leading-relaxed">
+    <div className="space-y-5">
+      <div className="title-medium text-foreground leading-relaxed p-4 rounded-2xl bg-surface-container">
         {parts.map((part, index) => (
           <span key={index}>
             {part}
             {index < parts.length - 1 && (
-              <span className="inline-block mx-1">
+              <span className="inline-block mx-1 align-middle">
                 {showResult ? (
                   <span className={cn(
-                    "px-2 py-1 rounded font-semibold",
-                    isCorrect 
-                      ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" 
-                      : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
+                    "inline-flex items-center gap-1 px-3 py-1 rounded-xl font-bold transition-all",
+                    isCorrect
+                      ? "bg-success-container text-success animate-feedback-correct"
+                      : "bg-destructive/10 text-destructive animate-feedback-wrong"
                   )}>
                     {answer || "___"}
+                    {isCorrect ? <CheckCircle2 className="w-4 h-4 inline" /> : <XCircle className="w-4 h-4 inline" />}
                   </span>
                 ) : (
                   <Input
                     value={answer}
                     onChange={(e) => setAnswer(e.target.value)}
-                    className="inline-block w-32 h-8 mx-1"
+                    className="inline-block w-36 h-9 mx-1 rounded-xl border-2 border-primary/30 focus:border-primary text-center font-semibold"
                     placeholder="..."
                     onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
+                    autoFocus
                   />
                 )}
               </span>
@@ -65,31 +61,20 @@ export function FillBlank({
       </div>
 
       {!showResult && (
-        <Button 
-          onClick={handleSubmit} 
+        <Button
+          onClick={handleSubmit}
           disabled={!answer.trim()}
-          className="w-full"
+          className="w-full h-12 rounded-2xl"
         >
+          <Send className="w-4 h-4 mr-2" />
           Verifica
         </Button>
       )}
 
-      {showResult && (
-        <div className={cn(
-          "p-3 rounded-xl text-center font-medium flex items-center justify-center gap-2",
-          isCorrect ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
-        )}>
-          {isCorrect ? (
-            <>
-              <CheckCircle2 className="w-5 h-5" />
-              Corretto! 🎉
-            </>
-          ) : (
-            <>
-              <XCircle className="w-5 h-5" />
-              La risposta corretta è: <strong>{correctAnswer}</strong>
-            </>
-          )}
+      {showResult && !isCorrect && (
+        <div className="p-4 rounded-2xl bg-surface-container-low text-center animate-fade-up">
+          <p className="body-small text-muted-foreground mb-1">Risposta corretta:</p>
+          <p className="title-medium text-success font-bold">{correctAnswer}</p>
         </div>
       )}
     </div>

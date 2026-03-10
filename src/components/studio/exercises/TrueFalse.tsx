@@ -1,6 +1,5 @@
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { CheckCircle2, XCircle } from "lucide-react";
+import { Check, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface TrueFalseProps {
@@ -11,10 +10,7 @@ interface TrueFalseProps {
 }
 
 export function TrueFalse({
-  statement,
-  correct,
-  onComplete,
-  isCompleted,
+  statement, correct, onComplete, isCompleted,
 }: TrueFalseProps) {
   const [selected, setSelected] = useState<boolean | null>(null);
   const [showResult, setShowResult] = useState(false);
@@ -22,84 +18,67 @@ export function TrueFalse({
   const handleSelect = (value: boolean) => {
     if (showResult) return;
     setSelected(value);
-  };
-
-  const handleSubmit = () => {
-    if (selected === null) return;
-    setShowResult(true);
-    onComplete(selected === correct);
+    setTimeout(() => {
+      setShowResult(true);
+      onComplete(value === correct);
+    }, 300);
   };
 
   const isCorrect = selected === correct;
 
   return (
-    <div className="space-y-4">
-      <p className="font-medium text-foreground">{statement}</p>
+    <div className="space-y-5">
+      <p className="title-medium text-foreground leading-relaxed">{statement}</p>
       
-      <div className="flex gap-3">
-        <button
-          onClick={() => handleSelect(true)}
-          disabled={showResult}
-          className={cn(
-            "flex-1 p-4 rounded-xl border-2 font-medium transition-all",
-            selected === true && !showResult && "border-primary bg-primary/10",
-            selected !== true && !showResult && "border-border hover:border-primary/50",
-            showResult && correct === true && "border-green-500 bg-green-50 dark:bg-green-900/20",
-            showResult && selected === true && correct !== true && "border-red-500 bg-red-50 dark:bg-red-900/20"
-          )}
-        >
-          <div className="flex items-center justify-center gap-2">
-            <span className={cn(
-              showResult && correct === true && "text-green-700 dark:text-green-400",
-              showResult && selected === true && correct !== true && "text-red-700 dark:text-red-400"
-            )}>
-              Vero
-            </span>
-            {showResult && correct === true && <CheckCircle2 className="w-5 h-5 text-green-500" />}
-            {showResult && selected === true && correct !== true && <XCircle className="w-5 h-5 text-red-500" />}
-          </div>
-        </button>
-
-        <button
-          onClick={() => handleSelect(false)}
-          disabled={showResult}
-          className={cn(
-            "flex-1 p-4 rounded-xl border-2 font-medium transition-all",
-            selected === false && !showResult && "border-primary bg-primary/10",
-            selected !== false && !showResult && "border-border hover:border-primary/50",
-            showResult && correct === false && "border-green-500 bg-green-50 dark:bg-green-900/20",
-            showResult && selected === false && correct !== false && "border-red-500 bg-red-50 dark:bg-red-900/20"
-          )}
-        >
-          <div className="flex items-center justify-center gap-2">
-            <span className={cn(
-              showResult && correct === false && "text-green-700 dark:text-green-400",
-              showResult && selected === false && correct !== false && "text-red-700 dark:text-red-400"
-            )}>
-              Falso
-            </span>
-            {showResult && correct === false && <CheckCircle2 className="w-5 h-5 text-green-500" />}
-            {showResult && selected === false && correct !== false && <XCircle className="w-5 h-5 text-red-500" />}
-          </div>
-        </button>
+      <div className="grid grid-cols-2 gap-3">
+        {[true, false].map((value) => {
+          const isSelected = selected === value;
+          const isCorrectOption = value === correct;
+          
+          return (
+            <button
+              key={String(value)}
+              onClick={() => handleSelect(value)}
+              disabled={showResult}
+              className={cn(
+                "p-5 rounded-2xl border-2 font-semibold transition-all duration-300 ease-m3-emphasized flex flex-col items-center gap-2",
+                !showResult && !isSelected && "border-outline-variant bg-surface-container-lowest hover:border-primary/50 active:scale-[0.95]",
+                !showResult && isSelected && "border-primary bg-primary/10 scale-[1.03] shadow-level-1",
+                showResult && isCorrectOption && "border-success bg-success-container animate-feedback-correct",
+                showResult && isSelected && !isCorrectOption && "border-destructive bg-destructive/10 animate-feedback-wrong",
+                showResult && !isSelected && !isCorrectOption && "opacity-40",
+              )}
+            >
+              <div className={cn(
+                "w-12 h-12 rounded-full flex items-center justify-center transition-all",
+                !showResult && "bg-surface-container-highest",
+                showResult && isCorrectOption && "bg-success",
+                showResult && isSelected && !isCorrectOption && "bg-destructive",
+              )}>
+                {value ? (
+                  <Check className={cn("w-6 h-6", showResult && isCorrectOption ? "text-white" : showResult && isSelected && !isCorrectOption ? "text-white" : "text-success")} />
+                ) : (
+                  <X className={cn("w-6 h-6", showResult && isCorrectOption ? "text-white" : showResult && isSelected && !isCorrectOption ? "text-white" : "text-destructive")} />
+                )}
+              </div>
+              <span className={cn(
+                "title-medium",
+                showResult && isCorrectOption && "text-success",
+                showResult && isSelected && !isCorrectOption && "text-destructive",
+              )}>
+                {value ? "Vero" : "Falso"}
+              </span>
+            </button>
+          );
+        })}
       </div>
-
-      {!showResult && (
-        <Button 
-          onClick={handleSubmit} 
-          disabled={selected === null}
-          className="w-full"
-        >
-          Verifica
-        </Button>
-      )}
 
       {showResult && (
         <div className={cn(
-          "p-3 rounded-xl text-center font-medium",
-          isCorrect ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
+          "p-4 rounded-2xl text-center font-medium animate-fade-up",
+          isCorrect ? "bg-success-container text-success" : "bg-destructive/10 text-destructive"
         )}>
-          {isCorrect ? "Corretto! 🎉" : `Non esatto. L'affermazione è ${correct ? "vera" : "falsa"}.`}
+          {isCorrect ? "Esatto! 🎉" : `L'affermazione è ${correct ? "vera" : "falsa"}.`}
         </div>
       )}
     </div>
