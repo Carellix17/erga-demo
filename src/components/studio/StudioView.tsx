@@ -301,20 +301,18 @@ export function StudioView({ hasFiles, onUploadClick, selectedContextId, onClear
           lessonNumber={activeLessonIndex + 1}
           totalLessons={lessons.length}
           onClose={() => setActiveLessonIndex(null)}
-          onComplete={async () => {
-            if (activeLessonIndex < lessons.length - 1) {
-              const nextIndex = activeLessonIndex + 1;
-              const nextLesson = lessons[nextIndex];
-              if (nextLesson && !nextLesson.is_generated) await generateLessonContent(nextIndex);
-              setCurrentLessonIndex(nextIndex); setActiveLessonIndex(nextIndex);
-              try {
-                const { data: { session } } = await supabase.auth.getSession();
-                const authToken = session?.access_token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-                await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-lessons`,
-                  { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${authToken}` },
-                    body: JSON.stringify({ userId: currentUser, action: "updateProgress", lessonIndex: nextIndex }) });
-              } catch (error) { console.error("Error updating progress:", error); }
-            } else { setActiveLessonIndex(null); handleStartFinalTest(); }
+          onComplete={() => {
+            const nextIndex = activeLessonIndex < lessons.length - 1 ? activeLessonIndex + 1 : activeLessonIndex;
+            setCurrentLessonIndex(nextIndex);
+            setActiveLessonIndex(null);
+            // Update progress in background
+            supabase.auth.getSession().then(({ data: { session } }) => {
+              const authToken = session?.access_token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+              fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-lessons`, {
+                method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${authToken}` },
+                body: JSON.stringify({ userId: currentUser, action: "updateProgress", lessonIndex: nextIndex })
+              }).catch(err => console.error("Error updating progress:", err));
+            });
           }}
           isLastLesson={activeLessonIndex === lessons.length - 1}
         />
