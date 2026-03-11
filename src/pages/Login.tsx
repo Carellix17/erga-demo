@@ -10,6 +10,32 @@ import { lovable } from "@/integrations/lovable";
 import { supabase } from "@/integrations/supabase/client";
 import { Separator } from "@/components/ui/separator";
 
+const isEmbeddedContext = () => {
+  try {
+    return window.self !== window.top;
+  } catch {
+    return true;
+  }
+};
+
+const isMobileWebView = () => {
+  const userAgent = navigator.userAgent.toLowerCase();
+  const isIOSWebView = /iphone|ipad|ipod/.test(userAgent) && /applewebkit/.test(userAgent) && !/safari/.test(userAgent);
+  const isAndroidWebView = /android/.test(userAgent) && /(\bwv\b|; wv\)|version\/\d+\.\d+)/.test(userAgent);
+  const isMedianApp = /median/.test(userAgent);
+
+  return isIOSWebView || isAndroidWebView || isMedianApp;
+};
+
+const shouldUseDirectOAuth = () => {
+  const hostname = window.location.hostname;
+  const isCustomDomain =
+    !hostname.includes("lovable.app") &&
+    !hostname.includes("lovableproject.com");
+
+  return isCustomDomain || isEmbeddedContext() || isMobileWebView();
+};
+
 export default function Login() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -43,72 +69,37 @@ export default function Login() {
     }
   };
 
-  const handleGoogleSignIn = async () => {
+  const handleOAuthSignIn = async (provider: "google" | "apple") => {
     setIsSubmitting(true);
-    try {
-      const isCustomDomain =
-        !window.location.hostname.includes("lovable.app") &&
-        !window.location.hostname.includes("lovableproject.com");
 
-      if (isCustomDomain) {
-        // Bypass auth-bridge for Median/custom domain
+    try {
+      const redirectUrl = `${window.location.origin}/login`;
+
+      if (shouldUseDirectOAuth()) {
         const { data, error } = await supabase.auth.signInWithOAuth({
-          provider: "google",
+          provider,
           options: {
-            redirectTo: window.location.origin,
+            redirectTo: redirectUrl,
             skipBrowserRedirect: true,
           },
         });
+
         if (error) throw error;
-        if (data?.url) {
-          window.location.href = data.url;
-        }
-      } else {
-        // Normal Lovable auth-bridge flow
-        const result = await lovable.auth.signInWithOAuth("google", {
-          redirect_uri: window.location.origin,
-        });
-        if (result.error) throw result.error;
+        if (!data?.url) throw new Error("URL di accesso non disponibile");
+
+        window.location.assign(data.url);
+        return;
       }
-    } catch (error: any) {
-      toast({
-        title: "Errore Google",
-        description: error.message || "Impossibile collegarsi a Google",
-        variant: "destructive",
+
+      const result = await lovable.auth.signInWithOAuth(provider, {
+        redirect_uri: redirectUrl,
       });
-      setIsSubmitting(false);
-    }
-  };
 
-  const handleAppleSignIn = async () => {
-    setIsSubmitting(true);
-    try {
-      const isCustomDomain =
-        !window.location.hostname.includes("lovable.app") &&
-        !window.location.hostname.includes("lovableproject.com");
-
-      if (isCustomDomain) {
-        const { data, error } = await supabase.auth.signInWithOAuth({
-          provider: "apple",
-          options: {
-            redirectTo: window.location.origin,
-            skipBrowserRedirect: true,
-          },
-        });
-        if (error) throw error;
-        if (data?.url) {
-          window.location.href = data.url;
-        }
-      } else {
-        const result = await lovable.auth.signInWithOAuth("apple", {
-          redirect_uri: window.location.origin,
-        });
-        if (result.error) throw result.error;
-      }
+      if (result.error) throw result.error;
     } catch (error: any) {
       toast({
-        title: "Errore Apple",
-        description: error.message || "Impossibile collegarsi ad Apple",
+        title: `Errore ${provider === "google" ? "Google" : "Apple"}`,
+        description: error.message || `Impossibile collegarsi a ${provider === "google" ? "Google" : "Apple"}`,
         variant: "destructive",
       });
       setIsSubmitting(false);
@@ -183,7 +174,7 @@ export default function Login() {
             </div>
 
             <div className="flex flex-col gap-3">
-              <Button type="button" variant="outline" className="w-full h-12 rounded-xl glass-subtle border-border/30 hover:shadow-glass transition-all duration-300" onClick={handleGoogleSignIn} disabled={isSubmitting}>
+              <Button type="button" variant="outline" className="w-full h-12 rounded-xl glass-subtle border-border/30 hover:shadow-glass transition-all duration-300" onClick={() => handleOAuthSignIn("google")} disabled={isSubmitting}>
                 <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
                   <path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
                   <path fill="currentColor" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
@@ -193,7 +184,7 @@ export default function Login() {
                 Continua con Google
               </Button>
 
-              <Button type="button" variant="outline" className="w-full h-12 rounded-xl bg-foreground text-background hover:bg-foreground/90 border-0 transition-all duration-300 hover:scale-[1.02]" onClick={handleAppleSignIn} disabled={isSubmitting}>
+              <Button type="button" variant="outline" className="w-full h-12 rounded-xl bg-foreground text-background hover:bg-foreground/90 border-0 transition-all duration-300 hover:scale-[1.02]" onClick={() => handleOAuthSignIn("apple")} disabled={isSubmitting}>
                 <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24" fill="currentColor">
                   <path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09l.01-.01zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/>
                 </svg>
