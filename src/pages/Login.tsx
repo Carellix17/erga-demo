@@ -10,6 +10,32 @@ import { lovable } from "@/integrations/lovable";
 import { supabase } from "@/integrations/supabase/client";
 import { Separator } from "@/components/ui/separator";
 
+const isEmbeddedContext = () => {
+  try {
+    return window.self !== window.top;
+  } catch {
+    return true;
+  }
+};
+
+const isMobileWebView = () => {
+  const userAgent = navigator.userAgent.toLowerCase();
+  const isIOSWebView = /iphone|ipad|ipod/.test(userAgent) && /applewebkit/.test(userAgent) && !/safari/.test(userAgent);
+  const isAndroidWebView = /android/.test(userAgent) && /(\bwv\b|; wv\)|version\/\d+\.\d+)/.test(userAgent);
+  const isMedianApp = /median/.test(userAgent);
+
+  return isIOSWebView || isAndroidWebView || isMedianApp;
+};
+
+const shouldUseDirectOAuth = () => {
+  const hostname = window.location.hostname;
+  const isCustomDomain =
+    !hostname.includes("lovable.app") &&
+    !hostname.includes("lovableproject.com");
+
+  return isCustomDomain || isEmbeddedContext() || isMobileWebView();
+};
+
 export default function Login() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -43,72 +69,37 @@ export default function Login() {
     }
   };
 
-  const handleGoogleSignIn = async () => {
+  const handleOAuthSignIn = async (provider: "google" | "apple") => {
     setIsSubmitting(true);
-    try {
-      const isCustomDomain =
-        !window.location.hostname.includes("lovable.app") &&
-        !window.location.hostname.includes("lovableproject.com");
 
-      if (isCustomDomain) {
-        // Bypass auth-bridge for Median/custom domain
+    try {
+      const redirectUrl = `${window.location.origin}/login`;
+
+      if (shouldUseDirectOAuth()) {
         const { data, error } = await supabase.auth.signInWithOAuth({
-          provider: "google",
+          provider,
           options: {
-            redirectTo: window.location.origin,
+            redirectTo: redirectUrl,
             skipBrowserRedirect: true,
           },
         });
+
         if (error) throw error;
-        if (data?.url) {
-          window.location.href = data.url;
-        }
-      } else {
-        // Normal Lovable auth-bridge flow
-        const result = await lovable.auth.signInWithOAuth("google", {
-          redirect_uri: window.location.origin,
-        });
-        if (result.error) throw result.error;
+        if (!data?.url) throw new Error("URL di accesso non disponibile");
+
+        window.location.assign(data.url);
+        return;
       }
-    } catch (error: any) {
-      toast({
-        title: "Errore Google",
-        description: error.message || "Impossibile collegarsi a Google",
-        variant: "destructive",
+
+      const result = await lovable.auth.signInWithOAuth(provider, {
+        redirect_uri: redirectUrl,
       });
-      setIsSubmitting(false);
-    }
-  };
 
-  const handleAppleSignIn = async () => {
-    setIsSubmitting(true);
-    try {
-      const isCustomDomain =
-        !window.location.hostname.includes("lovable.app") &&
-        !window.location.hostname.includes("lovableproject.com");
-
-      if (isCustomDomain) {
-        const { data, error } = await supabase.auth.signInWithOAuth({
-          provider: "apple",
-          options: {
-            redirectTo: window.location.origin,
-            skipBrowserRedirect: true,
-          },
-        });
-        if (error) throw error;
-        if (data?.url) {
-          window.location.href = data.url;
-        }
-      } else {
-        const result = await lovable.auth.signInWithOAuth("apple", {
-          redirect_uri: window.location.origin,
-        });
-        if (result.error) throw result.error;
-      }
+      if (result.error) throw result.error;
     } catch (error: any) {
       toast({
-        title: "Errore Apple",
-        description: error.message || "Impossibile collegarsi ad Apple",
+        title: `Errore ${provider === "google" ? "Google" : "Apple"}`,
+        description: error.message || `Impossibile collegarsi a ${provider === "google" ? "Google" : "Apple"}`,
         variant: "destructive",
       });
       setIsSubmitting(false);
