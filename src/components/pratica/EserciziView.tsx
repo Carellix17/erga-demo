@@ -190,7 +190,7 @@ export function EserciziView({ onFullscreenChange }: EserciziViewProps) {
   if (isFinished) {
     const pct = Math.round((correctCount / results.length) * 100);
     return (
-      <div className="flex flex-col h-full px-4 py-6 items-center justify-center space-y-6">
+      <div className="fixed inset-0 z-50 bg-background flex flex-col h-full px-4 py-6 items-center justify-center space-y-6 pt-safe pb-safe">
         <div className={cn(
           "w-24 h-24 rounded-full flex items-center justify-center",
           pct >= 70 ? "bg-success-container" : pct >= 50 ? "bg-warning/10" : "bg-error-container"
