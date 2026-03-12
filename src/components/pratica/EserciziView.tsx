@@ -208,7 +208,7 @@ export function EserciziView({ onFullscreenChange }: EserciziViewProps) {
           </p>
         </div>
         <div className="flex gap-3">
-          <Button variant="outline" onClick={() => { setSelectedCourse(null); setExercises([]); }} className="rounded-full">
+          <Button variant="outline" onClick={exitExercises} className="rounded-full">
             Cambia corso
           </Button>
           <Button onClick={() => generateExercises(selectedCourse!)} className="rounded-full bg-primary text-primary-foreground">
