@@ -30,7 +30,11 @@ interface ExerciseResult {
   isCorrect: boolean;
 }
 
-export function EserciziView() {
+interface EserciziViewProps {
+  onFullscreenChange?: (isFullscreen: boolean) => void;
+}
+
+export function EserciziView({ onFullscreenChange }: EserciziViewProps) {
   const [courses, setCourses] = useState<Course[]>([]);
   const [selectedCourse, setSelectedCourse] = useState<string | null>(null);
   const [exercises, setExercises] = useState<Exercise[]>([]);
