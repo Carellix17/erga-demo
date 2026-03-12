@@ -137,6 +137,14 @@ export function EserciziView({ onFullscreenChange }: EserciziViewProps) {
 
   const correctCount = results.filter(r => r.isCorrect).length;
 
+  // Exit exercises
+  const exitExercises = () => {
+    setSelectedCourse(null);
+    setExercises([]);
+    setIsFinished(false);
+    onFullscreenChange?.(false);
+  };
+
   // Course selection
   if (!selectedCourse || exercises.length === 0) {
     return (
