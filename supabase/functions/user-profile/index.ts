@@ -74,6 +74,30 @@ serve(async (req) => {
       return successResponse({ success: true });
     }
 
+    if (action === "uploadAvatar") {
+      const { fileData, filePath } = body;
+      if (!fileData || !filePath) return errorResponse("Dati mancanti", 400);
+
+      const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+      const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+      const adminClient = createClient(supabaseUrl, serviceKey);
+
+      const binaryData = Uint8Array.from(atob(fileData), c => c.charCodeAt(0));
+      const ext = filePath.split(".").pop()?.toLowerCase() || "jpg";
+      const contentType = ext === "png" ? "image/png" : ext === "webp" ? "image/webp" : "image/jpeg";
+
+      const { error: uploadError } = await adminClient.storage
+        .from("avatars")
+        .upload(filePath, binaryData, { contentType, upsert: true });
+
+      if (uploadError) {
+        console.error("Avatar upload error:", uploadError);
+        return errorResponse(`Upload fallito: ${uploadError.message}`);
+      }
+
+      return successResponse({ success: true });
+    }
+
     return errorResponse("Azione non valida", 400);
   } catch (error) {
     console.error("Error:", error);
