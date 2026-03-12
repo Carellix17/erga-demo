@@ -111,10 +111,10 @@ export function ProfileView() {
           reader.readAsDataURL(file);
         });
         
-        const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/upload-pdf`, {
+        const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/user-profile`, {
           method: "POST",
           headers: { "Content-Type": "application/json", Authorization: `Bearer ${authToken}` },
-          body: JSON.stringify({ userId: currentUser, action: "uploadAvatar", fileData: base64, fileName: `avatar.${ext}`, filePath }),
+          body: JSON.stringify({ userId: currentUser, action: "uploadAvatar", fileData: base64, filePath }),
         });
         if (!response.ok) throw new Error("Upload fallito");
       }
