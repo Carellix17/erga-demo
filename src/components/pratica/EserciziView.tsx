@@ -75,6 +75,7 @@ export function EserciziView({ onFullscreenChange }: EserciziViewProps) {
     setCurrentIndex(0);
     setResults([]);
     setIsFinished(false);
+    onFullscreenChange?.(true);
 
     try {
       const { data: { session } } = await supabase.auth.getSession();
