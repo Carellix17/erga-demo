@@ -122,6 +122,7 @@ const Index = () => {
           <PraticaView
             hasFiles={hasFiles}
             onUploadClick={() => setShowUpload(true)}
+            onFullscreenChange={setIsFullscreen}
           />
         )}
         {activeTab === "profilo" && (

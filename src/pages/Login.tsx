@@ -46,26 +46,8 @@ export default function Login() {
     setIsSubmitting(true);
 
     try {
-      const redirectUrl = `${window.location.origin}/login`;
-
-      if (shouldUseDirectOAuth()) {
-        const { data, error } = await supabase.auth.signInWithOAuth({
-          provider,
-          options: {
-            redirectTo: redirectUrl,
-            skipBrowserRedirect: true,
-          },
-        });
-
-        if (error) throw error;
-        if (!data?.url) throw new Error("URL di accesso non disponibile");
-
-        window.location.assign(data.url);
-        return;
-      }
-
       const result = await lovable.auth.signInWithOAuth(provider, {
-        redirect_uri: redirectUrl,
+        redirect_uri: window.location.origin,
       });
 
       if (result.error) throw result.error;
