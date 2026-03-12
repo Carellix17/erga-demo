@@ -11,6 +11,7 @@ type SubTab = "chat" | "interrogazione" | "esercizi";
 interface PraticaViewProps {
   hasFiles: boolean;
   onUploadClick: () => void;
+  onFullscreenChange?: (isFullscreen: boolean) => void;
 }
 
 const subTabs = [
@@ -19,7 +20,7 @@ const subTabs = [
   { id: "esercizi" as SubTab, label: "Esercizi", icon: Dumbbell, description: "Allenati" },
 ];
 
-export function PraticaView({ hasFiles, onUploadClick }: PraticaViewProps) {
+export function PraticaView({ hasFiles, onUploadClick, onFullscreenChange }: PraticaViewProps) {
   const [activeSubTab, setActiveSubTab] = useState<SubTab>("chat");
 
   if (!hasFiles) return <EmptyState onUploadClick={onUploadClick} />;
@@ -60,7 +61,7 @@ export function PraticaView({ hasFiles, onUploadClick }: PraticaViewProps) {
           <InterrogazioneView />
         )}
         {activeSubTab === "esercizi" && (
-          <EserciziView />
+          <EserciziView onFullscreenChange={onFullscreenChange} />
         )}
       </div>
     </div>

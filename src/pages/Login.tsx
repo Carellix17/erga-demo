@@ -7,34 +7,7 @@ import { Label } from "@/components/ui/label";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { lovable } from "@/integrations/lovable";
-import { supabase } from "@/integrations/supabase/client";
 import { Separator } from "@/components/ui/separator";
-
-const isEmbeddedContext = () => {
-  try {
-    return window.self !== window.top;
-  } catch {
-    return true;
-  }
-};
-
-const isMobileWebView = () => {
-  const userAgent = navigator.userAgent.toLowerCase();
-  const isIOSWebView = /iphone|ipad|ipod/.test(userAgent) && /applewebkit/.test(userAgent) && !/safari/.test(userAgent);
-  const isAndroidWebView = /android/.test(userAgent) && /(\bwv\b|; wv\)|version\/\d+\.\d+)/.test(userAgent);
-  const isMedianApp = /median/.test(userAgent);
-
-  return isIOSWebView || isAndroidWebView || isMedianApp;
-};
-
-const shouldUseDirectOAuth = () => {
-  const hostname = window.location.hostname;
-  const isCustomDomain =
-    !hostname.includes("lovable.app") &&
-    !hostname.includes("lovableproject.com");
-
-  return isCustomDomain || isEmbeddedContext() || isMobileWebView();
-};
 
 export default function Login() {
   const [username, setUsername] = useState("");
@@ -73,26 +46,8 @@ export default function Login() {
     setIsSubmitting(true);
 
     try {
-      const redirectUrl = `${window.location.origin}/login`;
-
-      if (shouldUseDirectOAuth()) {
-        const { data, error } = await supabase.auth.signInWithOAuth({
-          provider,
-          options: {
-            redirectTo: redirectUrl,
-            skipBrowserRedirect: true,
-          },
-        });
-
-        if (error) throw error;
-        if (!data?.url) throw new Error("URL di accesso non disponibile");
-
-        window.location.assign(data.url);
-        return;
-      }
-
       const result = await lovable.auth.signInWithOAuth(provider, {
-        redirect_uri: redirectUrl,
+        redirect_uri: window.location.origin,
       });
 
       if (result.error) throw result.error;

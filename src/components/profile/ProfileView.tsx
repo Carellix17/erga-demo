@@ -91,13 +91,33 @@ export function ProfileView() {
     setIsUploadingAvatar(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error("Non autenticato");
-
+      
+      // Generate a unique file path
       const ext = file.name.split(".").pop() || "jpg";
-      const filePath = `${session.user.id}/avatar.${ext}`;
+      const userId = session?.user?.id || currentUser.replace(/[^a-zA-Z0-9]/g, "_");
+      const filePath = `${userId}/avatar.${ext}`;
 
-      const { error: uploadError } = await supabase.storage.from("avatars").upload(filePath, file, { upsert: true });
-      if (uploadError) throw uploadError;
+      if (session) {
+        // Authenticated user: upload directly via Supabase storage
+        const { error: uploadError } = await supabase.storage.from("avatars").upload(filePath, file, { upsert: true });
+        if (uploadError) throw uploadError;
+      } else {
+        // Beta tester: upload via edge function with base64
+        const authToken = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+        const reader = new FileReader();
+        const base64 = await new Promise<string>((resolve, reject) => {
+          reader.onload = () => resolve((reader.result as string).split(",")[1]);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+        
+        const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/user-profile`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${authToken}` },
+          body: JSON.stringify({ userId: currentUser, action: "uploadAvatar", fileData: base64, filePath }),
+        });
+        if (!response.ok) throw new Error("Upload fallito");
+      }
 
       const { data: { publicUrl } } = supabase.storage.from("avatars").getPublicUrl(filePath);
       const urlWithCache = `${publicUrl}?t=${Date.now()}`;

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { BookOpen, Dumbbell, RefreshCw, CheckCircle2, XCircle, ArrowRight, Loader2 } from "lucide-react";
+import { BookOpen, Dumbbell, RefreshCw, CheckCircle2, XCircle, ArrowRight, Loader2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
@@ -30,7 +30,11 @@ interface ExerciseResult {
   isCorrect: boolean;
 }
 
-export function EserciziView() {
+interface EserciziViewProps {
+  onFullscreenChange?: (isFullscreen: boolean) => void;
+}
+
+export function EserciziView({ onFullscreenChange }: EserciziViewProps) {
   const [courses, setCourses] = useState<Course[]>([]);
   const [selectedCourse, setSelectedCourse] = useState<string | null>(null);
   const [exercises, setExercises] = useState<Exercise[]>([]);
@@ -71,6 +75,7 @@ export function EserciziView() {
     setCurrentIndex(0);
     setResults([]);
     setIsFinished(false);
+    onFullscreenChange?.(true);
 
     try {
       const { data: { session } } = await supabase.auth.getSession();
@@ -132,6 +137,14 @@ export function EserciziView() {
 
   const correctCount = results.filter(r => r.isCorrect).length;
 
+  // Exit exercises
+  const exitExercises = () => {
+    setSelectedCourse(null);
+    setExercises([]);
+    setIsFinished(false);
+    onFullscreenChange?.(false);
+  };
+
   // Course selection
   if (!selectedCourse || exercises.length === 0) {
     return (
@@ -177,7 +190,7 @@ export function EserciziView() {
   if (isFinished) {
     const pct = Math.round((correctCount / results.length) * 100);
     return (
-      <div className="flex flex-col h-full px-4 py-6 items-center justify-center space-y-6">
+      <div className="fixed inset-0 z-50 bg-background flex flex-col h-full px-4 py-6 items-center justify-center space-y-6 pt-safe pb-safe">
         <div className={cn(
           "w-24 h-24 rounded-full flex items-center justify-center",
           pct >= 70 ? "bg-success-container" : pct >= 50 ? "bg-warning/10" : "bg-error-container"
@@ -195,7 +208,7 @@ export function EserciziView() {
           </p>
         </div>
         <div className="flex gap-3">
-          <Button variant="outline" onClick={() => { setSelectedCourse(null); setExercises([]); }} className="rounded-full">
+          <Button variant="outline" onClick={exitExercises} className="rounded-full">
             Cambia corso
           </Button>
           <Button onClick={() => generateExercises(selectedCourse!)} className="rounded-full bg-primary text-primary-foreground">
@@ -208,10 +221,13 @@ export function EserciziView() {
 
   // Exercise view
   return (
-    <div className="flex flex-col h-full">
-      {/* Progress */}
+    <div className="fixed inset-0 z-50 bg-background flex flex-col h-full pt-safe pb-safe">
+      {/* Header with X button */}
       <div className="px-4 pt-3 pb-2">
         <div className="flex items-center justify-between mb-2">
+          <button onClick={exitExercises} className="w-9 h-9 rounded-full flex items-center justify-center hover:bg-foreground/[0.08] transition-colors">
+            <X className="w-5 h-5 text-foreground" />
+          </button>
           <span className="label-small text-muted-foreground">
             Esercizio {currentIndex + 1}/{exercises.length}
           </span>

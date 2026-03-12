@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { validateAuth, corsHeaders, errorResponse, successResponse } from "../_shared/auth.ts";
 
 serve(async (req) => {
@@ -68,6 +69,30 @@ serve(async (req) => {
           subject_levels: subject_levels || {},
           ...updateData,
         });
+      }
+
+      return successResponse({ success: true });
+    }
+
+    if (action === "uploadAvatar") {
+      const { fileData, filePath } = body;
+      if (!fileData || !filePath) return errorResponse("Dati mancanti", 400);
+
+      const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+      const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+      const adminClient = createClient(supabaseUrl, serviceKey);
+
+      const binaryData = Uint8Array.from(atob(fileData), c => c.charCodeAt(0));
+      const ext = filePath.split(".").pop()?.toLowerCase() || "jpg";
+      const contentType = ext === "png" ? "image/png" : ext === "webp" ? "image/webp" : "image/jpeg";
+
+      const { error: uploadError } = await adminClient.storage
+        .from("avatars")
+        .upload(filePath, binaryData, { contentType, upsert: true });
+
+      if (uploadError) {
+        console.error("Avatar upload error:", uploadError);
+        return errorResponse(`Upload fallito: ${uploadError.message}`);
       }
 
       return successResponse({ success: true });
