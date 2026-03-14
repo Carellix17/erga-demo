@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { lovable } from "@/integrations/lovable";
+import { supabase } from "@/integrations/supabase/client";
 import { Separator } from "@/components/ui/separator";
 
 export default function Login() {
@@ -42,19 +43,62 @@ export default function Login() {
     }
   };
 
+  const isCustomDomain = () => {
+    const host = window.location.hostname;
+    return !host.endsWith(".lovable.app") && !host.endsWith(".lovableproject.com") && host !== "lovable.app" && host !== "lovableproject.com";
+  };
+
+  const isMedianWebView = () => {
+    const userAgent = navigator.userAgent;
+    const isMedian = /median/i.test(userAgent);
+    const isAndroidWebView = /\bwv\b/i.test(userAgent) || /Version\/[\d.]+\s+Chrome\/[\d.]+\s+Mobile/i.test(userAgent);
+    const isIosWebView = /iPhone|iPad|iPod/i.test(userAgent) && /AppleWebKit/i.test(userAgent) && !/Safari/i.test(userAgent);
+    return isMedian || isAndroidWebView || isIosWebView || window.self !== window.top;
+  };
+
   const handleOAuthSignIn = async (provider: "google" | "apple") => {
     setIsSubmitting(true);
+    const redirectUrl = `${window.location.origin}/login`;
 
     try {
+      if (isCustomDomain() || isMedianWebView()) {
+        const { data, error } = await supabase.auth.signInWithOAuth({
+          provider,
+          options: {
+            redirectTo: redirectUrl,
+            skipBrowserRedirect: true,
+          },
+        });
+
+        if (error) throw error;
+        if (!data?.url) throw new Error("URL OAuth non disponibile");
+
+        const oauthUrl = new URL(data.url);
+        const allowedHosts = [
+          "accounts.google.com",
+          "appleid.apple.com",
+          new URL(import.meta.env.VITE_SUPABASE_URL).hostname,
+        ];
+
+        if (!allowedHosts.some((host) => oauthUrl.hostname === host || oauthUrl.hostname.endsWith(`.${host}`))) {
+          throw new Error("Redirect OAuth non valido");
+        }
+
+        window.location.assign(data.url);
+        return;
+      }
+
       const result = await lovable.auth.signInWithOAuth(provider, {
-        redirect_uri: window.location.origin,
+        redirect_uri: redirectUrl,
       });
 
       if (result.error) throw result.error;
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: `Errore ${provider === "google" ? "Google" : "Apple"}`,
-        description: error.message || `Impossibile collegarsi a ${provider === "google" ? "Google" : "Apple"}`,
+        description: error instanceof Error
+          ? error.message
+          : `Impossibile collegarsi a ${provider === "google" ? "Google" : "Apple"}`,
         variant: "destructive",
       });
       setIsSubmitting(false);
