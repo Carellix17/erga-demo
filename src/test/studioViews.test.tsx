@@ -173,27 +173,37 @@ describe("StudioPractice (P37) — accessi dedicati e ritorno", () => {
 });
 
 describe("P38 — navigazione progressiva del corso", () => {
-  it("P42 ModuleHeaderCard: card compatta sticky, titolo modulo intero (wrap), X 44px", () => {
+  it("P43 ModuleHeaderCard: morph condiviso e IDENTITÀ CROMATICA della materia", () => {
     const onClose = vi.fn();
     const { container } = render(
       <ModuleHeaderCard
         courseTitle="La guerra dei cent'anni"
         moduleIndex={0}
         moduleTitle="Introduzione e Contesto Storico dal 1337 al 1449"
+        subjectColor="#7c9a7e"
+        layoutId="course-card-ctx-1"
         onClose={onClose}
       />,
     );
-    const wrapper = container.firstElementChild as HTMLElement;
-    expect(wrapper.className).toMatch(/sticky top-0 z-20/); // agganciata in alto sopra l'albero
-    // titolo del modulo GRANDE e senza troncamento (break-words, niente truncate)
+    const card = container.firstElementChild as HTMLElement;
+    // stessa superficie della hero: layoutId per il morph, stesso bordo
+    expect(card.hasAttribute("data-auto-contrast")).toBe(true); // inchiostro a contrasto automatico
+    expect(card.className).toMatch(/rounded-card/);
+    expect(card.className).toMatch(/border-inverse-on-surface\/15/);
+    // il colore materia arriva come variabile (stessa usata dalla hero)
+    expect(card.getAttribute("style")).toContain("--ambient-block-ink");
+    expect(card.getAttribute("style")).toContain("#7c9a7e");
+    // titolo del modulo GRANDE, senza troncamento (break-words, mai truncate)
     const title = screen.getByText("Introduzione e Contesto Storico dal 1337 al 1449");
-    expect(title.className).toMatch(/text-lg font-bold/);
+    expect(title.className).toMatch(/text-lg/);
     expect(title.className).toMatch(/break-words/);
     expect(title.className).not.toMatch(/truncate/);
-    // nome del percorso piccolo e muted sotto
+    // nome del percorso piccolo, in tono secondario
     const course = screen.getByText("La guerra dei cent'anni");
     expect(course.className).toMatch(/text-xs/);
-    expect(course.className).toMatch(/text-muted-foreground/);
+    expect(course.className).toMatch(/text-contrast-secondary/);
+    // etichetta MODULO 1 (uppercase via classe)
+    expect(screen.getByText("Modulo 1").className).toMatch(/uppercase/);
     // X con target tattile ≥ 44px che riporta ai moduli
     const x = screen.getByRole("button", { name: "Chiudi modulo" });
     expect(x.className).toMatch(/h-11 w-11/);
@@ -210,8 +220,8 @@ describe("P38 — navigazione progressiva del corso", () => {
     );
     const dialog = screen.getByRole("dialog", { name: "Interrogazione" });
     const backdrop = dialog.firstElementChild as HTMLElement;
-    expect(backdrop.className).toMatch(/bg-black\/60/); // overlay scuro
-    expect(backdrop.className).toMatch(/backdrop-blur-md/); // sfocato
+    expect(backdrop.className).toMatch(/bg-black\/50/); // overlay semitrasparente (mai nero pieno)
+    expect(backdrop.className).toMatch(/backdrop-blur-md/); // sfocato: lo Studio resta visibile sotto
     const sheet = dialog.children[1] as HTMLElement;
     expect(sheet.className).toMatch(/h-\[100dvh\]/); // foglio alto quanto il viewport
     expect(sheet.className).toMatch(/rounded-t-/); // bordi superiori stondati

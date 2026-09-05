@@ -975,11 +975,13 @@ export function StudioView({ hasFiles, onUploadClick, selectedContextId, lessonL
             </div>
           </div>
         ) : (
-          /* 🏋️ / 🎤 P42 — Esercizi e Interrogazione in un BOTTOM SHEET: parte
-             a ~88% del viewport sulla schermata di scelta; quando l'utente
-             entra nella sessione il foglio sale a schermo intero. La X in
-             alto a destra chiude l'intero flusso e riporta allo Studio. */
+          /* 🏋️ / 🎤 P43 — foglio che SCIVOLA dal basso (300ms) sopra lo Studio
+             ancora montato e visibile, sfocato dal backdrop (mai nero pieno).
+             In sessione sale a schermo intero; la X chiude tutto e il foglio
+             riscende (AnimatePresence gestisce l'uscita). */
+          <AnimatePresence>
           <SheetDrawer
+            key={praticaSubView}
             title={praticaSubView === "esercizi" ? "Esercizi" : "Interrogazione"}
             step={drawerStep}
             onClose={closePratica}
@@ -998,43 +1000,11 @@ export function StudioView({ hasFiles, onUploadClick, selectedContextId, lessonL
               />
             )}
           </SheetDrawer>
+          </AnimatePresence>
         )
       ) : (
         <>
-      {/* 🧭 P38 Livello 2 — la card del corso si compatta in una barra sticky
-          glassy (≤56px): nome del corso/modulo e "Ritorna ai moduli". */}
-      <AnimatePresence mode="wait" initial={false}>
-      {courseViewState === "branch" ? (
-        /* 🧭 P42 — la hero si COMPRIME in una card compatta sticky: titolo
-           del modulo grande (va a capo, mai troncato), percorso piccolo sotto,
-           X per tornare ai moduli. */
-        <motion.div
-          key="module-header"
-          initial={{ opacity: 0, scale: 0.96, y: -8 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.96, y: -8 }}
-          transition={{ duration: 0.22, ease: "easeOut" }}
-          className="min-w-0"
-        >
-          <ModuleHeaderCard
-            courseTitle={heroTitle || contextFileName}
-            moduleIndex={activeModuleIndex ?? 0}
-            moduleTitle={activeModuleTitle ?? "Modulo"}
-            onClose={backToModules}
-          />
-        </motion.div>
-      ) : (
-        <motion.div
-          key="hero"
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.97, y: -6 }}
-          transition={{ duration: 0.22, ease: "easeOut" }}
-          className="min-w-0"
-        >
-      {/* ➕ P37 — Crea nuovo percorso: in cima, SOLO nella Home Studio (P38).
-          P40: niente più sotto-header "Torna a Studio" nei moduli — la X sulla
-          card del corso chiude la vista e ripristina la Home Studio. */}
+      {/* ➕ P37 — Crea nuovo percorso: in cima, SOLO nella Home Studio. */}
       {courseViewState === "overview" && (
         <div className="studio-section-enter min-w-0 overflow-x-clip px-4 pt-3">
           <Button
@@ -1049,13 +1019,39 @@ export function StudioView({ hasFiles, onUploadClick, selectedContextId, lessonL
           </Button>
         </div>
       )}
-      {/* 🌲 card del corso: in panoramica "Continua" scende alla vista moduli;
-          nella vista moduli (P38) la card mostra SOLO "Riprendi lezione" e la
-          X al posto del menù ⋯ (P40). Qui la card è anche STICKY: i moduli
-          scorrono fisicamente sotto di lei, che resta il punto di riferimento. */}
-      <div className={courseViewState === "modules"
-        ? "studio-section-enter min-w-0 overflow-x-clip sticky top-0 z-20 bg-background"
-        : "studio-section-enter min-w-0 overflow-x-clip"}>
+      {/* 🧭 P43 — HERO e card compatta del modulo sono la MEDESIMA superficie:
+          layoutId condiviso ("course-card-…", stessa tecnica del selettore
+          corsi) → la card si comprime/espande con un morph fluido. Nei moduli
+          resta STICKY: le schede scorrono sotto di lei. Il colore materia
+          (CourseCardBackground "studio") resta IDENTICO in entrambi gli stati. */}
+      <AnimatePresence mode="popLayout" initial={false}>
+        {courseViewState === "branch" ? (
+          <motion.div
+            key="module-head"
+            className="sticky top-0 z-20 bg-background px-4 pb-2.5 pt-3"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0, transition: { duration: 0.12 } }}
+          >
+            <ModuleHeaderCard
+              courseTitle={heroTitle || contextFileName}
+              moduleIndex={activeModuleIndex ?? 0}
+              moduleTitle={activeModuleTitle ?? "Modulo"}
+              subjectColor={getSubjectAccent(contextFileName ?? "")}
+              layoutId={`course-card-${activeCourseId}`}
+              onClose={backToModules}
+            />
+          </motion.div>
+        ) : (
+          <motion.div
+            key="hero"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1, transition: { delay: 0.1, duration: 0.18 } }}
+            exit={{ opacity: 0, transition: { duration: 0.12 } }}
+            className={courseViewState === "modules"
+              ? "studio-section-enter min-w-0 overflow-x-clip sticky top-0 z-20 bg-background"
+              : "studio-section-enter min-w-0 overflow-x-clip"}
+          >
       <PathHero
         variant={courseViewState === "modules" ? "resume" : "full"}
         onCloseModules={courseViewState === "modules" ? backToOverview : undefined}
@@ -1081,7 +1077,9 @@ export function StudioView({ hasFiles, onUploadClick, selectedContextId, lessonL
         freeLimitMessage={FREE_LIMIT_MESSAGE}
         isRegenerating={isGenerating || !!moduleJob}
       />
-      </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
       {/* 🧩 P39 — due card di pratica affiancate (accento del corso attivo) +
           barra prompter AI: SOLO nella Home Studio, con pb-32 che tiene tutto
           sopra la barra di navigazione fissa. */}
@@ -1094,9 +1092,6 @@ export function StudioView({ hasFiles, onUploadClick, selectedContextId, lessonL
           <PromptBar onSend={(text) => openChat(text)} onOpen={() => openChat()} />
         </div>
       )}
-        </motion.div>
-      )}
-      </AnimatePresence>
       {/* 🧭 P42 — lista dei moduli e albero delle lezioni si danno il cambio
           con un cross-animato (solo transform/opacity, 60fps). */}
       <AnimatePresence mode="wait" initial={false}>

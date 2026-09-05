@@ -25,5 +25,4 @@ class ResizeObserverStub {
   unobserve() {}
   disconnect() {}
 }
-// @ts-expect-error — stub solo per l'ambiente di test
 globalThis.ResizeObserver = globalThis.ResizeObserver || ResizeObserverStub;
