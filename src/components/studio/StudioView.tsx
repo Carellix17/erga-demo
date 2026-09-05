@@ -12,7 +12,8 @@ import { PraticaSubTab } from "@/components/pratica/PraticaView";
 import { ChatView } from "@/components/chat/ChatView";
 import { EserciziView } from "@/components/pratica/EserciziView";
 import { InterrogazioneView } from "@/components/pratica/InterrogazioneView";
-import { BranchTopBar, PracticeLaunchers, PromptBar, SubViewHeader } from "./StudioPractice";
+import { ModuleHeaderCard, PracticeLaunchers, PromptBar, SheetDrawer, SubViewHeader } from "./StudioPractice";
+import { AnimatePresence, motion } from "framer-motion";
 import { cleanCourseName } from "@/lib/courseName";
 import { getSubjectAccent } from "@/lib/subjectColors";
 import { useSubjectAccent } from "@/hooks/useSubjectAccent";
@@ -96,7 +97,18 @@ export function StudioView({ hasFiles, onUploadClick, selectedContextId, lessonL
     onFullscreenChange?.(false);
   }, [onFullscreenChange]);
 
-  const closePratica = () => setPraticaSubView(null);
+  // P42 — passo del bottom sheet: "select" (scelta modalità, ~88% del viewport)
+  // → "active" (sessione in corso, schermo intero). Si resetta a ogni apertura.
+  const [drawerStep, setDrawerStep] = useState<"select" | "active">("select");
+  const openPractice = (sub: "esercizi" | "interrogazione") => {
+    if (praticaSubView) return; // guardia anti doppio tocco
+    setDrawerStep("select");
+    setPraticaSubView(sub);
+  };
+  const closePratica = () => {
+    setPraticaSubView(null);
+    setDrawerStep("select");
+  };
   // 💬 P39: seme della Chat — la PromptBar semina il primo messaggio, la
   // sottovista Chat lo recapita con il flusso di invio già esistente.
   const [chatSeed, setChatSeed] = useState<{ text: string; requestId: number } | null>(null);
@@ -963,36 +975,63 @@ export function StudioView({ hasFiles, onUploadClick, selectedContextId, lessonL
             </div>
           </div>
         ) : (
-          /* 🏋️ / 🎤 Esercizi e Interrogazione: sottovista ESCLUSIVA a schermo
-             pieno, navbar nascosta. Un solo pulsante per uscire: Torna a Studio. */
-          <div className="fixed inset-0 z-40 flex flex-col bg-background animate-fade-up">
-            <SubViewHeader
-              title={praticaSubView === "esercizi" ? "Esercizi" : "Interrogazione"}
-              courseTitle={heroTitle || contextFileName}
-              onBack={closePratica}
-            />
-            <div className="min-h-0 flex-1 overflow-hidden">
-              {praticaSubView === "esercizi" ? (
-                <EserciziView contextId={effectiveContextId} contextName={heroTitle || contextFileName} />
-              ) : (
-                <InterrogazioneView contextId={effectiveContextId} contextName={heroTitle || contextFileName} />
-              )}
-            </div>
-          </div>
+          /* 🏋️ / 🎤 P42 — Esercizi e Interrogazione in un BOTTOM SHEET: parte
+             a ~88% del viewport sulla schermata di scelta; quando l'utente
+             entra nella sessione il foglio sale a schermo intero. La X in
+             alto a destra chiude l'intero flusso e riporta allo Studio. */
+          <SheetDrawer
+            title={praticaSubView === "esercizi" ? "Esercizi" : "Interrogazione"}
+            step={drawerStep}
+            onClose={closePratica}
+          >
+            {praticaSubView === "esercizi" ? (
+              <EserciziView
+                contextId={effectiveContextId}
+                contextName={heroTitle || contextFileName}
+                onSessionStart={() => setDrawerStep("active")}
+              />
+            ) : (
+              <InterrogazioneView
+                contextId={effectiveContextId}
+                contextName={heroTitle || contextFileName}
+                onSessionStart={() => setDrawerStep("active")}
+              />
+            )}
+          </SheetDrawer>
         )
       ) : (
         <>
       {/* 🧭 P38 Livello 2 — la card del corso si compatta in una barra sticky
           glassy (≤56px): nome del corso/modulo e "Ritorna ai moduli". */}
+      <AnimatePresence mode="wait" initial={false}>
       {courseViewState === "branch" ? (
-        <BranchTopBar
-          courseTitle={heroTitle || contextFileName}
-          moduleIndex={activeModuleIndex ?? 0}
-          moduleTitle={activeModuleTitle ?? "Modulo"}
-          onBack={backToModules}
-        />
+        /* 🧭 P42 — la hero si COMPRIME in una card compatta sticky: titolo
+           del modulo grande (va a capo, mai troncato), percorso piccolo sotto,
+           X per tornare ai moduli. */
+        <motion.div
+          key="module-header"
+          initial={{ opacity: 0, scale: 0.96, y: -8 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.96, y: -8 }}
+          transition={{ duration: 0.22, ease: "easeOut" }}
+          className="min-w-0"
+        >
+          <ModuleHeaderCard
+            courseTitle={heroTitle || contextFileName}
+            moduleIndex={activeModuleIndex ?? 0}
+            moduleTitle={activeModuleTitle ?? "Modulo"}
+            onClose={backToModules}
+          />
+        </motion.div>
       ) : (
-        <>
+        <motion.div
+          key="hero"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.97, y: -6 }}
+          transition={{ duration: 0.22, ease: "easeOut" }}
+          className="min-w-0"
+        >
       {/* ➕ P37 — Crea nuovo percorso: in cima, SOLO nella Home Studio (P38).
           P40: niente più sotto-header "Torna a Studio" nei moduli — la X sulla
           card del corso chiude la vista e ripristina la Home Studio. */}
@@ -1049,45 +1088,65 @@ export function StudioView({ hasFiles, onUploadClick, selectedContextId, lessonL
       {courseViewState === "overview" && !isCoursePickerOpen && modules.length > 0 && (
         <div className="animate-fade-up">
           <PracticeLaunchers
-            onOpenEsercizi={() => setPraticaSubView("esercizi")}
-            onOpenInterrogazione={() => setPraticaSubView("interrogazione")}
+            onOpenEsercizi={() => openPractice("esercizi")}
+            onOpenInterrogazione={() => openPractice("interrogazione")}
           />
           <PromptBar onSend={(text) => openChat(text)} onOpen={() => openChat()} />
         </div>
       )}
-        </>
+        </motion.div>
       )}
-      <div key={courseViewState} className="studio-section-enter relative z-10 min-w-0 overflow-x-clip">
-      {courseViewState === "modules" ? (
-        !isCoursePickerOpen ? (
-          <ModulesOverview
-            modules={modules}
-            onOpenModule={(idx) => void openModule(idx)}
-          />
-        ) : null
-      ) : courseViewState === "branch" ? (
-        <ModulePath
-          hideHeader
-          moduleIndex={activeModuleIndex ?? 0}
-          moduleTitle={activeModuleTitle ?? "Modulo"}
-          lessons={lessons}
-          currentIndex={currentLessonIndex}
-          isGeneratingLesson={isGeneratingLesson}
-          isModuleGenerating={!!moduleScreen && moduleScreen.moduleIndex === activeModuleIndex}
-          genCount={moduleJob && moduleJob.moduleIndex === activeModuleIndex ? (moduleJob.generatedCount ?? 0) : 0}
-          genTotal={moduleJob && moduleJob.moduleIndex === activeModuleIndex ? (moduleJob.totalLessons ?? MODULE_SIZE) : MODULE_SIZE}
-          onBack={backToModules}
-          onModuleCompleted={backToModules}
-          onSelectLesson={(idx) => void handleSelectFromPath(idx)}
-          showFinalTest={allGenerated}
-          onStartFinalTest={handleStartFinalTest}
-          isLoadingFinalTest={isLoadingFinalTest}
-          onRegenerateLesson={handleRegenerateLesson}
-          onDeleteLesson={handleDeleteLesson}
-          onRenameLesson={handleRenameLesson}
-        />
-      ) : null}
-      </div>
+      </AnimatePresence>
+      {/* 🧭 P42 — lista dei moduli e albero delle lezioni si danno il cambio
+          con un cross-animato (solo transform/opacity, 60fps). */}
+      <AnimatePresence mode="wait" initial={false}>
+        {courseViewState === "modules" && !isCoursePickerOpen && (
+          <motion.div
+            key="modules-list"
+            initial={{ opacity: 0, y: 14 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.2, ease: "easeOut" }}
+            className="relative z-10 min-w-0 overflow-x-clip"
+          >
+            <ModulesOverview
+              modules={modules}
+              onOpenModule={(idx) => void openModule(idx)}
+            />
+          </motion.div>
+        )}
+        {courseViewState === "branch" && (
+          <motion.div
+            key="branch-tree"
+            initial={{ opacity: 0, y: 18 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -12 }}
+            transition={{ duration: 0.22, ease: "easeOut" }}
+            className="relative z-10 min-w-0 overflow-x-clip"
+          >
+            <ModulePath
+              hideHeader
+              moduleIndex={activeModuleIndex ?? 0}
+              moduleTitle={activeModuleTitle ?? "Modulo"}
+              lessons={lessons}
+              currentIndex={currentLessonIndex}
+              isGeneratingLesson={isGeneratingLesson}
+              isModuleGenerating={!!moduleScreen && moduleScreen.moduleIndex === activeModuleIndex}
+              genCount={moduleJob && moduleJob.moduleIndex === activeModuleIndex ? (moduleJob.generatedCount ?? 0) : 0}
+              genTotal={moduleJob && moduleJob.moduleIndex === activeModuleIndex ? (moduleJob.totalLessons ?? MODULE_SIZE) : MODULE_SIZE}
+              onBack={backToModules}
+              onModuleCompleted={backToModules}
+              onSelectLesson={(idx) => void handleSelectFromPath(idx)}
+              showFinalTest={allGenerated}
+              onStartFinalTest={handleStartFinalTest}
+              isLoadingFinalTest={isLoadingFinalTest}
+              onRegenerateLesson={handleRegenerateLesson}
+              onDeleteLesson={handleDeleteLesson}
+              onRenameLesson={handleRenameLesson}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
         </>
       )}
 

@@ -55,6 +55,9 @@ interface EserciziViewProps {
   onFullscreenChange?: (isFullscreen: boolean) => void;
   contextId?: string | null;
   contextName?: string | null;
+  /** P42: avvisa il contenitore quando si lascia il menu (il bottom sheet
+   *  si espande a schermo intero). */
+  onSessionStart?: () => void;
 }
 
 interface PastJob {
@@ -90,7 +93,7 @@ function formatTime(date: Date): string {
   return date.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" });
 }
 
-export function EserciziView({ onFullscreenChange, contextId, contextName }: EserciziViewProps) {
+export function EserciziView({ onFullscreenChange, contextId, contextName, onSessionStart }: EserciziViewProps) {
   const [courses, setCourses] = useState<Course[]>([]);
   const [selectedCourse, setSelectedCourse] = useState<string | null>(contextId ?? null);
   const [lessons, setLessons] = useState<Lesson[]>([]);
@@ -115,6 +118,12 @@ export function EserciziView({ onFullscreenChange, contextId, contextName }: Ese
   const [quizResults, setQuizResults] = useState<QuizResultRow[]>([]);
   const [expandedResultId, setExpandedResultId] = useState<string | null>(null);
   const [view, setView] = useState<"menu" | "generate" | "history">("menu");
+
+  // 📈 P42: "Genera esercizi" (anche via picker delle lezioni) / "I tuoi
+  // esercizi" portano fuori dal menu → il bottom sheet si espande.
+  useEffect(() => {
+    if (view !== "menu" || showLessonPicker) onSessionStart?.();
+  }, [view, showLessonPicker, onSessionStart]);
   const { currentUser } = useAuth();
   const { supported: pushSupported, permission: pushPermission, subscribe: subscribePush } = usePushNotifications();
   const { toast } = useToast();

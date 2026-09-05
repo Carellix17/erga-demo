@@ -4,7 +4,7 @@ import { LessonsList } from "@/components/studio/LessonsList";
 import { LessonsListSkeleton } from "@/components/studio/LessonsListSkeleton";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { ModulesOverview } from "@/components/studio/ModulesOverview";
-import { BranchTopBar, PracticeLaunchers, PromptBar, SubViewHeader } from "@/components/studio/StudioPractice";
+import { ModuleHeaderCard, PracticeLaunchers, PromptBar, SheetDrawer, SubViewHeader } from "@/components/studio/StudioPractice";
 
 /**
  * 🌿 P21b — Collaudo di accensione della schermata Studio in salotto
@@ -173,21 +173,68 @@ describe("StudioPractice (P37) — accessi dedicati e ritorno", () => {
 });
 
 describe("P38 — navigazione progressiva del corso", () => {
-  it("BranchTopBar: barra compatta sticky con la pill glassy 'Ritorna ai moduli'", () => {
-    const onBack = vi.fn();
+  it("P42 ModuleHeaderCard: card compatta sticky, titolo modulo intero (wrap), X 44px", () => {
+    const onClose = vi.fn();
     const { container } = render(
-      <BranchTopBar courseTitle="Biologia" moduleIndex={1} moduleTitle="Genetica" onBack={onBack} />,
+      <ModuleHeaderCard
+        courseTitle="La guerra dei cent'anni"
+        moduleIndex={0}
+        moduleTitle="Introduzione e Contesto Storico dal 1337 al 1449"
+        onClose={onClose}
+      />,
     );
-    const bar = container.firstElementChild as HTMLElement;
-    expect(bar.className).toMatch(/sticky top-0/); // si fissa in cima allo schermo
-    expect(bar.className).toMatch(/py-2/); // compatta: py-2 + h-9 + bordo = 53px ≤ 56px
-    expect(screen.getByText("Biologia · Modulo 2")).toBeTruthy();
-    expect(screen.getByText("Genetica")).toBeTruthy();
-    const back = screen.getByRole("button", { name: "Ritorna ai moduli" });
-    expect(back.className).toMatch(/rounded-full/); // pill
-    expect(back.className).toMatch(/bg-foreground\/10|bg-white\/10/); // glassy semi-trasparente
-    fireEvent.click(back);
-    expect(onBack).toHaveBeenCalledTimes(1);
+    const wrapper = container.firstElementChild as HTMLElement;
+    expect(wrapper.className).toMatch(/sticky top-0 z-20/); // agganciata in alto sopra l'albero
+    // titolo del modulo GRANDE e senza troncamento (break-words, niente truncate)
+    const title = screen.getByText("Introduzione e Contesto Storico dal 1337 al 1449");
+    expect(title.className).toMatch(/text-lg font-bold/);
+    expect(title.className).toMatch(/break-words/);
+    expect(title.className).not.toMatch(/truncate/);
+    // nome del percorso piccolo e muted sotto
+    const course = screen.getByText("La guerra dei cent'anni");
+    expect(course.className).toMatch(/text-xs/);
+    expect(course.className).toMatch(/text-muted-foreground/);
+    // X con target tattile ≥ 44px che riporta ai moduli
+    const x = screen.getByRole("button", { name: "Chiudi modulo" });
+    expect(x.className).toMatch(/h-11 w-11/);
+    fireEvent.click(x);
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it("P42 SheetDrawer: backdrop sfocato, X fissa in alto a destra, chiude tutto", () => {
+    const onClose = vi.fn();
+    const { container } = render(
+      <SheetDrawer title="Interrogazione" step="select" onClose={onClose}>
+        <p>Contenuto di scelta</p>
+      </SheetDrawer>,
+    );
+    const dialog = screen.getByRole("dialog", { name: "Interrogazione" });
+    const backdrop = dialog.firstElementChild as HTMLElement;
+    expect(backdrop.className).toMatch(/bg-black\/60/); // overlay scuro
+    expect(backdrop.className).toMatch(/backdrop-blur-md/); // sfocato
+    const sheet = dialog.children[1] as HTMLElement;
+    expect(sheet.className).toMatch(/h-\[100dvh\]/); // foglio alto quanto il viewport
+    expect(sheet.className).toMatch(/rounded-t-/); // bordi superiori stondati
+    expect(sheet.getAttribute("data-step")).toBe("select");
+    const x = screen.getByRole("button", { name: "Chiudi" });
+    expect(x.className).toMatch(/h-11 w-11/); // target tattile ≥ 44px
+    fireEvent.click(x);
+    expect(onClose).toHaveBeenCalledTimes(1); // esce TUTTO il flusso
+    // il tocco sul backdrop chiude
+    fireEvent.click(backdrop);
+    expect(onClose).toHaveBeenCalledTimes(2);
+  });
+
+  it("P42 SheetDrawer: passo 'active' → foglio a schermo intero (data-step)", () => {
+    render(
+      <SheetDrawer title="Esercizi" step="active" onClose={() => {}}>
+        <p>Sessione</p>
+      </SheetDrawer>,
+    );
+    const sheet = screen.getByRole("dialog", { name: "Esercizi" }).children[1] as HTMLElement;
+    expect(sheet.getAttribute("data-step")).toBe("active");
+    // la X resta nello stesso punto in alto a destra
+    expect(screen.getByRole("button", { name: "Chiudi" }).className).toMatch(/absolute right-3/);
   });
 
   it("ModulesOverview: i moduli BLOCCATI restano inaccessibili e spiegano perché", () => {

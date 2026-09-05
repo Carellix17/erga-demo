@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { EserciziView } from "@/components/pratica/EserciziView";
 import { InterrogazioneView } from "@/components/pratica/InterrogazioneView";
@@ -83,6 +83,28 @@ describe("Pratica integrata in Studio con contesto selezionato", () => {
     expect(screen.getByText("1. Cinematica")).toBeInTheDocument();
     expect(screen.getByText("2. Dinamica")).toBeInTheDocument();
     expect(screen.queryByText("Scegli un corso per iniziare")).not.toBeInTheDocument();
+  });
+
+  it("P42: EserciziView avvisa il contenitore quando si lascia il menu (sheet → schermo intero)", async () => {
+    const onSessionStart = vi.fn();
+    render(<EserciziView contextId="ctx-1" contextName="Fisica" onSessionStart={onSessionStart} />);
+
+    expect(screen.getByText("Genera esercizi")).toBeInTheDocument();
+    expect(onSessionStart).not.toHaveBeenCalled(); // ancora nella schermata di scelta
+
+    fireEvent.click(screen.getByText("Genera esercizi"));
+    await waitFor(() => expect(onSessionStart).toHaveBeenCalledTimes(1));
+  });
+
+  it("P42: InterrogazioneView avvisa il contenitore al click su Domande/Esposizione", async () => {
+    const onSessionStart = vi.fn();
+    render(<InterrogazioneView contextId="ctx-1" contextName="Fisica" onSessionStart={onSessionStart} />);
+
+    const domande = await screen.findByText("Domande");
+    expect(onSessionStart).not.toHaveBeenCalled();
+
+    fireEvent.click(domande);
+    await waitFor(() => expect(onSessionStart).toHaveBeenCalledTimes(1));
   });
 
   it("InterrogazioneView con contextId mostra direttamente le modalità per il corso selezionato", async () => {

@@ -98,10 +98,19 @@ const speakWithAzure = async (text: string, onStart?: () => void, onEnd?: () => 
 interface InterrogazioneViewProps {
   contextId?: string | null;
   contextName?: string | null;
+  /** P42: avvisa il contenitore quando si lascia la schermata di scelta
+   *  (il bottom sheet si espande a schermo intero). */
+  onSessionStart?: () => void;
 }
 
-export function InterrogazioneView({ contextId, contextName }: InterrogazioneViewProps = {}) {
+export function InterrogazioneView({ contextId, contextName, onSessionStart }: InterrogazioneViewProps = {}) {
  const [mode, setMode] = useState<Mode>("select");
+
+ // 📈 P42: "Domande" / "Esposizione" portano fuori dalla scelta → il bottom
+ // sheet di Studio si espande a schermo intero.
+ useEffect(() => {
+   if (mode !== "select") onSessionStart?.();
+ }, [mode, onSessionStart]);
  const [phase, setPhase] = useState<Phase>("idle");
  const [courses, setCourses] = useState<Course[]>([]);
  const [selectedCourse, setSelectedCourse] = useState<string | null>(contextId ?? null);

@@ -1,5 +1,6 @@
-import { ArrowUp, AudioLines, ChevronLeft, PencilLine } from "lucide-react";
-import { useState } from "react";
+import { ArrowUp, AudioLines, ChevronLeft, PencilLine, X } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 
 /**
@@ -16,9 +17,13 @@ import { cn } from "@/lib/utils";
  * apre semplicemente la Chat. Il wrapper porta pb-32: resta sempre sopra
  * la barra di navigazione fissa.
  *
- * SubViewHeader: intestazione con "Torna a Studio" che compare in cima
- * a ogni sottovista; nelle viste immersive (Esercizi/Interrogazione) è
- * l'unico modo di uscire, perché la barra di navigazione è nascosta.
+ * SheetDrawer (P42): fondo mobile (bottom sheet) con backdrop sfocato e
+ * due scatti (scelta ~88% → sessione schermo intero) usato da Esercizi e
+ * Interrogazione. La X in alto a destra chiude l'intero flusso.
+ *
+ * ModuleHeaderCard (P42): card compatta sticky del ramo moduli.
+ *
+ * SubViewHeader: intestazione con "Torna a Studio" della sottovista Chat.
  */
 
 export interface PracticeLaunchersProps {
@@ -152,39 +157,110 @@ export function SubViewHeader({ title, onBack, courseTitle, backLabel = "Torna a
   );
 }
 
-export interface BranchTopBarProps {
+export interface ModuleHeaderCardProps {
   courseTitle: string | null;
   moduleIndex: number;
   moduleTitle: string;
-  onBack: () => void;
+  onClose: () => void;
 }
 
 /**
- * P38 — Livello 2 (percorso a ramo): la card del corso si compatta in questa
- * barra STICKY in alto (≤56px: py-2 + h-9 + bordo). Mostra il nome del corso
- * e del modulo, con l'unico modo d'uscita: la pill glassy "Ritorna ai moduli".
- * Sostituisce l'intestazione interna di ModulePath (hideHeader).
+ * P42 — Livello 2 (percorso a ramo): la hero del corso si comprime in questa
+ * card compatta agganciata in alto (sticky). Titolo del modulo GRANDE e per
+ * intero (va a capo, niente puntini di troncamento), nome del percorso piccolo
+ * e muted sotto, X a destra (44px) per tornare alla lista dei moduli.
  */
-export function BranchTopBar({ courseTitle, moduleIndex, moduleTitle, onBack }: BranchTopBarProps) {
+export function ModuleHeaderCard({ courseTitle, moduleIndex, moduleTitle, onClose }: ModuleHeaderCardProps) {
   return (
-    <div className="sticky top-0 z-30 border-b border-border/40 bg-background/80 px-4 py-2 backdrop-blur-md transition-all duration-300 ease-in-out">
-      <div className="flex h-9 items-center justify-between gap-3">
+    <div className="sticky top-0 z-20 bg-background px-4 pb-2.5 pt-3">
+      <div
+        className="relative rounded-2xl border border-subject-accent/30 p-4 pr-16 shadow-tactile"
+        style={{
+          background:
+            "linear-gradient(135deg, color-mix(in srgb, var(--subject-accent) 14%, var(--card)) 0%, var(--card) 70%)",
+        }}
+      >
+        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+          Modulo {moduleIndex + 1}
+        </p>
+        <h2 className="mt-0.5 break-words text-lg font-bold leading-snug text-foreground">
+          {moduleTitle}
+        </h2>
+        {courseTitle && (
+          <p className="mt-1 break-words text-xs text-muted-foreground">{courseTitle}</p>
+        )}
         <button
           type="button"
-          onClick={onBack}
-          aria-label="Ritorna ai moduli"
-          className="flex h-9 shrink-0 items-center gap-1.5 rounded-full border border-foreground/15 bg-foreground/10 px-3.5 text-sm font-semibold text-foreground backdrop-blur-md transition-all duration-200 hover:bg-foreground/15 active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 dark:border-white/20 dark:bg-white/10 dark:hover:bg-white/15"
+          onClick={onClose}
+          aria-label="Chiudi modulo"
+          className="absolute right-2.5 top-2.5 grid h-11 w-11 place-items-center rounded-full border border-border/60 bg-background/70 text-foreground transition-all duration-200 hover:bg-surface-container-high active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
         >
-          <ChevronLeft className="h-4 w-4" aria-hidden="true" />
-          Ritorna ai moduli
+          <X className="h-5 w-5" aria-hidden="true" />
         </button>
-        <div className="min-w-0 text-right">
-          <p className="label-small truncate text-muted-foreground">
-            {courseTitle ? `${courseTitle} · ` : ""}Modulo {moduleIndex + 1}
-          </p>
-          <p className="truncate text-sm font-bold leading-tight text-foreground">{moduleTitle}</p>
-        </div>
       </div>
+    </div>
+  );
+}
+
+export interface SheetDrawerProps {
+  title: string;
+  /** "select" = foglio a ~88% del viewport; "active" = schermo intero. */
+  step: "select" | "active";
+  onClose: () => void;
+  children: React.ReactNode;
+}
+
+/**
+ * P42 — Bottom sheet per Esercizi e Interrogazione: sale da sotto sopra un
+ * backdrop sfocato (bg-black/60 + backdrop-blur-md). Due scatti: il foglio è
+ * alto 100dvh e in "select" resta traslato del 12% (vede ~88%), in "active"
+ * scivola a schermo intero. La X in alto a destra (44px) resta fissa al suo
+ * posto e chiude TUTTO il flusso. Solo transform/opacity → 60fps.
+ */
+export function SheetDrawer({ title, step, onClose, children }: SheetDrawerProps) {
+  const closeRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    closeRef.current?.focus();
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  return (
+    <div role="dialog" aria-modal="true" aria-label={title} className="fixed inset-0 z-50">
+      <motion.div
+        className="absolute inset-0 bg-black/60 backdrop-blur-md"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.2 }}
+        onClick={onClose}
+        aria-hidden="true"
+      />
+      <motion.div
+        data-step={step}
+        className="absolute inset-x-0 bottom-0 flex h-[100dvh] flex-col rounded-t-dialog border border-border bg-popover text-foreground shadow-level-4"
+        initial={{ y: "12%" }}
+        animate={{ y: step === "active" ? "0%" : "12%" }}
+        transition={{ duration: 0.32, ease: [0.2, 0, 0, 1] }}
+      >
+        {/* Fascia fissa: maniglia + X sempre nello stesso punto in alto a destra */}
+        <div className="relative flex h-14 shrink-0 items-center justify-center">
+          <div className="h-1.5 w-12 rounded-full bg-muted-foreground/35" aria-hidden="true" />
+          <button
+            ref={closeRef}
+            type="button"
+            onClick={onClose}
+            aria-label="Chiudi"
+            className="absolute right-3 top-1/2 grid h-11 w-11 -translate-y-1/2 place-items-center rounded-full text-muted-foreground transition-all duration-200 hover:bg-surface-container-high hover:text-foreground active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          >
+            <X className="h-5 w-5" aria-hidden="true" />
+          </button>
+        </div>
+        <div className="min-h-0 flex-1 overflow-hidden">{children}</div>
+      </motion.div>
     </div>
   );
 }

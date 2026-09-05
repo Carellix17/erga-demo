@@ -18,3 +18,12 @@ Object.defineProperty(window, "matchMedia", {
     dispatchEvent: () => {},
   }),
 });
+
+// P42: jsdom non ha ResizeObserver, usato da @radix-ui/react-use-size (Slider)
+class ResizeObserverStub {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+}
+// @ts-expect-error — stub solo per l'ambiente di test
+globalThis.ResizeObserver = globalThis.ResizeObserver || ResizeObserverStub;
