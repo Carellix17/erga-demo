@@ -59,6 +59,43 @@ function extractJsonArray(raw: string): unknown[] {
   throw new Error("Impossibile estrarre JSON dalla risposta AI");
 }
 
+// Validazione post-generazione + rimescolamento opzioni (scelte multiple)
+function shuffleArray<T>(arr: T[]): T[] {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function optionSpread(options: string[]): number {
+  const lens = options.map((o) => o.trim().length);
+  const max = Math.max(...lens);
+  const min = Math.min(...lens);
+  if (max === 0) return 1;
+  return (max - min) / max;
+}
+
+function validateAndShuffleExercises(exercises: unknown[]): unknown[] {
+  const out: unknown[] = [];
+  for (const ex of exercises) {
+    if (!ex || typeof ex !== "object") continue;
+    const e = ex as Record<string, unknown>;
+    if (e.type === "multiple_choice") {
+      const options = Array.isArray(e.options) ? (e.options as unknown[]).filter((o) => typeof o === "string") : [];
+      const correct = typeof e.correctAnswer === "string" ? e.correctAnswer : "";
+      if (options.length !== 4) continue;
+      if (!correct || !(options as string[]).includes(correct)) continue;
+      if (optionSpread(options as string[]) > 0.15) continue;
+      out.push({ ...e, options: shuffleArray(options) });
+    } else {
+      out.push(ex);
+    }
+  }
+  return out;
+}
+
 serve(withCors(async (req) => {
   try {
     const body = await req.json();
@@ -175,6 +212,13 @@ Genera ${requestedCount} esercizi basati ESCLUSIVAMENTE su questi materiali di s
 3. "matching" - Abbinamento di coppie (pairs con left/right)
 4. "ordering" - Metti in ordine (items da ordinare, correctAnswer è l'ordine giusto)
 
+REGOLE COGNITIVE OBBLIGATORIE (scelte multiple):
+
+- PARITÀ DI LUNGHEZZA (critico): le 4 opzioni devono avere lunghezza, formattazione e complessità sintattica equivalenti. La differenza di caratteri tra l'opzione più corta e la più lunga non deve MAI superare il 15%. La risposta corretta non deve mai essere più dettagliata, qualificata o articolata dei distrattori.
+- DISTRATTORI PLAUSIBILI: costruisci i distrattori con: relazioni causa-effetto INVERTITE rispetto al materiale; valori numericamente vicini e stessa unità di misura (es. 1453 vs 1492, 12% vs 14%, MAI 1453 vs 2024); termini e parole chiave REALI presenti nel testo ma applicati a contesto/attribuzione errata; misconcezioni comuni degli studenti. Vietate opzioni assurde o banalmente false.
+- CHIAREZZA DELLA DOMANDA: lo stem deve essere affermativo, diretto, focalizzato su un unico concetto, in 1-2 frasi (max 180 caratteri). Vietate formulazioni negative combinate ("Quale NON è sbagliata…").
+- POSIZIONE CASUALE: distribuisci uniformemente la posizione della risposta corretta tra le 4 opzioni (A, B, C, D), senza bias posizionale. Nei vero/falso, alterna Vero e Falso senza schemi fissi.
+
 IMPORTANTE: Genera ESATTAMENTE ${requestedCount} esercizi. NON usare "short_answer" né "fill_blank". La maggior parte devono essere "multiple_choice" e "true_false".
 ${cognitiveAddon}
 MATERIALI:
@@ -226,6 +270,8 @@ Rispondi SOLO con un array JSON valido. Ogni esercizio ha questa struttura:
           throw parseErr;
         }
         if (!Array.isArray(exercises) || exercises.length === 0) throw new Error("Risposta AI non valida");
+        exercises = validateAndShuffleExercises(exercises);
+        if (exercises.length === 0) throw new Error("Nessun esercizio valido dopo la validazione");
         await supabase.from("exercise_jobs").update({
           status: "completed",
           result: { exercises },
