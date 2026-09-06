@@ -56,9 +56,12 @@ interface StudioViewProps {
   onClearContext?: () => void;
   onOpenCourseMaterials?: (contextId: string) => void;
   onFullscreenChange?: (isFullscreen: boolean) => void;
+  /** P45: true quando la sottovista Chat è aperta (la pagina passa a
+   *  fillViewport per tenere l'input sopra navbar e tastiera). */
+  onChatLayoutChange?: (chatOpen: boolean) => void;
 }
 
-export function StudioView({ hasFiles, onUploadClick, selectedContextId, lessonLaunch, onLessonLaunchHandled, onClearContext, onOpenCourseMaterials, onFullscreenChange }: StudioViewProps) {
+export function StudioView({ hasFiles, onUploadClick, selectedContextId, lessonLaunch, onLessonLaunchHandled, onClearContext, onOpenCourseMaterials, onFullscreenChange, onChatLayoutChange }: StudioViewProps) {
   const [currentLessonIndex, setCurrentLessonIndex] = useState(0);
   const handledLessonLaunchRef = useRef<number | null>(null);
   // `localStarting` copre la finestra tra il click "Genera" e la prima scrittura
@@ -83,8 +86,10 @@ export function StudioView({ hasFiles, onUploadClick, selectedContextId, lessonL
 
   // 🧭 P37 — barra di navigazione: NASCOSTA nelle sottoviste immersive
   // (Esercizi/Interrogazione, esperienza full-screen senza occlusioni),
-  // VISIBILE in panoramica e in Chat (il campo di testo resta sopra la barra
-  // grazie al layout h-[calc(100vh-6rem)] -mb-24 della sottovista Chat).
+  // VISIBILE in panoramica e in Chat (P45: con onChatLayoutChange la pagina
+  // passa a fillViewport h-dvh e la sottovista Chat riempie lo spazio tra
+  // header e navbar — via il vecchio trucco dell'altezza calcolata che
+  // seppelliva il campo di input sotto la barra di navigazione).
   const immersiveSubView = praticaSubView === "esercizi" || praticaSubView === "interrogazione";
   // 🧭 P38: anche il Livello 2 (percorso a ramo) è full-screen → navbar nascosta.
   const hideNavbar = immersiveSubView || courseViewState === "branch";
@@ -109,6 +114,14 @@ export function StudioView({ hasFiles, onUploadClick, selectedContextId, lessonL
     setPraticaSubView(null);
     setDrawerStep("select");
   };
+  // 💬 P45 — la Chat usa il layout a colonne flessibili a schermo intero
+  // (fillViewport): lo comunica alla pagina, che adatta l'ingombro reale.
+  useEffect(() => {
+    onChatLayoutChange?.(praticaSubView === "chat");
+  }, [praticaSubView, onChatLayoutChange]);
+  useEffect(() => () => {
+    onChatLayoutChange?.(false);
+  }, [onChatLayoutChange]);
   // 💬 P39: seme della Chat — la PromptBar semina il primo messaggio, la
   // sottovista Chat lo recapita con il flusso di invio già esistente.
   const [chatSeed, setChatSeed] = useState<{ text: string; requestId: number } | null>(null);
@@ -958,7 +971,7 @@ export function StudioView({ hasFiles, onUploadClick, selectedContextId, lessonL
         praticaSubView === "chat" ? (
           /* 💬 Chat: navbar VISIBILE — altezza calibrata per tenere il campo
              di testo sopra la barra fissa (stesso trucco già usato da Pratica). */
-          <div className="flex h-[calc(100vh-6rem)] -mb-24 flex-col animate-fade-up">
+          <div className="flex h-full min-h-0 flex-1 flex-col pb-[env(safe-area-inset-bottom)] animate-fade-up">
             <SubViewHeader
               title="Chat col Tutor"
               courseTitle={heroTitle || contextFileName}

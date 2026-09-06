@@ -20,6 +20,12 @@ export default {
       },
     },
     extend: {
+      // P45 — il ring-offset di default di Tailwind è #fff: in dark mode ogni
+      // focus/press con ring-offset-2 mostrava un alone BIANCO PIENO attorno
+      // al bottone. Ora l'offset segue lo sfondo della pagina in ogni tema.
+      ringOffsetColor: {
+        DEFAULT: "hsl(var(--background))",
+      },
       colors: {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
