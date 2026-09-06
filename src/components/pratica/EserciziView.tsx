@@ -3,6 +3,7 @@ import { BookOpen, Dumbbell, RefreshCw, CheckCircle2, XCircle, ArrowRight, Loade
 import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
+import { normalizeExercises } from "@/lib/exerciseQuality";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -180,7 +181,7 @@ export function EserciziView({ onFullscreenChange, contextId, contextName, onSes
       const mapped: PastJob[] = (jobs || [])
         .map((j: { id: string; context_id: string | null; created_at: string; result: unknown }) => {
           const result = j.result as { exercises?: Exercise[] } | null;
-          const exs = result?.exercises || [];
+          const exs = normalizeExercises(result?.exercises || []);
           return {
             id: j.id,
             context_id: j.context_id,
@@ -222,7 +223,7 @@ export function EserciziView({ onFullscreenChange, contextId, contextName, onSes
   const openPastJob = useCallback((job: PastJob) => {
     setSelectedCourse(job.context_id);
     setShowLessonPicker(false);
-    setExercises(job.exercises);
+    setExercises(normalizeExercises(job.exercises));
     setCurrentIndex(0);
     setResults([]);
     setUserAnswer("");
@@ -358,7 +359,7 @@ export function EserciziView({ onFullscreenChange, contextId, contextName, onSes
               stopProgress();
               setGenProgress(100);
               setStage("finalize");
-              setExercises(row.result.exercises);
+              setExercises(normalizeExercises(row.result.exercises));
               setIsLoading(false);
               supabase.removeChannel(channel);
             } else if (row.status === "failed") {
@@ -386,7 +387,7 @@ export function EserciziView({ onFullscreenChange, contextId, contextName, onSes
           stopProgress();
           setGenProgress(100);
           setStage("finalize");
-          setExercises(result.exercises);
+          setExercises(normalizeExercises(result.exercises));
           setIsLoading(false);
           window.clearInterval(poll);
           supabase.removeChannel(channel);
