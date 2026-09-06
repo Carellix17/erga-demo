@@ -59,6 +59,43 @@ function extractJsonArray(raw: string): unknown[] {
   throw new Error("Impossibile estrarre JSON dalla risposta AI");
 }
 
+// Validazione post-generazione + rimescolamento opzioni (scelte multiple)
+function shuffleArray<T>(arr: T[]): T[] {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function optionSpread(options: string[]): number {
+  const lens = options.map((o) => o.trim().length);
+  const max = Math.max(...lens);
+  const min = Math.min(...lens);
+  if (max === 0) return 1;
+  return (max - min) / max;
+}
+
+function validateAndShuffleExercises(exercises: unknown[]): unknown[] {
+  const out: unknown[] = [];
+  for (const ex of exercises) {
+    if (!ex || typeof ex !== "object") continue;
+    const e = ex as Record<string, unknown>;
+    if (e.type === "multiple_choice") {
+      const options = Array.isArray(e.options) ? (e.options as unknown[]).filter((o) => typeof o === "string") : [];
+      const correct = typeof e.correctAnswer === "string" ? e.correctAnswer : "";
+      if (options.length !== 4) continue;
+      if (!correct || !(options as string[]).includes(correct)) continue;
+      if (optionSpread(options as string[]) > 0.15) continue;
+      out.push({ ...e, options: shuffleArray(options) });
+    } else {
+      out.push(ex);
+    }
+  }
+  return out;
+}
+
 serve(withCors(async (req) => {
   try {
     const body = await req.json();
