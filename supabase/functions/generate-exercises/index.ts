@@ -270,6 +270,8 @@ Rispondi SOLO con un array JSON valido. Ogni esercizio ha questa struttura:
           throw parseErr;
         }
         if (!Array.isArray(exercises) || exercises.length === 0) throw new Error("Risposta AI non valida");
+        exercises = validateAndShuffleExercises(exercises);
+        if (exercises.length === 0) throw new Error("Nessun esercizio valido dopo la validazione");
         await supabase.from("exercise_jobs").update({
           status: "completed",
           result: { exercises },
