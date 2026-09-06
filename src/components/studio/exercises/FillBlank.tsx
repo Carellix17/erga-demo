@@ -36,10 +36,10 @@ export function FillBlank({
               <span className="inline-block mx-1 align-middle">
                 {showResult ? (
                   <span className={cn(
-                    "inline-flex items-center gap-1 px-3 py-1 rounded-xl font-bold transition-all",
+                    "inline-flex items-center gap-1 px-3 py-1 rounded-xl font-bold transition-all border",
                     isCorrect
-                      ? "bg-success-container text-success animate-feedback-correct"
-                      : "bg-destructive/10 text-destructive animate-feedback-wrong"
+                      ? "border-emerald-500/40 bg-emerald-500/15 text-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-100 animate-feedback-correct"
+                      : "border-rose-500/40 bg-rose-500/15 text-rose-900 dark:bg-rose-950/40 dark:text-rose-100 animate-feedback-wrong"
                   )}>
                     {answer || "___"}
                     {isCorrect ? <CheckCircle2 className="w-4 h-4 inline" /> : <XCircle className="w-4 h-4 inline" />}
@@ -72,9 +72,9 @@ export function FillBlank({
       )}
 
       {showResult && !isCorrect && (
-        <div className="p-4 rounded-2xl bg-surface-container-low text-center animate-fade-up">
+        <div className="p-4 rounded-2xl bg-surface-container-low text-center animate-fade-up border border-emerald-500/30">
           <p className="body-small text-muted-foreground mb-1">Risposta corretta:</p>
-          <p className="title-medium text-success font-bold">{correctAnswer}</p>
+          <p className="title-medium text-emerald-700 dark:text-emerald-300 font-bold">{correctAnswer}</p>
         </div>
       )}
     </div>

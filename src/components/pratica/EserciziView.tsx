@@ -771,7 +771,7 @@ export function EserciziView({ onFullscreenChange, contextId, contextName, onSes
                       >
                         <div className={cn(
                           "w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 font-display font-bold text-sm",
-                          pct >= 70 ? "bg-success-container text-success" : pct >= 50 ? "bg-warning/10 text-warning" : "bg-error-container text-error"
+                          pct >= 70 ? "bg-emerald-500/15 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300" : pct >= 50 ? "bg-warning/10 text-warning" : "bg-rose-500/15 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300"
                         )}>
                           {pct}%
                         </div>
@@ -789,9 +789,9 @@ export function EserciziView({ onFullscreenChange, contextId, contextName, onSes
                             <p className="body-small text-success">Nessun errore: perfetto</p>
                           ) : (
                             wrong.map((d, i) => (
-                              <div key={i} className="p-2.5 rounded-xl bg-error-container/40 border border-error/15 space-y-1">
+                              <div key={i} className="p-2.5 rounded-xl bg-rose-500/10 dark:bg-rose-950/30 border border-rose-500/20 space-y-1">
                                 <p className="body-small font-medium text-foreground">{d.q}</p>
-                                {d.correctAnswer && <p className="body-small text-success font-medium">✓ {d.correctAnswer}</p>}
+                                {d.correctAnswer && <p className="body-small text-emerald-700 dark:text-emerald-300 font-medium">✓ {d.correctAnswer}</p>}
                                 {d.explanation && (
                                   <div className="body-small text-muted-foreground prose prose-sm max-w-none prose-p:my-1">
                                     <ReactMarkdown>{d.explanation}</ReactMarkdown>
@@ -877,9 +877,12 @@ export function EserciziView({ onFullscreenChange, contextId, contextName, onSes
       <div className="no-halo fixed inset-0 z-50 bg-background flex flex-col h-full px-4 py-6 items-center justify-center space-y-6 pt-safe pb-safe">
         <div className={cn(
           "w-28 h-28 rounded-full flex flex-col items-center justify-center",
-          grade >= 7 ? "bg-success-container" : grade >= 5 ? "bg-warning/10" : "bg-error-container"
+          grade >= 7 ? "bg-emerald-500/15 dark:bg-emerald-950/40" : grade >= 5 ? "bg-warning/10" : "bg-rose-500/15 dark:bg-rose-950/40"
         )}>
-          <span className="font-display text-4xl font-bold">
+          <span className={cn(
+            "font-display text-4xl font-bold",
+            grade >= 7 ? "text-emerald-700 dark:text-emerald-300" : grade >= 5 ? "text-warning" : "text-rose-700 dark:text-rose-300"
+          )}>
             {grade}
           </span>
           <span className="label-small text-muted-foreground">/10</span>
@@ -897,11 +900,11 @@ export function EserciziView({ onFullscreenChange, contextId, contextName, onSes
             ripresi subito mentre sono freschi (e salvati in cronologia). */}
         {results.some((r) => !r.isCorrect) && (
           <div className="w-full max-w-md max-h-[36vh] overflow-y-auto space-y-2 scrollbar-thin">
-            <p className="label-medium font-semibold text-error text-left">Da ripassare ({results.filter((r) => !r.isCorrect).length}):</p>
+            <p className="label-medium font-semibold text-rose-700 dark:text-rose-300 text-left">Da ripassare ({results.filter((r) => !r.isCorrect).length}):</p>
             {results.filter((r) => !r.isCorrect).map((r, i) => (
-              <div key={i} className="text-left p-3 rounded-2xl bg-error-container/50 border border-error/20 space-y-1.5">
+              <div key={i} className="text-left p-3 rounded-2xl bg-rose-500/10 dark:bg-rose-950/30 border border-rose-500/20 space-y-1.5">
                 <p className="body-small font-medium text-foreground">{r.exercise.question}</p>
-                <p className="body-small text-success font-medium">
+                <p className="body-small text-emerald-700 dark:text-emerald-300 font-medium">
                   ✓ {Array.isArray(r.exercise.correctAnswer) ? r.exercise.correctAnswer.join(", ") : r.exercise.correctAnswer}
                 </p>
                 {r.exercise.explanation && (
@@ -930,7 +933,7 @@ export function EserciziView({ onFullscreenChange, contextId, contextName, onSes
   return (
     <div className="no-halo fixed inset-0 z-50 bg-background flex flex-col h-full pt-safe pb-safe">
       {/* Header with X button */}
-      <div className="px-4 pt-3 pb-2">
+      <div className="shrink-0 px-4 pt-3 pb-2">
         <div className="flex items-center justify-between mb-2">
           <button onClick={exitExercises} className="w-11 h-11 rounded-full flex items-center justify-center hover:bg-foreground/[0.08] transition-colors">
             <X className="w-5 h-5 text-foreground" />
@@ -951,7 +954,7 @@ export function EserciziView({ onFullscreenChange, contextId, contextName, onSes
       </div>
 
       {/* Exercise content — slide between exercises */}
-      <div className="flex-1 overflow-y-auto px-4 py-3">
+      <div className="flex-1 min-h-0 overflow-y-auto px-4 py-3">
         <AnimatePresence mode="popLayout" initial={false}>
           <motion.div
             key={currentIndex}
@@ -978,29 +981,42 @@ export function EserciziView({ onFullscreenChange, contextId, contextName, onSes
           <ReactMarkdown>{currentExercise.question}</ReactMarkdown>
         </div>
 
-        {/* Answer input based on type */}
-        {!showResult && (
-          <div className="space-y-2">
+        {/* Answer input based on type — MC/TF options restano visibili
+            dopo la verifica, colorate: verde = corretta, rosso = sbagliata. */}
+        <div className="space-y-2">
             {(currentExercise.type === "multiple_choice" || currentExercise.type === "true_false") && (
               <div className="space-y-2">
-                {(currentExercise.options || []).map((opt, i) => (
-                  <button
-                    key={i}
-                    onClick={() => setUserAnswer(opt)}
-                    className={cn(
-                      "w-full text-left p-4 rounded-xl border transition-all duration-200",
-                      userAnswer === opt
-                        ? "bg-primary text-primary-foreground border-primary shadow-level-1"
-                        : "bg-surface-container border-outline-variant/30 hover:bg-surface-container-high"
-                    )}
-                  >
-                    <span className="body-medium">{opt}</span>
-                  </button>
-                ))}
+                {(currentExercise.options || []).map((opt, i) => {
+                  const isCorrectOption = showResult && opt === currentExercise.correctAnswer;
+                  const isWrongPick = showResult && userAnswer === opt && opt !== currentExercise.correctAnswer;
+                  return (
+                    <button
+                      key={i}
+                      onClick={() => setUserAnswer(opt)}
+                      disabled={showResult}
+                      className={cn(
+                        "w-full text-left p-4 rounded-xl border transition-all duration-200",
+                        !showResult && (
+                          userAnswer === opt
+                            ? "bg-primary text-primary-foreground border-primary shadow-level-1"
+                            : "bg-surface-container text-foreground border-outline-variant/30 hover:bg-surface-container-high"
+                        ),
+                        // ✅ Risposta corretta rivelata — VERDE
+                        isCorrectOption && "border-emerald-500 bg-emerald-500/15 dark:bg-emerald-950/40 text-emerald-900 dark:text-emerald-100 font-medium",
+                        // ❌ Risposta sbagliata selezionata — ROSSO
+                        isWrongPick && "border-rose-500 bg-rose-500/15 dark:bg-rose-950/40 text-rose-900 dark:text-rose-100 font-medium",
+                        // Distrattori non scelti dopo la verifica — attenuati
+                        showResult && !isCorrectOption && !isWrongPick && "bg-surface-container text-foreground border-outline-variant/30 opacity-50"
+                      )}
+                    >
+                      <span className="body-medium">{opt}</span>
+                    </button>
+                  );
+                })}
               </div>
             )}
 
-            {(currentExercise.type === "fill_blank" || currentExercise.type === "short_answer") && (
+            {!showResult && (currentExercise.type === "fill_blank" || currentExercise.type === "short_answer") && (
               <input
                 type="text"
                 value={userAnswer}
@@ -1011,7 +1027,7 @@ export function EserciziView({ onFullscreenChange, contextId, contextName, onSes
               />
             )}
 
-            {currentExercise.type === "matching" && currentExercise.pairs && (
+            {!showResult && currentExercise.type === "matching" && currentExercise.pairs && (
               <div className="space-y-3">
                 {currentExercise.pairs.map((pair, i) => (
                   <div key={i} className="flex items-center gap-2">
@@ -1032,7 +1048,7 @@ export function EserciziView({ onFullscreenChange, contextId, contextName, onSes
               </div>
             )}
 
-            {currentExercise.type === "ordering" && currentExercise.items && (
+            {!showResult && currentExercise.type === "ordering" && currentExercise.items && (
               <div className="space-y-2">
                 <p className="label-small text-muted-foreground">Clicca gli elementi nell'ordine corretto:</p>
                 <div className="flex flex-wrap gap-2">
@@ -1061,8 +1077,7 @@ export function EserciziView({ onFullscreenChange, contextId, contextName, onSes
                 )}
               </div>
             )}
-          </div>
-        )}
+        </div>
 
           </motion.div>
         </AnimatePresence>
@@ -1072,21 +1087,26 @@ export function EserciziView({ onFullscreenChange, contextId, contextName, onSes
           <div className={cn(
             "p-4 rounded-2xl border animate-fade-up mt-4",
             results[results.length - 1]?.isCorrect
-              ? "bg-success-container border-success/20"
-              : "bg-error-container border-destructive/20"
+              ? "border-emerald-500/40 bg-emerald-500/15 dark:bg-emerald-950/40"
+              : "border-rose-500/40 bg-rose-500/15 dark:bg-rose-950/40"
           )}>
             <div className="flex items-center gap-2 mb-2">
               {results[results.length - 1]?.isCorrect
-                ? <CheckCircle2 className="w-5 h-5 text-success" />
-                : <XCircle className="w-5 h-5 text-destructive" />
+                ? <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+                : <XCircle className="w-5 h-5 text-rose-600 dark:text-rose-400" />
               }
-              <span className="label-large">
+              <span className={cn(
+                "label-large font-semibold",
+                results[results.length - 1]?.isCorrect
+                  ? "text-emerald-900 dark:text-emerald-100"
+                  : "text-rose-900 dark:text-rose-100"
+              )}>
                 {results[results.length - 1]?.isCorrect ? "Corretto" : "Non corretto"}
               </span>
             </div>
             {!results[results.length - 1]?.isCorrect && (
               <p className="body-small text-muted-foreground mb-2">
-                Risposta corretta: <strong>{Array.isArray(currentExercise.correctAnswer) ? currentExercise.correctAnswer.join(", ") : currentExercise.correctAnswer}</strong>
+                Risposta corretta: <strong className="text-emerald-700 dark:text-emerald-300">{Array.isArray(currentExercise.correctAnswer) ? currentExercise.correctAnswer.join(", ") : currentExercise.correctAnswer}</strong>
               </p>
             )}
             <div className="body-small text-muted-foreground prose prose-sm">
@@ -1097,7 +1117,7 @@ export function EserciziView({ onFullscreenChange, contextId, contextName, onSes
       </div>
 
       {/* Action button */}
-      <div className="px-4 pb-4 pt-2">
+      <div className="shrink-0 px-4 pb-4 pt-2">
         {showResult ? (
           <Button onClick={nextExercise} className="w-full h-12 rounded-full bg-primary text-primary-foreground">
             {currentIndex + 1 < exercises.length ? "Prossimo esercizio" : "Vedi risultati"}

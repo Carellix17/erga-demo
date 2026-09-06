@@ -44,7 +44,7 @@ export function PraticaView({
   if (!hasFiles) return <EmptyState onUploadClick={onUploadClick} />;
 
   return (
-    <div className="flex flex-col h-[calc(100vh-6rem)] -mb-24">
+    <div className="flex h-full min-h-0 flex-1 flex-col pb-[env(safe-area-inset-bottom)]">
       {/* Sub-tab selector - hidden during exercises fullscreen */}
       {!isExerciseFullscreen && (
         <div className="sticky top-16 z-30 -mx-4 flex-shrink-0 bg-background/95 px-4 pb-2 pt-2 backdrop-blur-md sm:-mx-6 sm:px-6">

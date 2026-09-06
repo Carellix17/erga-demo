@@ -516,7 +516,7 @@ export function InterrogazioneView({ contextId, contextName, onSessionStart }: I
  const selectedCourseObj = courses.find(c => c.id === selectedCourse);
  return (
  <div className="flex flex-col h-full">
- <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-6 space-y-6">
+ <div className="flex-1 min-h-0 overflow-y-auto px-4 sm:px-6 py-6 space-y-6">
  <button
  onClick={resetInterrogazione}
  className="self-start inline-flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors duration-200"
@@ -556,7 +556,7 @@ export function InterrogazioneView({ contextId, contextName, onSessionStart }: I
  </div>
  </div>
 
- <div className="px-4 sm:px-6 py-4 bg-background border-t border-outline-variant/60">
+ <div className="shrink-0 px-4 sm:px-6 py-4 bg-background border-t border-outline-variant/60">
  <Button
  onClick={() => selectedCourse && startInterrogazione(selectedCourse,"structured")}
  className="w-full h-14 rounded-full bg-primary text-primary-foreground shadow-level-2 transition-all duration-200 active:scale-[0.98]"
@@ -572,11 +572,11 @@ export function InterrogazioneView({ contextId, contextName, onSessionStart }: I
  // Final report screen
  if (mode ==="report" && finalReport) {
  const avg = finalReport.average;
- const avgColor = avg >= 7 ?"text-success" : avg >= 5 ?"text-warning" :"text-destructive";
- const avgBg = avg >= 7 ?"bg-success-container" : avg >= 5 ?"bg-warning/10" :"bg-error-container";
+ const avgColor = avg >= 7 ?"text-emerald-700 dark:text-emerald-300" : avg >= 5 ?"text-warning" :"text-rose-700 dark:text-rose-300";
+ const avgBg = avg >= 7 ?"bg-emerald-500/15 dark:bg-emerald-950/40" : avg >= 5 ?"bg-warning/10" :"bg-rose-500/15 dark:bg-rose-950/40";
  return (
  <div className="flex flex-col h-full">
- <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-6 space-y-5">
+ <div className="flex-1 min-h-0 overflow-y-auto px-4 sm:px-6 py-6 space-y-5">
  <div className="text-center space-y-3">
  <div className="w-16 h-16 mx-auto rounded-full bg-primary text-primary-foreground shadow-level-2 flex items-center justify-center animate-bounce-in">
  <CheckCircle2 className="w-8 h-8" />
@@ -599,8 +599,8 @@ export function InterrogazioneView({ contextId, contextName, onSessionStart }: I
  <div className="p-5 rounded-2xl bg-card border border-outline-variant/60 shadow-level-1 space-y-3">
  <p className="label-large font-semibold tracking-tight text-foreground">Voti per domanda</p>
  <ul className="space-y-2">
- {finalReport.scores.map((s) => {
- const c = s.score >= 7 ?"text-success" : s.score >= 5 ?"text-warning" :"text-destructive";
+          {finalReport.scores.map((s) => {
+ const c = s.score >= 7 ?"text-emerald-700 dark:text-emerald-300" : s.score >= 5 ?"text-warning" :"text-rose-700 dark:text-rose-300";
  return (
  <li
  key={s.question}
@@ -627,7 +627,7 @@ export function InterrogazioneView({ contextId, contextName, onSessionStart }: I
  </div>
  </div>
 
- <div className="px-4 sm:px-6 py-4 bg-background border-t border-outline-variant/60">
+ <div className="shrink-0 px-4 sm:px-6 py-4 bg-background border-t border-outline-variant/60">
  <Button
  onClick={resetInterrogazione}
  className="w-full h-14 rounded-full bg-primary text-primary-foreground shadow-level-2 transition-all duration-200 active:scale-[0.98]"
@@ -644,17 +644,17 @@ export function InterrogazioneView({ contextId, contextName, onSessionStart }: I
  return (
  <div className="flex flex-col h-full">
  {/* Header */}
- <div className="flex items-center justify-between px-5 py-3.5 bg-background border-b border-outline-variant/60">
+ <div className="shrink-0 flex items-center justify-between px-5 py-3.5 bg-background border-b border-outline-variant/60">
  <div className="flex items-center gap-2">
  <span className="label-large font-semibold tracking-tight text-foreground">
  {mode ==="structured" ? `Domanda ${questionCount} di ${maxQuestions}` :"Esposizione libera"}
  </span>
  {score !== null && (
- <span className={cn(
+            <span className={cn(
 "px-2.5 py-0.5 rounded-full label-small",
- score >= 7 ?"bg-success-container text-success" :
+ score >= 7 ?"bg-emerald-500/15 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300" :
  score >= 5 ?"bg-warning/10 text-warning" :
-"bg-error-container text-destructive"
+"bg-rose-500/15 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300"
  )}>
  {score}/10
  </span>
@@ -677,7 +677,7 @@ export function InterrogazioneView({ contextId, contextName, onSessionStart }: I
  </div>
 
  {/* Exchanges */}
- <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 space-y-3">
+ <div className="flex-1 min-h-0 overflow-y-auto px-4 sm:px-6 py-4 space-y-3">
  {exchanges.map((item, i) => (
  <div
  key={i}
@@ -736,7 +736,7 @@ export function InterrogazioneView({ contextId, contextName, onSessionStart }: I
 
  {/* Voice input */}
  {phase ==="question" && (
- <div className="px-5 pb-5 pt-3 space-y-3 bg-background border-t border-outline-variant/60">
+ <div className="shrink-0 px-5 pb-5 pt-3 space-y-3 bg-background border-t border-outline-variant/60">
  {transcript && (
  <div className="p-4 rounded-xl bg-surface-container-high border border-outline-variant/60 text-foreground body-small max-h-24 overflow-y-auto">
  {transcript}

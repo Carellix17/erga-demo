@@ -62,8 +62,8 @@ function QuestionItem({ q }: { q: DomandaAutovalutazione }) {
                 onClick={() => !revealed && setSelected(opt)}
                 className={cn(
                   "w-full text-left px-4 py-2.5 rounded-lg border text-sm transition-all duration-200",
-                  isCorrect ? "bg-success-container border-success text-success font-medium" :
-                  isWrong ? "bg-error-container border-error text-error" :
+                  isCorrect ? "border-emerald-500 bg-emerald-500/15 text-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-100 font-medium" :
+                  isWrong ? "border-rose-500 bg-rose-500/15 text-rose-900 dark:bg-rose-950/40 dark:text-rose-100" :
                   isSelected ? "bg-primary-container border-primary text-primary" :
                   "bg-surface-container-high border-border text-foreground hover:border-primary/50"
                 )}
@@ -83,8 +83,8 @@ function QuestionItem({ q }: { q: DomandaAutovalutazione }) {
       </button>
 
       {revealed && (
-        <div className="p-3 rounded-lg bg-success-container border border-success/20 space-y-1">
-          <p className="label-medium text-success font-semibold">{q.risposta_corretta}</p>
+        <div className="p-3 rounded-lg bg-emerald-500/15 dark:bg-emerald-950/40 border border-emerald-500/40 space-y-1">
+          <p className="label-medium text-emerald-900 dark:text-emerald-100 font-semibold">✓ {q.risposta_corretta}</p>
           <p className="body-small text-muted-foreground">{q.spiegazione_risposta}</p>
         </div>
       )}

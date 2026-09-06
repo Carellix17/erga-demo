@@ -396,7 +396,7 @@ export function CourseSelector({
               Dai un nuovo nome al tuo corso. Il cambiamento verrà salvato nel cloud.
             </DrawerDescription>
           </DrawerHeader>
-          <div className="px-4">
+          <div className="flex-1 min-h-0 overflow-y-auto px-4 py-2">
             <Input
               autoFocus
               value={renameValue}

@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { readFileSync, readdirSync, statSync } from "fs";
-import { join } from "path";
+import { join, sep } from "path";
 
 /**
  * 🛡️ P24 × CACCIATORE DI VERDI — test anti-regressione del monocromo.
@@ -8,10 +8,26 @@ import { join } from "path";
  * emerald/teal/lime/sage, hue HSL 60-180 con saturazione, hex della vecchia
  * palette bosco, theme-color verdi) FARÀ FALLIRE la suite.
  * È il motivo per cui "il verde non torna più".
+ *
+ * 🚦 ECCEZIONE FEEDBACK QUIZ (bug-fix UX): le componenti che validano le
+ * risposte possono usare emerald (corretto) e rose (sbagliato). Il feedback
+ * verde/rosso esplicito è un requisito di accessibilità (WCAG): senza colori,
+ * chi risponde non distingue a colpo d'occhio esito giusto/sbagliato.
+ * Ovunque ALTROVE il monocromo resta legge.
  */
 
 const SRC = join(__dirname, "..", "..", "src");
 const ROOT = join(__dirname, "..", "..");
+
+// Componenti autorizzate al verde SOLO per lo stato "risposta corretta"
+const QUIZ_FEEDBACK_ALLOWLIST = [
+  "src/components/studio/exercises/MultipleChoice.tsx",
+  "src/components/studio/exercises/TrueFalse.tsx",
+  "src/components/studio/exercises/FillBlank.tsx",
+  "src/components/studio/StudyTutorView.tsx",
+  "src/components/pratica/EserciziView.tsx",
+  "src/components/pratica/InterrogazioneView.tsx",
+].map((p) => p.replace(/\//g, sep));
 
 function walk(dir: string): string[] {
   const out: string[] = [];
@@ -45,8 +61,9 @@ describe("Cacciatore di verdi (monocromo)", () => {
   for (const file of files) {
     if (file.endsWith("noGreen.test.ts")) continue; // il test stesso contiene la lista hex
     const content = readFileSync(file, "utf-8");
+    const isQuizFeedbackFile = QUIZ_FEEDBACK_ALLOWLIST.some((p) => file.endsWith(p));
 
-    if (GREEN_CLASS_RE.test(content)) {
+    if (GREEN_CLASS_RE.test(content) && !isQuizFeedbackFile) {
       problems.push(`${file}: classe Tailwind verde`);
     }
     if (HEX_RE.test(content)) {

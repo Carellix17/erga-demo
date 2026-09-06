@@ -199,6 +199,7 @@ const Index = () => {
         onTabChange={changeTab}
         headerTitle={headerTitle}
         hideChrome={isFullscreen}
+        fillViewport={activeTab === "pratica"}
       >
         {/* ⚠️ Errori di lettura dati visibili (mai "vuoto" silenzioso):
             se il contenuto cloud non si carica, l'utente lo sa e può riprovare. */}
@@ -224,7 +225,14 @@ const Index = () => {
           </div>
         )}
         {/* 🌲 P24 — passaggio tra stanze: dissolvenza di sola luce (200ms) */}
-        <div key={activeTab} className="room-fade">
+        <div
+          key={activeTab}
+          className={
+            activeTab === "pratica"
+              ? "room-fade flex min-h-0 flex-1 flex-col"
+              : "room-fade"
+          }
+        >
         {activeTab === "home" && (
           <HomeView
             onOpenStudio={() => changeTab("studio")}

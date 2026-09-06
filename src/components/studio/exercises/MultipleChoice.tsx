@@ -45,15 +45,15 @@ export function MultipleChoice({
               className={cn(
                 "w-full p-4 text-left rounded-2xl border-2 transition-all duration-300 ease-m3-emphasized animate-option-pop",
                 // Default
-                !showResult && !isSelected && "border-outline-variant bg-surface-container-lowest hover:border-primary/50 hover:bg-primary/5 active:scale-[0.97]",
+                !showResult && !isSelected && "border-outline-variant bg-surface-container-lowest text-foreground hover:border-primary/50 hover:bg-primary/5 active:scale-[0.97]",
                 // Selected pre-submit
-                !showResult && isSelected && "border-primary bg-primary/10 scale-[1.02] shadow-level-1",
-                // Correct answer revealed
-                showResult && isCorrectOption && "border-success bg-success-container animate-feedback-correct",
-                // Wrong answer selected
-                showResult && isSelected && !isCorrectOption && "border-destructive bg-destructive/10 animate-feedback-wrong",
-                // Other options after submit
-                showResult && !isSelected && !isCorrectOption && "border-outline-variant opacity-40"
+                !showResult && isSelected && "border-primary bg-primary/10 text-foreground scale-[1.02] shadow-level-1",
+                // Correct answer revealed — GREEN
+                showResult && isCorrectOption && "border-emerald-500 bg-emerald-500/15 dark:bg-emerald-950/40 animate-feedback-correct",
+                // Wrong answer selected — RED
+                showResult && isSelected && !isCorrectOption && "border-rose-500 bg-rose-500/15 dark:bg-rose-950/40 animate-feedback-wrong",
+                // Other options after submit — muted
+                showResult && !isSelected && !isCorrectOption && "border-outline-variant opacity-50"
               )}
               style={{ animationDelay: `${index * 60}ms` }}
             >
@@ -62,8 +62,8 @@ export function MultipleChoice({
                   "w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold shrink-0 transition-all",
                   !showResult && !isSelected && "bg-surface-container-highest text-muted-foreground",
                   !showResult && isSelected && "bg-primary text-primary-foreground",
-                  showResult && isCorrectOption && "bg-success text-success-foreground",
-                  showResult && isSelected && !isCorrectOption && "bg-destructive text-destructive-foreground",
+                  showResult && isCorrectOption && "bg-emerald-600 text-white",
+                  showResult && isSelected && !isCorrectOption && "bg-rose-600 text-white",
                 )}>
                   {showResult && isCorrectOption ? (
                     <CheckCircle2 className="w-5 h-5" />
@@ -75,8 +75,8 @@ export function MultipleChoice({
                 </div>
                 <span className={cn(
                   "body-large flex-1",
-                  showResult && isCorrectOption && "text-success font-medium",
-                  showResult && isSelected && !isCorrectOption && "text-destructive",
+                  showResult && isCorrectOption && "text-emerald-900 dark:text-emerald-100 font-medium",
+                  showResult && isSelected && !isCorrectOption && "text-rose-900 dark:text-rose-100 font-medium",
                 )}>
                   {option}
                 </span>
@@ -88,8 +88,10 @@ export function MultipleChoice({
 
       {showResult && (
         <div className={cn(
-          "p-4 rounded-2xl text-center font-medium flex items-center justify-center gap-2 animate-fade-up",
-          isCorrect ? "bg-success-container text-success" : "bg-destructive/10 text-destructive"
+          "p-4 rounded-2xl text-center font-medium flex items-center justify-center gap-2 animate-fade-up border",
+          isCorrect
+            ? "border-emerald-500/40 bg-emerald-500/15 text-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-100"
+            : "border-rose-500/40 bg-rose-500/15 text-rose-900 dark:bg-rose-950/40 dark:text-rose-100"
         )}>
           {isCorrect ? "Perfetto! 🎉" : "La risposta corretta è evidenziata sopra."}
         </div>

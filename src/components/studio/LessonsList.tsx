@@ -407,7 +407,7 @@ export function LessonsList({
       >
         <DrawerContent className="pb-6">
           {menuLesson && (
-            <div className="px-5 pt-2 animate-fade-in">
+            <div className="flex-1 min-h-0 overflow-y-auto px-5 pt-2 animate-fade-in">
               <div className="flex flex-col items-center text-center mb-5">
                 <div className="w-12 h-12 rounded-full bg-secondary flex items-center justify-center mb-3">
                   <span className="text-foreground font-display font-bold">{menuLesson.index + 1}</span>
