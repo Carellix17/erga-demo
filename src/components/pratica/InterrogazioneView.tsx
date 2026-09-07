@@ -723,11 +723,11 @@ export function InterrogazioneView({ contextId, contextName, onSessionStart }: I
 
  {phase ==="evaluating" && (
  <div className="flex justify-center py-4">
- <div className="flex gap-1.5">
- <div className="w-2 h-2 bg-foreground/80 rounded-full animate-bounce" style={{ animationDelay:"0ms" }} />
- <div className="w-2 h-2 bg-foreground/50 rounded-full animate-bounce" style={{ animationDelay:"150ms" }} />
- <div className="w-2 h-2 bg-foreground/30 rounded-full animate-bounce" style={{ animationDelay:"300ms" }} />
- </div>
+    <div className="flex gap-1.5">
+      <div className="w-2 h-2 bg-foreground/80 rounded-full animate-typing-dot" style={{ animationDelay: "0ms" }} />
+      <div className="w-2 h-2 bg-foreground/50 rounded-full animate-typing-dot" style={{ animationDelay: "-400ms" }} />
+      <div className="w-2 h-2 bg-foreground/30 rounded-full animate-typing-dot" style={{ animationDelay: "-800ms" }} />
+    </div>
  </div>
  )}
 

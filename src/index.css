@@ -980,6 +980,19 @@
     50% { opacity: 0.85; transform: scale(1.04); }
   }
 
+  /* ✍️ P46 — “sta scrivendo…”: i tre pallini della chat si alzano in
+     sequenza con un micro-respiro (solo 3px + opacità). Niente rimbalzo
+     di Tailwind: il movimento resta dolce e si ferma con
+     prefers-reduced-motion (vedi regole globali qui sotto). */
+  .animate-typing-dot {
+    animation: erga-typing-dot 1.2s ease-in-out infinite;
+    will-change: transform, opacity;
+  }
+  @keyframes erga-typing-dot {
+    0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+    30%           { transform: translateY(-3px); opacity: 1; }
+  }
+
   /* 🎨 P9a — pastelli semantici della routine (scuola/sonno/pasti):
      la tinta ha un senso (distingue i blocchi), ma addolcita sul tono di casa. */
   .routine-school { background: hsl(214 0% 94% / 0.75); border: 1px solid hsl(214 0% 87% / 0.85); color: hsl(222 0% 22%); }

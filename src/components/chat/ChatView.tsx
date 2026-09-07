@@ -7,7 +7,7 @@ import { EmptyState } from "@/components/shared/EmptyState";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { History, X, BookOpen, Globe2 } from "lucide-react";
+import { History, X, BookOpen, Globe2, Brain } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTranslation } from "react-i18next";
 import { currentLanguage } from "@/i18n";
@@ -585,13 +585,13 @@ export function ChatView({ hasFiles, onUploadClick, contextId, seedMessage, onSe
           {isLoading && (
             <div className="flex gap-3 animate-fade-up">
               <div className="w-9 h-9 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-level-1">
-                <div className="w-4 h-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" />
+                <Brain className="w-4 h-4" />
               </div>
               <div className="bg-surface-container-high rounded-2xl rounded-bl-md px-4 py-3 shadow-level-1">
                 <div className="flex gap-1.5">
-                  <div className="w-2 h-2 bg-foreground/80 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
-                  <div className="w-2 h-2 bg-foreground/50 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
-                  <div className="w-2 h-2 bg-foreground/30 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+                  <div className="w-2 h-2 bg-foreground/80 rounded-full animate-typing-dot" style={{ animationDelay: "0ms" }} />
+                  <div className="w-2 h-2 bg-foreground/50 rounded-full animate-typing-dot" style={{ animationDelay: "-400ms" }} />
+                  <div className="w-2 h-2 bg-foreground/30 rounded-full animate-typing-dot" style={{ animationDelay: "-800ms" }} />
                 </div>
               </div>
             </div>

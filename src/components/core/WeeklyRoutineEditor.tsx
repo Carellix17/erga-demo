@@ -487,7 +487,7 @@ function RoutineBlockButton({ seg, onEdit, mobile }: BlockProps) {
         width: `calc(${laneWidth}% - ${mobile ? 12 : 8}px)`,
         boxSizing: "border-box",
         transition:
-          "transform 400ms cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 200ms, height 300ms ease, top 300ms ease",
+          "transform 350ms cubic-bezier(0.2, 0, 0, 1), box-shadow 200ms, height 300ms ease, top 300ms ease",
       }}
       aria-label={`${r.label || routineKindLabel(r.kind)}, ${routineDayLabel(seg.day)} ${minToTime(seg.startMin)}–${minToTime(seg.endMin)}. Tocca per modificare.`}
     >

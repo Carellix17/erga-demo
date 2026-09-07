@@ -20,7 +20,6 @@ interface PlanItemProps {
 
 export function PlanItem({ item, subjectColor, onClick }: PlanItemProps) {
   const { t } = useTranslation();
-  const border = subjectColor?.border ?? "border-l-foreground/25";
   const subjBadge = subjectColor
     ? cn(subjectColor.badge, subjectColor.badgeText)
     : "bg-secondary text-muted-foreground";
@@ -28,13 +27,15 @@ export function PlanItem({ item, subjectColor, onClick }: PlanItemProps) {
   return (
     <div
       className={cn(
-        "m3-card-elevated rounded-xl border-l-4 cursor-pointer p-4 state-layer",
-        border,
+        "m3-card-elevated rounded-xl cursor-pointer p-4 state-layer flex items-start gap-3",
         item.completed && "opacity-60"
       )}
       onClick={onClick}
     >
-      <div className="flex items-start justify-between gap-3">
+      {subjectColor && (
+        <span aria-hidden="true" className={cn("mt-1.5 h-2 w-2 shrink-0 rounded-full", subjectColor.solid)} />
+      )}
+      <div className="flex-1 min-w-0 flex items-start justify-between gap-3">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1.5 flex-wrap">
             <span className="label-small px-2.5 py-0.5 rounded-full bg-surface-container text-muted-foreground">

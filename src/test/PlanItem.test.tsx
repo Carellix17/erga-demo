@@ -19,8 +19,16 @@ describe("PlanItem", () => {
     expect(screen.getByText("Studio")).toBeTruthy();
     const subjBadge = screen.getByText("Matematica");
     expect(subjBadge.className).toContain(col.badge);
-    // bordo sinistro colorato
-    expect(container.firstElementChild?.className).toContain(col.border);
+    // accento materia: puntino colorato allineato a sinistra (niente più
+    // bordo laterale spesso, "trucco" da UI generica)
+    const dot = Array.from(container.querySelectorAll("span")).find((el) =>
+      el.className.split(" ").includes(col.solid)
+    );
+    expect(dot).toBeTruthy();
+    expect(dot?.className).toContain("rounded-full");
+    expect(dot?.getAttribute("aria-hidden")).toBe("true");
+    expect(container.firstElementChild?.className).not.toContain("border-l-4");
+    expect(container.firstElementChild?.className).not.toContain(col.border);
   });
 
   it("senza colore usa il fallback neutro ma non si rompe", () => {
