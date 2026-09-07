@@ -26,8 +26,9 @@ interface ChatViewProps {
   hasFiles: boolean;
   onUploadClick: () => void;
   contextId?: string | null;
-  /** P39: primo messaggio "seminato" dalla barra prompter dello Studio.
-   *  Viene recapitato con lo stesso identico flusso di invio (handleSend). */
+  /** P39: primo messaggio "seminato" da un ingresso esterno (una domanda già
+   *  scritta altrove). Viene recapitato con lo stesso identico flusso di
+   *  invio (handleSend). Nessun chiamante obbligato: resta un gancio pronto. */
   seedMessage?: { text: string; requestId: number } | null;
   onSeedConsumed?: () => void;
 }
@@ -179,9 +180,10 @@ export function ChatView({ hasFiles, onUploadClick, contextId, seedMessage, onSe
     });
   };
 
-  // 🌱 P39: messaggio seminato dalla PromptBar dello Studio — viene smistato
-  // all'UNICO flusso di invio esistente (handleSend via ref, così l'hook
-  // resta prima dell'early return e il numero di hook non cambia mai).
+  // 🌱 P39: messaggio "seminato" da un ingresso esterno (una domanda già
+  // scritta da un'altra schermata) — viene smistato all'UNICO flusso di invio
+  // esistente (handleSend via ref, così l'hook resta prima dell'early return
+  // e il numero di hook non cambia mai).
   const sendRef = useRef<((content: string) => Promise<void>) | null>(null);
   const seededRef = useRef<number | null>(null);
   useEffect(() => {

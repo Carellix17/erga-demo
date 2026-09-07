@@ -9,10 +9,9 @@ import { LessonsListSkeleton } from "./LessonsListSkeleton";
 import { ModuleGenerationScreen } from "./ModuleGenerationScreen";
 import { PathHero } from "./PathHero";
 import { PraticaSubTab } from "@/components/pratica/PraticaView";
-import { ChatView } from "@/components/chat/ChatView";
 import { EserciziView } from "@/components/pratica/EserciziView";
 import { InterrogazioneView } from "@/components/pratica/InterrogazioneView";
-import { ModuleHeaderCard, PracticeLaunchers, PromptBar, SheetDrawer, SubViewHeader } from "./StudioPractice";
+import { ModuleHeaderCard, PracticeLaunchers, SheetDrawer } from "./StudioPractice";
 import { AnimatePresence, motion } from "framer-motion";
 import { cleanCourseName } from "@/lib/courseName";
 import { getSubjectAccent } from "@/lib/subjectColors";
@@ -56,12 +55,9 @@ interface StudioViewProps {
   onClearContext?: () => void;
   onOpenCourseMaterials?: (contextId: string) => void;
   onFullscreenChange?: (isFullscreen: boolean) => void;
-  /** P45: true quando la sottovista Chat è aperta (la pagina passa a
-   *  fillViewport per tenere l'input sopra navbar e tastiera). */
-  onChatLayoutChange?: (chatOpen: boolean) => void;
 }
 
-export function StudioView({ hasFiles, onUploadClick, selectedContextId, lessonLaunch, onLessonLaunchHandled, onClearContext, onOpenCourseMaterials, onFullscreenChange, onChatLayoutChange }: StudioViewProps) {
+export function StudioView({ hasFiles, onUploadClick, selectedContextId, lessonLaunch, onLessonLaunchHandled, onClearContext, onOpenCourseMaterials, onFullscreenChange }: StudioViewProps) {
   const [currentLessonIndex, setCurrentLessonIndex] = useState(0);
   const handledLessonLaunchRef = useRef<number | null>(null);
   // `localStarting` copre la finestra tra il click "Genera" e la prima scrittura
@@ -86,10 +82,7 @@ export function StudioView({ hasFiles, onUploadClick, selectedContextId, lessonL
 
   // 🧭 P37 — barra di navigazione: NASCOSTA nelle sottoviste immersive
   // (Esercizi/Interrogazione, esperienza full-screen senza occlusioni),
-  // VISIBILE in panoramica e in Chat (P45: con onChatLayoutChange la pagina
-  // passa a fillViewport h-dvh e la sottovista Chat riempie lo spazio tra
-  // header e navbar — via il vecchio trucco dell'altezza calcolata che
-  // seppelliva il campo di input sotto la barra di navigazione).
+  // VISIBILE in panoramica.
   const immersiveSubView = praticaSubView === "esercizi" || praticaSubView === "interrogazione";
   // 🧭 P38: anche il Livello 2 (percorso a ramo) è full-screen → navbar nascosta.
   const hideNavbar = immersiveSubView || courseViewState === "branch";
@@ -113,22 +106,6 @@ export function StudioView({ hasFiles, onUploadClick, selectedContextId, lessonL
   const closePratica = () => {
     setPraticaSubView(null);
     setDrawerStep("select");
-  };
-  // 💬 P45 — la Chat usa il layout a colonne flessibili a schermo intero
-  // (fillViewport): lo comunica alla pagina, che adatta l'ingombro reale.
-  useEffect(() => {
-    onChatLayoutChange?.(praticaSubView === "chat");
-  }, [praticaSubView, onChatLayoutChange]);
-  useEffect(() => () => {
-    onChatLayoutChange?.(false);
-  }, [onChatLayoutChange]);
-  // 💬 P39: seme della Chat — la PromptBar semina il primo messaggio, la
-  // sottovista Chat lo recapita con il flusso di invio già esistente.
-  const [chatSeed, setChatSeed] = useState<{ text: string; requestId: number } | null>(null);
-  const openChat = (text?: string) => {
-    const t = typeof text === "string" ? text.trim() : "";
-    if (t) setChatSeed({ text: t, requestId: Date.now() });
-    setPraticaSubView("chat");
   };
   const [isCoursePickerOpen, setIsCoursePickerOpen] = useState(false);
   const [activeModuleIndex, setActiveModuleIndex] = useState<number | null>(null);
@@ -968,31 +945,11 @@ export function StudioView({ hasFiles, onUploadClick, selectedContextId, lessonL
   return (
     <>
       {praticaSubView ? (
-        praticaSubView === "chat" ? (
-          /* 💬 Chat: navbar VISIBILE — altezza calibrata per tenere il campo
-             di testo sopra la barra fissa (stesso trucco già usato da Pratica). */
-          <div className="flex h-full min-h-0 flex-1 flex-col pb-[env(safe-area-inset-bottom)] animate-fade-up">
-            <SubViewHeader
-              title="Chat col Tutor"
-              courseTitle={heroTitle || contextFileName}
-              onBack={closePratica}
-            />
-            <div className="min-h-0 flex-1 overflow-hidden">
-              <ChatView
-                hasFiles={hasFiles}
-                onUploadClick={onUploadClick}
-                contextId={effectiveContextId}
-                seedMessage={chatSeed}
-                onSeedConsumed={() => setChatSeed(null)}
-              />
-            </div>
-          </div>
-        ) : (
-          /* 🏋️ / 🎤 P43 — foglio che SCIVOLA dal basso (300ms) sopra lo Studio
-             ancora montato e visibile, sfocato dal backdrop (mai nero pieno).
-             In sessione sale a schermo intero; la X chiude tutto e il foglio
-             riscende (AnimatePresence gestisce l'uscita). */
-          <AnimatePresence>
+        /* 🏋️ / 🎤 P43 — foglio che SCIVOLA dal basso (300ms) sopra lo Studio
+           ancora montato e visibile, sfocato dal backdrop (mai nero pieno).
+           In sessione sale a schermo intero; la X chiude tutto e il foglio
+           riscende (AnimatePresence gestisce l'uscita). */
+        <AnimatePresence>
           <SheetDrawer
             key={praticaSubView}
             title={praticaSubView === "esercizi" ? "Esercizi" : "Interrogazione"}
@@ -1013,8 +970,7 @@ export function StudioView({ hasFiles, onUploadClick, selectedContextId, lessonL
               />
             )}
           </SheetDrawer>
-          </AnimatePresence>
-        )
+        </AnimatePresence>
       ) : (
         <>
       {/* ➕ P37 — Crea nuovo percorso: in cima, SOLO nella Home Studio. */}
@@ -1093,17 +1049,15 @@ export function StudioView({ hasFiles, onUploadClick, selectedContextId, lessonL
           </motion.div>
         )}
       </AnimatePresence>
-      {/* 🧩 P39 — due card di pratica affiancate (accento del corso attivo) +
-          barra prompter AI: SOLO nella Home Studio, con pb-32 che tiene tutto
-          sopra la barra di navigazione fissa. */}
+      {/* 🧩 P39 — due card di pratica affiancate (accento del corso attivo):
+          SOLO nella Home Studio. Niente barra prompter AI qui: era un doppione
+          della chat che lo studente trova già dentro ogni singola lezione (e
+          nella scheda Pratica), e rubava spazio alla Home. */}
       {courseViewState === "overview" && !isCoursePickerOpen && modules.length > 0 && (
-        <div className="animate-fade-up">
-          <PracticeLaunchers
-            onOpenEsercizi={() => openPractice("esercizi")}
-            onOpenInterrogazione={() => openPractice("interrogazione")}
-          />
-          <PromptBar onSend={(text) => openChat(text)} onOpen={() => openChat()} />
-        </div>
+        <PracticeLaunchers
+          onOpenEsercizi={() => openPractice("esercizi")}
+          onOpenInterrogazione={() => openPractice("interrogazione")}
+        />
       )}
       {/* 🧭 P42 — lista dei moduli e albero delle lezioni si danno il cambio
           con un cross-animato (solo transform/opacity, 60fps). */}

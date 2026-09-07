@@ -4,7 +4,7 @@ import { LessonsList } from "@/components/studio/LessonsList";
 import { LessonsListSkeleton } from "@/components/studio/LessonsListSkeleton";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { ModulesOverview } from "@/components/studio/ModulesOverview";
-import { ModuleHeaderCard, PracticeLaunchers, PromptBar, SheetDrawer, SubViewHeader } from "@/components/studio/StudioPractice";
+import { ModuleHeaderCard, PracticeLaunchers, SheetDrawer, SubViewHeader } from "@/components/studio/StudioPractice";
 
 /**
  * 🌿 P21b — Collaudo di accensione della schermata Studio in salotto
@@ -115,49 +115,6 @@ describe("StudioPractice (P37) — accessi dedicati e ritorno", () => {
     expect(onEsercizi).toHaveBeenCalledTimes(1);
     fireEvent.click(interrogazione);
     expect(onInterrogazione).toHaveBeenCalledTimes(1);
-  });
-
-  it("P39 PromptBar: invia il testo trimmato e svuota il campo", () => {
-    const onSend = vi.fn();
-    const onOpen = vi.fn();
-    render(<PromptBar onSend={onSend} onOpen={onOpen} />);
-
-    const input = screen.getByLabelText("Chiedi qualcosa a Erga") as HTMLInputElement;
-    fireEvent.change(input, { target: { value: "  Che cos'è la fotosintesi?  " } });
-    fireEvent.click(screen.getByRole("button", { name: "Invia alla Chat" }));
-
-    expect(onSend).toHaveBeenCalledTimes(1);
-    expect(onSend).toHaveBeenCalledWith("Che cos'è la fotosintesi?"); // sanitize/trim
-    expect(onOpen).not.toHaveBeenCalled();
-    expect(input.value).toBe(""); // campo svuotato
-  });
-
-  it("P39 PromptBar: Enter invia; vuoto o solo spazi → solo apertura della Chat", () => {
-    const onSend = vi.fn();
-    const onOpen = vi.fn();
-    render(<PromptBar onSend={onSend} onOpen={onOpen} />);
-
-    const input = screen.getByLabelText("Chiedi qualcosa a Erga");
-    fireEvent.change(input, { target: { value: "   " } });
-    fireEvent.keyDown(input, { key: "Enter" });
-    expect(onSend).not.toHaveBeenCalled(); // nessuna chiamata inutile all'AI
-    expect(onOpen).toHaveBeenCalledTimes(1);
-
-    fireEvent.change(input, { target: { value: "Spiegami l'induzione elettromagnetica" } });
-    fireEvent.keyDown(input, { key: "Enter" });
-    expect(onSend).toHaveBeenCalledWith("Spiegami l'induzione elettromagnetica");
-  });
-
-  it("P39 PromptBar: pillola scura con bordo sottile e respiro sopra la navbar", () => {
-    const { container } = render(<PromptBar onSend={() => {}} onOpen={() => {}} />);
-    const form = container.firstElementChild as HTMLElement;
-    expect(form.className).toMatch(/pb-32/); // mai sotto la Bottom Navigation Bar
-    const pill = form.querySelector("div") as HTMLElement;
-    expect(pill.className).toMatch(/rounded-full/);
-    expect(pill.className).toMatch(/border-white\/10/);
-    expect(pill.className).toMatch(/bg-\[#16161A\]/);
-    // il testo scorre DENTRO l'input: la pillola non si deforma
-    expect(pill.className).toMatch(/items-center/);
   });
 
   it("SubViewHeader riporta a Studio e mostra il contesto del corso", () => {
