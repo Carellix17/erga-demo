@@ -232,7 +232,7 @@ const Index = () => {
         <div
           key={activeTab}
           className={
-            activeTab === "pratica"
+            activeTab === "pratica" || studioChatOpen
               ? "room-fade flex min-h-0 flex-1 flex-col"
               : "room-fade"
           }

@@ -85,9 +85,15 @@ function validateAndShuffleExercises(exercises: unknown[]): unknown[] {
     if (e.type === "multiple_choice") {
       const options = Array.isArray(e.options) ? (e.options as unknown[]).filter((o) => typeof o === "string") : [];
       const correct = typeof e.correctAnswer === "string" ? e.correctAnswer : "";
+      // Scarta SOLO gli esercizi strutturalmente inutilizzabili.
+      // La parità di lunghezza resta una regola del prompt: se non è
+      // rispettata l'esercizio è comunque valido e viene mantenuto,
+      // così lo studente riceve sempre il numero richiesto di esercizi.
       if (options.length !== 4) continue;
       if (!correct || !(options as string[]).includes(correct)) continue;
-      if (optionSpread(options as string[]) > 0.15) continue;
+      if (optionSpread(options as string[]) > 0.15) {
+        console.warn("[generate-exercises] option spread > 15% (esercizio mantenuto)");
+      }
       out.push({ ...e, options: shuffleArray(options) });
     } else {
       out.push(ex);
