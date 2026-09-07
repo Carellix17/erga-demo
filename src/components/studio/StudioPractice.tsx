@@ -1,5 +1,5 @@
-import { ArrowUp, AudioLines, ChevronLeft, PencilLine, X } from "lucide-react";
-import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { AudioLines, ChevronLeft, PencilLine, X } from "lucide-react";
+import { useEffect, useRef, type CSSProperties } from "react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { CourseCardBackground } from "./CourseCardBackground";
@@ -11,12 +11,8 @@ import { CourseCardBackground } from "./CourseCardBackground";
  * 2 colonne) per Esercizi e Interrogazione, con le STESSE icone della Home
  * (PencilLine / AudioLines) e l'accento cromatico del corso attivo
  * (variabile CSS --subject-accent, già collegata da useSubjectAccent).
- * La Chat non è più una card: vive nella PromptBar qui sotto.
- *
- * PromptBar (P39): barra di input a pillola per parlare subito con l'AI.
- * Con testo (Enter o freccia) apre la Chat e semina il messaggio; vuota,
- * apre semplicemente la Chat. Il wrapper porta pb-32: resta sempre sopra
- * la barra di navigazione fissa.
+ * Niente barra "Chiedi qualcosa a Erga" nella Home Studio: la chat con
+ * l'AI vive dentro la singola lezione (e nella scheda Pratica).
  *
  * SheetDrawer (P42): fondo mobile (bottom sheet) con backdrop sfocato e
  * due scatti (scelta ~88% → sessione schermo intero) usato da Esercizi e
@@ -24,7 +20,7 @@ import { CourseCardBackground } from "./CourseCardBackground";
  *
  * ModuleHeaderCard (P42): card compatta sticky del ramo moduli.
  *
- * SubViewHeader: intestazione con "Torna a Studio" della sottovista Chat.
+ * SubViewHeader: intestazione con "Torna a Studio" per le sottoviste.
  */
 
 export interface PracticeLaunchersProps {
@@ -68,59 +64,6 @@ export function PracticeLaunchers({ onOpenEsercizi, onOpenInterrogazione, classN
       <LauncherCard label="Esercizi" subtitle="Quiz e flashcard" icon={PencilLine} onClick={onOpenEsercizi} />
       <LauncherCard label="Interrogazione" subtitle="Simulazione orale" icon={AudioLines} onClick={onOpenInterrogazione} />
     </div>
-  );
-}
-
-export interface PromptBarProps {
-  /** Testo (non vuoto) digitato nella barra: apre la Chat e lo invia. */
-  onSend: (text: string) => void;
-  /** Tap su barra vuota: apre la Chat senza messaggi. */
-  onOpen: () => void;
-  className?: string;
-}
-
-export function PromptBar({ onSend, onOpen, className }: PromptBarProps) {
-  const [value, setValue] = useState("");
-
-  const submit = () => {
-    const text = value.trim(); // sanitize: niente invii di soli spazi
-    setValue("");
-    if (text) onSend(text);
-    else onOpen();
-  };
-
-  return (
-    <form
-      className={cn("px-4 pt-3 pb-32", className)}
-      onSubmit={(e) => {
-        e.preventDefault();
-        submit();
-      }}
-    >
-      <div className="flex items-center gap-2 rounded-full border border-white/10 bg-[#16161A] py-2 pl-5 pr-2 shadow-tactile transition-colors duration-200 focus-within:border-white/20">
-        <input
-          type="text"
-          value={value}
-          onChange={(e) => setValue(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              e.preventDefault();
-              submit();
-            }
-          }}
-          placeholder="Chiedi qualcosa a Erga..."
-          aria-label="Chiedi qualcosa a Erga"
-          className="min-w-0 flex-1 bg-transparent text-sm text-white/90 outline-none placeholder:text-white/45"
-        />
-        <button
-          type="submit"
-          aria-label="Invia alla Chat"
-          className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-white/10 text-white/90 transition-all duration-200 hover:bg-white/20 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-        >
-          <ArrowUp className="h-4 w-4" strokeWidth={2.2} aria-hidden="true" />
-        </button>
-      </div>
-    </form>
   );
 }
 

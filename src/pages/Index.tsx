@@ -47,10 +47,6 @@ const Index = () => {
   const [praticaInitialSubTab, setPraticaInitialSubTab] = useState<PraticaSubTab>("chat");
   const [lessonLaunch, setLessonLaunch] = useState<{ contextId: string; lessonIndex: number; requestId: number } | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  // 💬 P45 — quando lo Studio apre la sottovista Chat, la pagina passa in
-  // modalità fillViewport (h-dvh): la barra di input resta SEMPRE sopra la
-  // barra di navigazione fissa, anche con la tastiera virtuale aperta.
-  const [studioChatOpen, setStudioChatOpen] = useState(false);
 
   // 🧭 P24 — memoria di posizione: ogni stanza riapre DOV'ERA (oggetti persistenti)
   const scrollPositions = useRef<Record<Tab, number>>({ home: 0, studio: 0, piano: 0, pratica: 0, core: 0 });
@@ -203,7 +199,7 @@ const Index = () => {
         onTabChange={changeTab}
         headerTitle={headerTitle}
         hideChrome={isFullscreen}
-        fillViewport={activeTab === "pratica" || studioChatOpen}
+        fillViewport={activeTab === "pratica"}
       >
         {/* ⚠️ Errori di lettura dati visibili (mai "vuoto" silenzioso):
             se il contenuto cloud non si carica, l'utente lo sa e può riprovare. */}
@@ -232,7 +228,7 @@ const Index = () => {
         <div
           key={activeTab}
           className={
-            activeTab === "pratica" || studioChatOpen
+            activeTab === "pratica"
               ? "room-fade flex min-h-0 flex-1 flex-col"
               : "room-fade"
           }
@@ -279,7 +275,6 @@ const Index = () => {
               setShowUpload(true);
             }}
             onFullscreenChange={setIsFullscreen}
-            onChatLayoutChange={setStudioChatOpen}
           />
         )}
         {activeTab === "piano" && (

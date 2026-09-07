@@ -4,7 +4,7 @@ import { join } from "path";
 
 /**
  * 🛡️ P45 — guardie anti-regresso per i due bug mobile:
- * 1) la Chat dello Studio non usa MAI più hack calc(100vh-6rem)/-mb-24
+ * 1) le viste a schermo pieno non usano MAI più hack calc(100vh-6rem)/-mb-24
  *    che seppellivano il campo di input sotto la barra di navigazione;
  * 2) niente bianco pieno negli stati attivi/premuti dei bottoni (dark mode):
  *    il ring-offset di default non deve essere #fff (alone bianco attorno al
@@ -13,7 +13,7 @@ import { join } from "path";
 
 const ROOT = join(__dirname, "..", "..");
 
-describe("P45 — layout Chat Studio (input sempre visibile)", () => {
+describe("P45 — viste a schermo pieno (input sempre visibile)", () => {
   const studio = readFileSync(join(ROOT, "src/components/studio/StudioView.tsx"), "utf8");
   const index = readFileSync(join(ROOT, "src/pages/Index.tsx"), "utf8");
 
@@ -22,13 +22,8 @@ describe("P45 — layout Chat Studio (input sempre visibile)", () => {
     expect(studio).not.toMatch(/-mb-24/);
   });
 
-  it("la sottovista Chat riempie lo spazio reale (h-full + safe-area)", () => {
-    expect(studio).toMatch(/h-full min-h-0 flex-1 flex-col pb-\[env\(safe-area-inset-bottom\)\]/);
-  });
-
-  it("la pagina attiva fillViewport quando la Chat dello Studio è aperta", () => {
-    expect(index).toMatch(/fillViewport=\{activeTab === "pratica" \|\| studioChatOpen\}/);
-    expect(index).toMatch(/onChatLayoutChange=\{setStudioChatOpen\}/);
+  it("la pagina usa fillViewport per la stanza Pratica (campo sempre sopra la navbar)", () => {
+    expect(index).toMatch(/fillViewport=\{activeTab === "pratica"\}/);
   });
 });
 
