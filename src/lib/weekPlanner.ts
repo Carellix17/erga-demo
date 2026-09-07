@@ -80,6 +80,34 @@ export function routineSegmentsForDay(
 export const WEEK_DAY_START_MIN = 6 * 60;
 export const WEEK_DAY_END_MIN = 24 * 60;
 
+/** Risveglio e bedtime di DEFAULT quando la routine non dichiara il sonno. */
+export const DEFAULT_WAKE_MIN = 6 * 60 + 30;   // 06:30
+export const DEFAULT_BEDTIME_MIN = 23 * 60;    // 23:00
+
+/**
+ * P46 — La finestra UTILE della giornata ricavata dalla routine:
+ * parte dal RISVEGLIO (fine del sonno mattutino) e finisce all'ora di
+ * dormire (inizio del sonno serale). Niente ore notturne inutili in griglia.
+ * Gestisce il sonno a cavallo di mezzanotte (23:00→07:00: il segmento
+ * mattutino 00:00→07:00 termina alle 7:00 → la giornata inizia alle 7:00).
+ */
+export function routineDayWindow(
+  segments: (TimeBlock & { kind: string })[],
+): { startMin: number; endMin: number } {
+  const sleepEnds = segments
+    .filter((s) => s.kind === "sleep" && s.end <= 12 * 60)
+    .map((s) => s.end);
+  const sleepStarts = segments
+    .filter((s) => s.kind === "sleep" && s.start >= 17 * 60)
+    .map((s) => s.start);
+  const wake = sleepEnds.length > 0 ? Math.max(...sleepEnds) : DEFAULT_WAKE_MIN;
+  const bedtime = sleepStarts.length > 0 ? Math.min(...sleepStarts) : DEFAULT_BEDTIME_MIN;
+  return {
+    startMin: Math.min(Math.max(wake, WEEK_DAY_START_MIN), 11 * 60),
+    endMin: Math.max(Math.min(bedtime, WEEK_DAY_END_MIN), 20 * 60),
+  };
+}
+
 /** Buchi liberi piu' corti di cosi' non vengono mostrati (troppo piccoli per studiare). */
 export const MIN_FREE_SLOT_MIN = 20;
 

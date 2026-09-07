@@ -33,6 +33,7 @@ import {
   useDeleteStudyEventsByType, useDeleteAllStudyEvents, type StudyEvent,
 } from "@/hooks/useStudyEvents";
 import { resolveSubjectColor, type SubjectColor } from "@/lib/subjectColors";
+import { subjectHex } from "@/lib/pianoPalette";
 import { dayKey } from "@/lib/weekPlanner";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -100,24 +101,27 @@ export function PianoView({ hasFiles, onUploadClick }: PianoViewProps) {
   // Pallini del calendario mensile: colori delle MATERIE (max 3 al giorno)
   // ============================================================
   const dotsByDay = useMemo(() => {
-    const map = new Map<string, { solid: string; evalDot: boolean }[]>();
-    const push = (key: string, solid: string | null, evalDot = false) => {
+    const subjectsById = new Map(userSubjects.map((s) => [s.id, s.name] as const));
+    const map = new Map<string, { hex: string; evalDot: boolean }[]>();
+    const push = (key: string, _solid: string | null, evalDot = false, hex?: string | null) => {
       const arr = map.get(key) ?? [];
-      // dedup: stesso colore (o stesso anello scuro) non si ripete
       if (evalDot && arr.some((d) => d.evalDot)) { map.set(key, arr); return; }
-      if (!evalDot && solid && arr.some((d) => d.solid === solid)) { map.set(key, arr); return; }
-      arr.push({ solid: solid ?? "", evalDot });
+      if (hex && arr.some((d) => d.hex === hex)) { map.set(key, arr); return; }
+      arr.push({ hex: hex ?? "", evalDot });
       map.set(key, arr.slice(0, 3));
     };
     for (const e of events) {
-      push(dayKey(e.event_date), colorFor(e.subject)?.solid ?? "bg-muted-foreground/40");
+      push(dayKey(e.event_date), null, false, subjectHex(e.subject));
     }
     for (const ev of evaluations) {
-      push(dayKey(new Date(ev.date)), null, true);
+      // P46: il pallino della verifica/compito usa il COLORE VIVIDO della sua
+      // materia; senza materia resta la sbarretta scura di prima.
+      const subjName = ev.subject_id ? subjectsById.get(ev.subject_id) : undefined;
+      push(dayKey(new Date(ev.date)), null, !subjName, subjName ? subjectHex(subjName) : null);
     }
     return map;
   }, // eslint-disable-next-line react-hooks/exhaustive-deps
-  [events, evaluations, colorBySubjectName]);
+  [events, evaluations, userSubjects]);
 
   const generatePlan = async () => {
     if (!currentUser) return;
@@ -187,6 +191,20 @@ export function PianoView({ hasFiles, onUploadClick }: PianoViewProps) {
 
   const handleSubmitEval = async (input: EvalFormInput, editingId: string | null) => {
     try {
+      if (input.category === "altro" && !editingId) {
+        // P46: impegno extra-scolastico → study_events (colonne esistenti,
+        // event_type 'assignment' e materia "Altro": nessuna migrazione).
+        await addEvents.mutateAsync([{
+          subject: "Altro",
+          title: input.title,
+          date: input.date.slice(0, 10),
+          time: input.startTime ?? undefined,
+          type: "assignment",
+        }]);
+        toast({ title: t("piano.toastEventSaved"), description: t("piano.toastAddedToCalendar", { title: input.title }) });
+        if (input.date) setSelectedDate(new Date(input.date));
+        return;
+      }
       if (editingId) {
         await updateEvaluation.mutateAsync({ id: editingId, ...input });
         toast({ title: t("piano.toastSaved") });
@@ -257,10 +275,10 @@ export function PianoView({ hasFiles, onUploadClick }: PianoViewProps) {
             {isGeneratingPlan ? (
               <>
                 <Loader2 className="w-5 h-5 animate-spin" />
-                <span className="font-display font-semibold">{t("piano.generating")}</span>
+                <span className="font-display text-sm font-semibold leading-tight">{t("piano.generating")}</span>
               </>
             ) : (
-              <span className="font-display font-semibold">{t("piano.generate")}</span>
+              <span className="font-display text-sm font-semibold leading-tight">{t("piano.generate")}</span>
             )}
           </Button>
           <Button
@@ -344,10 +362,10 @@ export function PianoView({ hasFiles, onUploadClick }: PianoViewProps) {
                       <span className="flex gap-0.5 h-1.5 mt-0.5 items-center">
                         {dots.map((d, i) =>
                           d.evalDot ? (
-                            // Verifiche/compiti: sbarretta scura (piu' leggibile del pallino-anellino)
+                            // Verifiche/compiti SENZA materia: sbarretta scura
                             <span key={i} className="w-3.5 h-[3px] rounded-full bg-foreground" />
                           ) : (
-                            <span key={i} className={cn("w-1.5 h-1.5 rounded-full", d.solid)} />
+                            <span key={i} className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: d.hex || "#94A3B8" }} />
                           ),
                         )}
                       </span>
@@ -358,7 +376,11 @@ export function PianoView({ hasFiles, onUploadClick }: PianoViewProps) {
             />
             <div className="flex flex-wrap gap-3 mt-3 pt-3 border-t border-outline-variant justify-center">
               <div className="flex items-center gap-1.5 label-small px-2.5 py-1 rounded-full bg-surface-container">
-                <span className="w-2.5 h-2.5 rounded-full bg-primary" />
+                <span className="flex gap-0.5">
+                  <span className="w-2 h-2 rounded-full" style={{ backgroundColor: "#2563EB" }} />
+                  <span className="w-2 h-2 rounded-full" style={{ backgroundColor: "#DC2626" }} />
+                  <span className="w-2 h-2 rounded-full" style={{ backgroundColor: "#059669" }} />
+                </span>
                 <span className="text-muted-foreground">{t("piano.dotsLegend")}</span>
               </div>
             </div>

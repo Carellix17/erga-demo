@@ -429,7 +429,18 @@
       "evalType_scritta": "Written",
       "evalType_pratica": "Practical",
       "evalType_interrogazione": "Presentation",
-      "evalType_compito": "Assignment"
+      "evalType_compito": "Assignment",
+      "startTime": "Start time",
+      "endTime": "End time",
+      "until": "until",
+      "addNotes": "+ Add notes",
+      "hideNotes": "− Hide notes",
+      "goalClear": "Remove goal",
+      "compitoLabel": "Assignment description",
+      "compitoPlaceholder": "E.g. Exercises 12 p. 42, chapter summary…",
+      "altroHint": "A non-school commitment (sports, music, family…) that keeps you from studying while it lasts.",
+      "altroPlaceholder": "E.g. Volleyball practice",
+      "saveCompito": "Save assignment"
     }
   }
 }

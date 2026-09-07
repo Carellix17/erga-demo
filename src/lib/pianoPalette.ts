@@ -1,0 +1,79 @@
+/**
+ * P46 — Palette vivida per il Piano (calendario) e la Routine.
+ *
+ * Il prodotto chiede colori distintivi per materia e routine nella vista
+ * "Piano"/"Core" (riconoscimento a colpo d'occhio), con pattern dark
+ * "tinted-surface": fondo al ~18% del colore, barra sinistra piena e testo
+ * chiaro ad alto contrasto (WCAG AA su sfondo scuro).
+ * Solo per il Piano: il resto dell'app resta monocroma.
+ */
+
+export interface TintStyle {
+  backgroundColor: string;
+  borderLeft: string;
+  color: string;
+  /** Colore pieno per pallini/legenda. */
+  dot: string;
+}
+
+const TEXT_LIGHT = "#F8FAFC";
+
+/** Materie scolastiche italiane → colore (spec P46). */
+const SUBJECT_HEX: { hex: string; keys: string[] }[] = [
+  { hex: "#2563EB", keys: ["matematic", "math", "geometria", "algebra", "analisi"] }, // Blu
+  { hex: "#DC2626", keys: ["italian", "letteratura", "latino", "greco"] }, // Rosso
+  // NB: "Scienze Motorie" vaMatcher PRIMA di "scienze" (più specifica vince)
+  { hex: "#EAB308", keys: ["motorie", "sport", "educazione fisica", "ginnastica"] }, // Giallo
+  { hex: "#059669", keys: ["scienz", "biologi", "chimic", "natur"] }, // Smeraldo
+  { hex: "#D97706", keys: ["storia", "storico"] }, // Ambra
+  { hex: "#65A30D", keys: ["geografia", "territorio"] }, // Lime
+  { hex: "#0891B2", keys: ["fisic", "astronomia"] }, // Ciano
+  { hex: "#7C3AED", keys: ["filosof", "pedagogia"] }, // Viola
+  { hex: "#EA580C", keys: ["inglese", "lingu", "francese", "spagnolo", "tedesco"] }, // Arancione
+  { hex: "#C026D3", keys: ["arte", "disegno"] }, // Magenta
+];
+
+export const DEFAULT_SUBJECT_HEX = "#94A3B8"; // Slate
+
+/** Colore vivido di una materia (per nome, case-insensitive, senza accenti). */
+export function subjectHex(subjectName?: string | null): string {
+  if (!subjectName) return DEFAULT_SUBJECT_HEX;
+  const n = subjectName.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  for (const { hex, keys } of SUBJECT_HEX) {
+    if (keys.some((k) => n.includes(k))) return hex;
+  }
+  return DEFAULT_SUBJECT_HEX;
+}
+
+/** Colori FISSI dei blocchi routine (spec P46). */
+export const ROUTINE_HEX: Record<string, string> = {
+  sleep: "#4F46E5", // Indaco / blu notte
+  school: "#64748B", // Slate / grigio piombo
+  meal: "#EF4444", // Corallo
+  other: "#0D9488", // Verde acqua
+};
+
+/** Stile "tinted-surface" per i blocchi del planner (inline, 60fps). */
+export function tintStyle(hex: string, opts?: { alpha?: number; borderless?: boolean }): TintStyle {
+  const alpha = opts?.alpha ?? 0.18;
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  const bg = `rgba(${r} ${g} ${b} / ${alpha})`;
+  return {
+    backgroundColor: bg,
+    borderLeft: opts?.borderless ? "1px solid rgba(248 250 252 / 0.14)" : `4px solid ${hex}`,
+    color: TEXT_LIGHT,
+    dot: hex,
+  };
+}
+
+/** Tinta di una materia per nome (o slate di default). */
+export function subjectTint(subjectName?: string | null): TintStyle {
+  return tintStyle(subjectHex(subjectName));
+}
+
+/** Tinta di un blocco routine (kind: school | sleep | meal | other). */
+export function routineTint(kind: string): TintStyle {
+  return tintStyle(ROUTINE_HEX[kind] ?? ROUTINE_HEX.other);
+}

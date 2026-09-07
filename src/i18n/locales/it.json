@@ -429,7 +429,18 @@
       "evalType_scritta": "Scritta",
       "evalType_pratica": "Pratica",
       "evalType_interrogazione": "Interrogazione",
-      "evalType_compito": "Compito"
+      "evalType_compito": "Compito",
+      "startTime": "Ora inizio",
+      "endTime": "Ora fine",
+      "until": "fino alle",
+      "addNotes": "+ Aggiungi note",
+      "hideNotes": "− Nascondi note",
+      "goalClear": "Rimuovi obiettivo",
+      "compitoLabel": "Descrizione del compito",
+      "compitoPlaceholder": "Es. Esercizi 12 pag 42, riassunto capitolo…",
+      "altroHint": "Un impegno non scolastico (sport, musica, famiglia…) che ti impedisce di studiare mentre si svolge.",
+      "altroPlaceholder": "Es. Allenamento pallavolo",
+      "saveCompito": "Salva compito"
     }
   }
 }
