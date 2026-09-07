@@ -153,6 +153,7 @@ export function HomeView({
       {/* 2. Card unificata del corso attivo */}
       <CourseHeroCard
         courseTitle={resume?.courseTitle ?? null}
+        contextId={resume?.contextId ?? null}
         eyebrowText={t("home.course.eyebrow")}
         lessonTitle={resume?.lessonTitle ?? null}
         lessonMetaText={
