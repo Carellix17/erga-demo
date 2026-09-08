@@ -32,7 +32,7 @@ import {
   useStudyEventsQuery, useAddStudyEvents, useDeleteStudyEvent, useUpdateStudyEvent,
   useDeleteStudyEventsByType, useDeleteAllStudyEvents, type StudyEvent,
 } from "@/hooks/useStudyEvents";
-import { resolveSubjectColor, type SubjectColor } from "@/lib/subjectColors";
+import { resolveSubjectColor, getSubjectColorByKey, type SubjectColor } from "@/lib/subjectColors";
 import { subjectHex } from "@/lib/pianoPalette";
 import { dayKey } from "@/lib/weekPlanner";
 import {
@@ -101,7 +101,6 @@ export function PianoView({ hasFiles, onUploadClick }: PianoViewProps) {
   // Pallini del calendario mensile: colori delle MATERIE (max 3 al giorno)
   // ============================================================
   const dotsByDay = useMemo(() => {
-    const subjectsById = new Map(userSubjects.map((s) => [s.id, s.name] as const));
     const map = new Map<string, { hex: string; evalDot: boolean }[]>();
     const push = (key: string, _solid: string | null, evalDot = false, hex?: string | null) => {
       const arr = map.get(key) ?? [];
@@ -111,13 +110,19 @@ export function PianoView({ hasFiles, onUploadClick }: PianoViewProps) {
       map.set(key, arr.slice(0, 3));
     };
     for (const e of events) {
-      push(dayKey(e.event_date), null, false, subjectHex(e.subject));
+      push(dayKey(e.event_date), null, false, subjectHex(e.subject, getSubjectColorByKey(colorBySubjectName.get(e.subject.toLowerCase())?.color)?.accent));
     }
     for (const ev of evaluations) {
       // P46: il pallino della verifica/compito usa il COLORE VIVIDO della sua
       // materia; senza materia resta la sbarretta scura di prima.
-      const subjName = ev.subject_id ? subjectsById.get(ev.subject_id) : undefined;
-      push(dayKey(new Date(ev.date)), null, !subjName, subjName ? subjectHex(subjName) : null);
+      const subj = ev.subject_id ? userSubjects.find((s) => s.id === ev.subject_id) : undefined;
+      const subjName = subj?.name;
+      push(
+        dayKey(new Date(ev.date)),
+        null,
+        !subjName,
+        subjName ? subjectHex(subjName, getSubjectColorByKey(subj?.color)?.accent) : null,
+      );
     }
     return map;
   }, // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -205,11 +210,14 @@ export function PianoView({ hasFiles, onUploadClick }: PianoViewProps) {
         if (input.date) setSelectedDate(new Date(input.date));
         return;
       }
+      // Solo le colonne realmente presenti in `evaluations`: i campi di sola UI
+      // (category, startTime, endTime) romperebbero l'insert sul database.
+      const { category: _category, startTime: _startTime, endTime: _endTime, ...payload } = input;
       if (editingId) {
-        await updateEvaluation.mutateAsync({ id: editingId, ...input });
+        await updateEvaluation.mutateAsync({ id: editingId, ...payload });
         toast({ title: t("piano.toastSaved") });
       } else {
-        await addEvaluation.mutateAsync(input);
+        await addEvaluation.mutateAsync(payload);
         toast({ title: t("piano.toastEventSaved"), description: t("piano.toastAddedToCalendar", { title: input.title }) });
       }
       if (input.date) setSelectedDate(new Date(input.date));
