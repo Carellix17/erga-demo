@@ -99,10 +99,11 @@ export function tintStyle(hex: string, opts?: { alpha?: number; borderless?: boo
   };
 }
 
-/** Tinta di una materia per nome (o slate di default). */
-export function subjectTint(subjectName?: string | null, dark?: boolean): TintStyle {
-  return tintStyle(subjectHex(subjectName), { dark });
+/** Tinta di una materia per nome (o colore scelto dall'utente, o slate). */
+export function subjectTint(subjectName?: string | null, dark?: boolean, customColor?: string | null): TintStyle {
+  return tintStyle(subjectHex(subjectName, customColor), { dark });
 }
+
 
 /** Tinta di un blocco routine (kind: school | sleep | meal | other). */
 export function routineTint(kind: string, dark?: boolean): TintStyle {
