@@ -101,7 +101,6 @@ export function PianoView({ hasFiles, onUploadClick }: PianoViewProps) {
   // Pallini del calendario mensile: colori delle MATERIE (max 3 al giorno)
   // ============================================================
   const dotsByDay = useMemo(() => {
-    const subjectsById = new Map(userSubjects.map((s) => [s.id, s.name] as const));
     const map = new Map<string, { hex: string; evalDot: boolean }[]>();
     const push = (key: string, _solid: string | null, evalDot = false, hex?: string | null) => {
       const arr = map.get(key) ?? [];
