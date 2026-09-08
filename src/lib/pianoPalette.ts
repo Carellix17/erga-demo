@@ -37,8 +37,35 @@ const SUBJECT_HEX: { hex: string; keys: string[] }[] = [
 
 export const DEFAULT_SUBJECT_HEX = "#94A3B8"; // Slate
 
-/** Colore vivido di una materia (per nome, case-insensitive, senza accenti). */
-export function subjectHex(subjectName?: string | null): string {
+/** Converte un colore CSS (#hex o `hsl(h s% l%)`) in #RRGGBB, o null. */
+export function cssColorToHex(color?: string | null): string | null {
+  if (!color) return null;
+  const v = color.trim();
+  if (/^#[0-9a-f]{6}$/i.test(v)) return v.toUpperCase();
+  if (/^#[0-9a-f]{3}$/i.test(v)) {
+    return `#${v.slice(1).split("").map((c) => c + c).join("").toUpperCase()}`;
+  }
+  const m = v.match(/^hsl\(\s*(-?\d+(?:\.\d+)?)\s*[ ,]\s*(\d+(?:\.\d+)?)%\s*[ ,]\s*(\d+(?:\.\d+)?)%\s*\)$/i);
+  if (!m) return null;
+  const h = ((Number(m[1]) % 360) + 360) % 360;
+  const s = Math.min(100, Number(m[2])) / 100;
+  const l = Math.min(100, Number(m[3])) / 100;
+  const c = s * Math.min(l, 1 - l);
+  const chan = (offset: number) => {
+    const k = (offset + h / 30) % 12;
+    const val = l - c * Math.max(-1, Math.min(k - 3, 9 - k, 1));
+    return Math.round(val * 255).toString(16).padStart(2, "0");
+  };
+  return `#${chan(0)}${chan(8)}${chan(4)}`.toUpperCase();
+}
+
+/**
+ * Colore vivido di una materia (per nome, case-insensitive, senza accenti).
+ * `customColor` = colore scelto a mano dall'utente (vince sull'automatico).
+ */
+export function subjectHex(subjectName?: string | null, customColor?: string | null): string {
+  const custom = cssColorToHex(customColor);
+  if (custom) return custom;
   if (!subjectName) return DEFAULT_SUBJECT_HEX;
   const n = subjectName.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
   for (const { hex, keys } of SUBJECT_HEX) {
@@ -46,6 +73,7 @@ export function subjectHex(subjectName?: string | null): string {
   }
   return DEFAULT_SUBJECT_HEX;
 }
+
 
 /** Colori FISSI dei blocchi routine (spec P46). */
 export const ROUTINE_HEX: Record<string, string> = {
