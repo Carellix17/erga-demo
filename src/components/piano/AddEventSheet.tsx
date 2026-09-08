@@ -149,7 +149,9 @@ export function AddEventSheet({ open, onOpenChange, initial, onSubmit }: AddEven
     e.preventDefault();
     // Validazione per categoria: mai stringhe vuote verso il DB
     if (category === "compito") {
-      if (!description.trim() || !date) return;
+      // In modifica basta il titolo esistente: compiti creati prima avevano
+      // solo il titolo e devono restare salvabili.
+      if ((!description.trim() && !(editingId && title.trim())) || !date) return;
     } else if (!title.trim() || !date) {
       return;
     }
@@ -176,8 +178,21 @@ export function AddEventSheet({ open, onOpenChange, initial, onSubmit }: AddEven
           endTime: endTime || null,
         }, editingId);
       } else if (category === "compito") {
-        // Titolo DERIVATO dalla descrizione (il DB richiede title NOT NULL)
         const text = description.trim();
+        if (!text && editingId) {
+          // Compito preesistente senza descrizione: conserva titolo e note.
+          await onSubmit({
+            type: "compito",
+            title: title.trim(),
+            description: initial?.description ?? undefined,
+            date: new Date(`${date}T12:00:00`).toISOString(),
+            subject_id: subjectId === NONE ? null : subjectId,
+            topic_type: "free",
+          }, editingId);
+          onOpenChange(false);
+          return;
+        }
+        // Titolo DERIVATO dalla descrizione (il DB richiede title NOT NULL)
         const derivedTitle = text.length > 48 ? `${text.slice(0, 48).trimEnd()}…` : text;
         await onSubmit({
           type: "compito",
@@ -209,7 +224,9 @@ export function AddEventSheet({ open, onOpenChange, initial, onSubmit }: AddEven
   };
 
   const canSubmit =
-    category === "compito" ? !!description.trim() && !!date : !!title.trim() && !!date;
+    category === "compito"
+      ? !!date && (!!description.trim() || !!(editingId && title.trim()))
+      : !!title.trim() && !!date;
 
   const subjectSelect = (
     <div className="min-w-0 space-y-2">

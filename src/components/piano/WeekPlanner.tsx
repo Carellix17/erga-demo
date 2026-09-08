@@ -17,6 +17,7 @@ import {
 } from "@/lib/weekPlanner";
 import { cn } from "@/lib/utils";
 import { routineTint, subjectTint } from "@/lib/pianoPalette";
+import { useTheme } from "@/contexts/ThemeContext";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 // 🎨 P46 — blocchi routine con la palette vivida "tinted-surface"
@@ -40,6 +41,8 @@ export function WeekPlanner({
   onOpenStudyEvent, onOpenEvaluation,
 }: WeekPlannerProps) {
   const { t, i18n } = useTranslation();
+  const { resolved } = useTheme();
+  const dark = resolved === "dark";
   const dateLocale = i18n.language.startsWith("en") ? enUS : it;
 
   // Su mobile si vede un giorno alla volta (scelto con i pallini in alto)
@@ -167,7 +170,7 @@ export function WeekPlanner({
                       type="button"
                       onClick={() => openItem(u.kind, u.id, day)}
                       className="block w-full text-left text-[10px] leading-tight px-1.5 py-0.5 rounded-md truncate cursor-pointer active:scale-[0.98] transition-transform"
-                      style={{ ...subjectTint(u.subjectName), borderLeft: `3px solid ${subjectTint(u.subjectName).dot}` }}
+                      style={{ ...subjectTint(u.subjectName, dark), borderLeft: `3px solid ${subjectTint(u.subjectName, dark).dot}` }}
                     >
                       {u.title}
                     </button>
@@ -218,7 +221,7 @@ export function WeekPlanner({
                 <TooltipTrigger asChild>
                   <div
                     className="absolute left-0.5 right-0.5 rounded-md text-[9px] px-1.5 overflow-hidden"
-                    style={{ top: blockTop(b.start, gridStart) + 1, height: h, ...routineTint(b.kind) }}
+                    style={{ top: blockTop(b.start, gridStart) + 1, height: h, ...routineTint(b.kind, dark) }}
                   >
                     {h >= 16 && <span className="font-medium opacity-70 leading-none">{b.label}</span>}
                   </div>
@@ -240,8 +243,8 @@ export function WeekPlanner({
                     onClick={() => openItem(row.kind, row.id, day)}
                     className="absolute text-left rounded-lg px-1.5 py-1 overflow-hidden shadow-sm z-10 cursor-pointer active:scale-[0.98] transition-transform"
                     style={{
-                      ...subjectTint(row.subjectName),
-                      borderLeft: `4px solid ${subjectTint(row.subjectName).dot}`,
+                      ...subjectTint(row.subjectName, dark),
+                      borderLeft: `4px solid ${subjectTint(row.subjectName, dark).dot}`,
                       top: row.top + 1,
                       height: row.height - 2,
                       left: `calc(${(row.lane * 100) / row.lanes}% + 3px)`,
