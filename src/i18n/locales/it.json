@@ -432,6 +432,8 @@
       "evalType_compito": "Compito",
       "startTime": "Ora inizio",
       "endTime": "Ora fine",
+      "endTimeRequired": "Inserisci l'ora di fine",
+      "endTimeAfterStart": "L'ora di fine deve essere dopo l'ora di inizio",
       "until": "fino alle",
       "addNotes": "+ Aggiungi note",
       "hideNotes": "− Nascondi note",

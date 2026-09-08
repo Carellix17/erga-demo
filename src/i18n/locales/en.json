@@ -432,6 +432,8 @@
       "evalType_compito": "Assignment",
       "startTime": "Start time",
       "endTime": "End time",
+      "endTimeRequired": "Add an end time",
+      "endTimeAfterStart": "End time must be after start time",
       "until": "until",
       "addNotes": "+ Add notes",
       "hideNotes": "− Hide notes",

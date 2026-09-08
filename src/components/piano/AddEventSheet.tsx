@@ -9,6 +9,10 @@ import { Slider } from "@/components/ui/slider";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { ChevronDown } from "lucide-react";
 import { useUserSubjects } from "@/hooks/useUserSubjects";
 import { useFileContextsQuery } from "@/hooks/useFileContexts";
 import { PillToggle } from "@/components/ui/pill-toggle";
@@ -27,12 +31,15 @@ import { cn } from "@/lib/utils";
 type Category = "verifica" | "compito" | "altro";
 type VerificaMode = Exclude<EvaluationType, "compito">;
 
-const VERIFICA_MODES: { value: VerificaMode; label: string }[] = [
-  { value: "orale", label: "Orale" },
-  { value: "scritta", label: "Scritta" },
-  { value: "pratica", label: "Pratica" },
-  { value: "interrogazione", label: "Presentazione" },
-];
+/** Ordine delle modalità di verifica mostrate nella tendina della barra Titolo. */
+const VERIFICA_MODES: VerificaMode[] = ["orale", "scritta", "pratica", "interrogazione"];
+/** Chiave i18n dell'etichetta per ogni modalità (pill e voci di tendina). */
+const VERIFICA_MODE_LABEL: Record<VerificaMode, string> = {
+  orale: "piano.sheet.modeOrale",
+  scritta: "piano.sheet.modeScritta",
+  pratica: "piano.sheet.modePratica",
+  interrogazione: "piano.sheet.modePresentazione",
+};
 
 const NONE = "__none__";
 
@@ -78,6 +85,8 @@ export function AddEventSheet({ open, onOpenChange, initial, onSubmit }: AddEven
   const [goal, setGoal] = useState<number | null>(null);
   const [showNotes, setShowNotes] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  /** P47 — eventuale errore sugli orari della verifica (mostrato sotto il campo Ora fine). */
+  const [endError, setEndError] = useState<string | null>(null);
 
   const { data: subjects = [] } = useUserSubjects();
   const { data: courses = [] } = useFileContextsQuery();
@@ -112,6 +121,7 @@ export function AddEventSheet({ open, onOpenChange, initial, onSubmit }: AddEven
       setTopicMode("free"); setCourseId(""); setFreeTopic("");
       setGoal(null); setShowNotes(false);
     }
+    setEndError(null);
   }, [open, initial]);
 
   /** Descrizione + eventuale "fino alle" (il DB ha un solo orario per evento). */
@@ -121,6 +131,20 @@ export function AddEventSheet({ open, onOpenChange, initial, onSubmit }: AddEven
     return `${base ? `${base} · ` : ""}${t("piano.sheet.until")} ${endTime}`;
   };
 
+  /**
+   * P47 — Validazione orari della verifica. Ritorna il messaggio d'errore da
+   * mostrare sotto "Ora fine", oppure null se va tutto bene.
+   * L'ora di fine è OBBLIGATORIA quando si crea una verifica nuova; in
+   * modifica i dati esistenti non conservano un'ora di fine separata, quindi
+   * non blocchiamo chi non la tocca — ma se viene inserita deve seguire
+   * l'ora di inizio.
+   */
+  const validateVerificaTimes = (): string | null => {
+    if (!endTime && !editingId) return t("piano.sheet.endTimeRequired");
+    if (time && endTime && endTime <= time) return t("piano.sheet.endTimeAfterStart");
+    return null;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     // Validazione per categoria: mai stringhe vuote verso il DB
@@ -128,6 +152,14 @@ export function AddEventSheet({ open, onOpenChange, initial, onSubmit }: AddEven
       if (!description.trim() || !date) return;
     } else if (!title.trim() || !date) {
       return;
+    }
+    // P47 — una verifica senza ora di fine (o con fine prima dell'inizio) non parte.
+    if (category === "verifica") {
+      const timeError = validateVerificaTimes();
+      if (timeError) {
+        setEndError(timeError);
+        return;
+      }
     }
     setSubmitting(true);
     try {
@@ -180,7 +212,7 @@ export function AddEventSheet({ open, onOpenChange, initial, onSubmit }: AddEven
     category === "compito" ? !!description.trim() && !!date : !!title.trim() && !!date;
 
   const subjectSelect = (
-    <div className="space-y-2">
+    <div className="min-w-0 space-y-2">
       <Label className="label-large">{t("piano.sheet.subject")}</Label>
       <Select value={subjectId} onValueChange={setSubjectId}>
         <SelectTrigger className="w-full h-11 rounded-2xl bg-secondary/70 border border-transparent px-3 body-medium transition-colors">
@@ -205,23 +237,52 @@ export function AddEventSheet({ open, onOpenChange, initial, onSubmit }: AddEven
   );
 
   const dateField = (
-    <div className="space-y-2">
+    <div className="min-w-0 space-y-2">
       <Label htmlFor="ev-date" className="label-large">{t("piano.sheet.date")}</Label>
       <Input id="ev-date" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
     </div>
   );
 
-  const timeRange = (
+  /**
+   * Intervallo orario su una riga a 2 colonne. Per la verifica l'ora di fine
+   * è obbligatoria (asterisco + niente "(opzionale)"); per "Altro" resta
+   * facoltativa. Eventuali errori compaiono sotto il campo con role="alert".
+   */
+  const timeRange = (requireEnd: boolean) => (
     <div className="grid grid-cols-2 gap-3">
-      <div className="space-y-2">
+      <div className="min-w-0 space-y-2">
         <Label htmlFor="ev-start" className="label-large">{t("piano.sheet.startTime")}</Label>
-        <Input id="ev-start" type="time" value={time} onChange={(e) => setTime(e.target.value)} />
+        <Input
+          id="ev-start"
+          type="time"
+          value={time}
+          onChange={(e) => {
+            setTime(e.target.value);
+            setEndError(null);
+          }}
+        />
       </div>
-      <div className="space-y-2">
+      <div className="min-w-0 space-y-2">
         <Label htmlFor="ev-end" className="label-large">
-          {t("piano.sheet.endTime")} <span className="text-muted-foreground font-normal">({t("piano.sheet.optional").replace(/[()]/g, "")})</span>
+          {t("piano.sheet.endTime")}
+          {requireEnd && <span aria-hidden="true" className="ml-0.5 text-destructive">*</span>}
+          {!requireEnd && (
+            <span className="text-muted-foreground font-normal">
+              {" "}({t("piano.sheet.optional").replace(/[()]/g, "")})
+            </span>
+          )}
         </Label>
-        <Input id="ev-end" type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} />
+        <Input
+          id="ev-end"
+          type="time"
+          value={endTime}
+          onChange={(e) => {
+            setEndTime(e.target.value);
+            setEndError(null);
+          }}
+          aria-invalid={requireEnd && !!endError}
+          aria-describedby={requireEnd && endError ? "ev-end-error" : undefined}
+        />
       </div>
     </div>
   );
@@ -251,35 +312,52 @@ export function AddEventSheet({ open, onOpenChange, initial, onSubmit }: AddEven
 
           {category === "verifica" && (
             <>
-              {/* Riga 1 — Titolo + Modalità (a tendina, compatta a destra) */}
-              <div className="flex flex-col gap-3 sm:flex-row">
-                <div className="flex-1 space-y-2">
-                  <Label htmlFor="ev-title" className="label-large">{t("piano.sheet.title")}</Label>
-                  <Input id="ev-title" placeholder={t("piano.sheet.titlePlaceholder")} value={title} onChange={(e) => setTitle(e.target.value)} />
-                </div>
-                <div className="w-full space-y-2 sm:w-[150px] shrink-0">
-                  <Label className="label-large">{t("piano.sheet.mode")}</Label>
-                  <Select value={mode} onValueChange={(v) => setMode(v as VerificaMode)}>
-                    <SelectTrigger className="w-full h-10 rounded-2xl bg-secondary/70 border border-transparent px-3 body-medium">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {VERIFICA_MODES.map((m) => (
-                        <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+              {/* P47 — Barra unica Titolo + Modalità: un solo blocco visivo.
+                  L'input del titolo si espande a sinistra; a destra il pill
+                  compatto apre la tendina delle modalità. Nessuna riga "Modalità" separata. */}
+              <div className="flex items-center rounded-2xl border border-border bg-card py-1.5 pl-4 pr-1.5 shadow-sm transition-[border-color,box-shadow] focus-within:border-ring/50 focus-within:ring-2 focus-within:ring-ring/20">
+                <input
+                  type="text"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder={t("piano.sheet.titlePlaceholder")}
+                  aria-label={t("piano.sheet.title")}
+                  className="h-9 min-w-0 flex-1 bg-transparent text-base text-foreground outline-none placeholder:text-muted-foreground md:text-sm"
+                />
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button
+                      type="button"
+                      aria-label={t("piano.sheet.mode")}
+                      className="flex h-8 shrink-0 items-center gap-1 rounded-full bg-secondary px-3 text-xs font-semibold text-foreground transition-colors hover:bg-secondary/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+                    >
+                      {t(VERIFICA_MODE_LABEL[mode])}
+                      <ChevronDown aria-hidden="true" className="h-3.5 w-3.5 opacity-70" />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="min-w-[10rem]">
+                    {VERIFICA_MODES.map((value) => (
+                      <DropdownMenuItem key={value} onSelect={() => setMode(value)}>
+                        {t(VERIFICA_MODE_LABEL[value])}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
 
-              {/* Riga 2 — Data + Materia (in colonna su schermi stretti) */}
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              {/* P47 — Data + Materia affiancate (griglia fissa a 2 colonne anche su mobile) */}
+              <div className="grid grid-cols-2 gap-3">
                 {dateField}
                 {subjectSelect}
               </div>
 
-              {/* Riga 3 — Intervallo orario */}
-              {timeRange}
+              {/* Riga 3 — Intervallo orario: per la verifica l'ora di fine è obbligatoria */}
+              {timeRange(true)}
+              {endError && (
+                <p id="ev-end-error" role="alert" className="-mt-2 text-xs font-medium text-destructive">
+                  {endError}
+                </p>
+              )}
 
               {/* Riga 4 — Argomento: Da corso | Libero */}
               <div className="space-y-2">
@@ -358,8 +436,8 @@ export function AddEventSheet({ open, onOpenChange, initial, onSubmit }: AddEven
 
           {category === "compito" && (
             <>
-              {/* Riga 1 — Materia + Data */}
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              {/* P47 — Materia + Data affiancate (speculare al tab Verifica) */}
+              <div className="grid grid-cols-2 gap-3">
                 {subjectSelect}
                 {dateField}
               </div>
@@ -393,7 +471,7 @@ export function AddEventSheet({ open, onOpenChange, initial, onSubmit }: AddEven
                 <Textarea id="ev-altro-notes" rows={2} value={description} onChange={(e) => setDescription(e.target.value)} placeholder={t("piano.sheet.notesPlaceholder")} />
               </div>
               {dateField}
-              {timeRange}
+              {timeRange(false)}
             </>
           )}
 
