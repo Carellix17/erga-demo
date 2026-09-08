@@ -42,12 +42,18 @@ describe("pianoPalette — colori materia (spec)", () => {
     expect(subjectHex("  storia  ")).toBe("#D97706");
   });
 
-  it("tinted-surface: fondo ~18% del colore, barra sinistra piena, testo chiaro", () => {
-    const t = subjectTint("Storia");
+  it("tinted-surface: fondo ~18% del colore, barra sinistra piena, testo chiaro in dark mode", () => {
+    const t = subjectTint("Storia", true);
     expect(t.dot).toBe("#D97706");
     expect(t.backgroundColor).toMatch(/rgba\(217 119 6 \/ 0\.18\)/);
     expect(t.borderLeft).toBe("4px solid #D97706");
     expect(t.color).toBe("#F8FAFC"); // testo chiaro WCAG AA su fondo scuro
+  });
+
+  it("in modalità chiara il testo diventa scuro (leggibile su fondo tinta)", () => {
+    expect(subjectTint("Storia").color).toBe("#0F172A");
+    expect(subjectTint("Storia", false).color).toBe("#0F172A");
+    expect(routineTint("school").color).toBe("#0F172A");
   });
 
   it("colori routine fissi (sonno/scuola/pasti/altro)", () => {

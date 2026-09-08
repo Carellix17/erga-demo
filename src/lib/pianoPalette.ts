@@ -17,6 +17,8 @@ export interface TintStyle {
 }
 
 const TEXT_LIGHT = "#F8FAFC";
+/** Testo scuro ad alto contrasto sui fondi tinti al 18% in modalità chiara. */
+const TEXT_DARK = "#0F172A";
 
 /** Materie scolastiche italiane → colore (spec P46). */
 const SUBJECT_HEX: { hex: string; keys: string[] }[] = [
@@ -54,7 +56,7 @@ export const ROUTINE_HEX: Record<string, string> = {
 };
 
 /** Stile "tinted-surface" per i blocchi del planner (inline, 60fps). */
-export function tintStyle(hex: string, opts?: { alpha?: number; borderless?: boolean }): TintStyle {
+export function tintStyle(hex: string, opts?: { alpha?: number; borderless?: boolean; dark?: boolean }): TintStyle {
   const alpha = opts?.alpha ?? 0.18;
   const r = parseInt(hex.slice(1, 3), 16);
   const g = parseInt(hex.slice(3, 5), 16);
@@ -63,17 +65,18 @@ export function tintStyle(hex: string, opts?: { alpha?: number; borderless?: boo
   return {
     backgroundColor: bg,
     borderLeft: opts?.borderless ? "1px solid rgba(248 250 252 / 0.14)" : `4px solid ${hex}`,
-    color: TEXT_LIGHT,
+    // Su fondo chiaro il testo chiaro sparisce: usiamo testo scuro AA.
+    color: opts?.dark ? TEXT_LIGHT : TEXT_DARK,
     dot: hex,
   };
 }
 
 /** Tinta di una materia per nome (o slate di default). */
-export function subjectTint(subjectName?: string | null): TintStyle {
-  return tintStyle(subjectHex(subjectName));
+export function subjectTint(subjectName?: string | null, dark?: boolean): TintStyle {
+  return tintStyle(subjectHex(subjectName), { dark });
 }
 
 /** Tinta di un blocco routine (kind: school | sleep | meal | other). */
-export function routineTint(kind: string): TintStyle {
-  return tintStyle(ROUTINE_HEX[kind] ?? ROUTINE_HEX.other);
+export function routineTint(kind: string, dark?: boolean): TintStyle {
+  return tintStyle(ROUTINE_HEX[kind] ?? ROUTINE_HEX.other, { dark });
 }
