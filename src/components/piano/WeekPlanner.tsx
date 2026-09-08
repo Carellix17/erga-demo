@@ -7,7 +7,7 @@ import type { StudyEvent } from "@/hooks/useStudyEvents";
 import type { Evaluation } from "@/hooks/useEvaluations";
 import type { UserRoutine, RoutineKind } from "@/hooks/useUserRoutines";
 import type { UserSubject } from "@/hooks/useUserSubjects";
-import { resolveSubjectColor, type SubjectColor } from "@/lib/subjectColors";
+import { resolveSubjectColor, getSubjectColorByKey, type SubjectColor } from "@/lib/subjectColors";
 import {
   getWeekDays, dayKey, timeToMinutes, isoToDayMinutes, routineSegmentsForDay,
   positionDayEvents, freeSlots, computeGridRange, visibleRoutineBlocks, routineDayWindow,
