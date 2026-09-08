@@ -75,6 +75,13 @@ export function WeekPlanner({
     return resolveSubjectColor(name, custom?.color);
   };
 
+  /** Colore scelto a mano dall'utente per quella materia (se impostato). */
+  const customAccent = (name?: string): string | null => {
+    if (!name) return null;
+    const key = colorByName.get(name.toLowerCase())?.color;
+    return key ? (getSubjectColorByKey(key)?.accent ?? null) : null;
+  };
+
   const subjectNameById = useMemo(() => {
     const m = new Map(subjects.map((s) => [s.id, s.name] as const));
     return m;
@@ -170,7 +177,7 @@ export function WeekPlanner({
                       type="button"
                       onClick={() => openItem(u.kind, u.id, day)}
                       className="block w-full text-left text-[10px] leading-tight px-1.5 py-0.5 rounded-md truncate cursor-pointer active:scale-[0.98] transition-transform"
-                      style={{ ...subjectTint(u.subjectName, dark), borderLeft: `3px solid ${subjectTint(u.subjectName, dark).dot}` }}
+                      style={{ ...subjectTint(u.subjectName, dark, customAccent(u.subjectName)), borderLeft: `3px solid ${subjectTint(u.subjectName, dark, customAccent(u.subjectName)).dot}` }}
                     >
                       {u.title}
                     </button>
@@ -243,8 +250,8 @@ export function WeekPlanner({
                     onClick={() => openItem(row.kind, row.id, day)}
                     className="absolute text-left rounded-lg px-1.5 py-1 overflow-hidden shadow-sm z-10 cursor-pointer active:scale-[0.98] transition-transform"
                     style={{
-                      ...subjectTint(row.subjectName, dark),
-                      borderLeft: `4px solid ${subjectTint(row.subjectName, dark).dot}`,
+                      ...subjectTint(row.subjectName, dark, customAccent(row.subjectName)),
+                      borderLeft: `4px solid ${subjectTint(row.subjectName, dark, customAccent(row.subjectName)).dot}`,
                       top: row.top + 1,
                       height: row.height - 2,
                       left: `calc(${(row.lane * 100) / row.lanes}% + 3px)`,
